@@ -1,0 +1,878 @@
+/* =========================
+   RESET
+========================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background: #0b0b0b;
+    color: #ffffff;
+    font-family: "Montserrat", sans-serif;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+.header {
+    width: 100%;
+    height: 82px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 7%;
+
+    background: #090909;
+
+    border-bottom: 1px solid #202020;
+
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    z-index: 1000;
+}
+
+
+/* LOGO */
+
+.logo {
+    display: flex;
+    flex-direction: column;
+
+    line-height: 0.8;
+
+    transform: skew(-5deg);
+}
+
+.logo-fatia {
+    font-family: "Bebas Neue", sans-serif;
+
+    font-size: 34px;
+    letter-spacing: 2px;
+
+    color: white;
+}
+
+.logo-prime {
+    font-family: "Bebas Neue", sans-serif;
+
+    font-size: 21px;
+    letter-spacing: 6px;
+
+    color: #f5c400;
+
+    margin-left: 2px;
+}
+
+
+/* NAV */
+
+.header nav {
+    display: flex;
+    gap: 40px;
+}
+
+.header nav a {
+    color: #cfcfcf;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    transition: 0.3s;
+}
+
+.header nav a:hover {
+    color: #f5c400;
+}
+
+
+/* BUTTON */
+
+.btn-pedido {
+    border: none;
+
+    background: #f5c400;
+    color: #090909;
+
+    padding: 13px 23px;
+
+    font-weight: 800;
+    font-size: 12px;
+
+    border-radius: 3px;
+
+    transition: 0.3s;
+}
+
+.btn-pedido:hover {
+    background: #ffffff;
+    transform: translateY(-2px);
+}
+
+
+/* =========================
+   HERO
+========================= */
+
+.hero {
+    min-height: 720px;
+
+    margin-top: 82px;
+
+    position: relative;
+
+    display: flex;
+    align-items: center;
+
+    background-image:
+        url("https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=2000&q=90");
+
+    background-size: cover;
+    background-position: center;
+}
+
+.hero-overlay {
+    position: absolute;
+
+    inset: 0;
+
+    background:
+        linear-gradient(
+            90deg,
+            rgba(0, 0, 0, 0.95) 0%,
+            rgba(0, 0, 0, 0.75) 42%,
+            rgba(0, 0, 0, 0.25) 100%
+        );
+}
+
+.hero-content {
+    position: relative;
+
+    z-index: 2;
+
+    width: 90%;
+    max-width: 1200px;
+
+    margin: auto;
+}
+
+.hero-tag {
+    display: inline-block;
+
+    color: #f5c400;
+
+    font-size: 13px;
+    font-weight: 800;
+
+    letter-spacing: 3px;
+
+    margin-bottom: 20px;
+}
+
+.hero h1 {
+    font-family: "Bebas Neue", sans-serif;
+
+    font-size: clamp(70px, 9vw, 125px);
+
+    line-height: 0.82;
+
+    letter-spacing: 2px;
+}
+
+.hero h1 span {
+    color: #f5c400;
+}
+
+.hero p {
+    max-width: 500px;
+
+    margin-top: 28px;
+
+    color: #d0d0d0;
+
+    font-size: 16px;
+
+    line-height: 1.7;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 15px;
+
+    margin-top: 35px;
+}
+
+
+/* =========================
+   BUTTONS
+========================= */
+
+.btn-primary {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 15px 25px;
+
+    background: #f5c400;
+    color: #090909;
+
+    font-size: 12px;
+    font-weight: 800;
+
+    letter-spacing: 1px;
+
+    border-radius: 3px;
+
+    transition: 0.3s;
+}
+
+.btn-primary:hover {
+    background: #ffffff;
+
+    transform: translateY(-3px);
+}
+
+.btn-secondary {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 15px 25px;
+
+    border: 1px solid #ffffff55;
+
+    color: #ffffff;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    letter-spacing: 1px;
+
+    transition: 0.3s;
+}
+
+.btn-secondary:hover {
+    border-color: #f5c400;
+
+    color: #f5c400;
+}
+
+
+/* =========================
+   SECTION TITLE
+========================= */
+
+.section-title {
+    text-align: center;
+
+    margin-bottom: 55px;
+}
+
+.section-title span {
+    color: #f5c400;
+
+    font-size: 11px;
+    font-weight: 800;
+
+    letter-spacing: 4px;
+}
+
+.section-title h2 {
+    font-family: "Bebas Neue", sans-serif;
+
+    font-size: 58px;
+
+    letter-spacing: 1px;
+
+    margin-top: 8px;
+}
+
+.section-title p {
+    color: #8f8f8f;
+
+    font-size: 14px;
+
+    margin-top: 8px;
+}
+
+
+/* =========================
+   DESTAQUES
+========================= */
+
+.destaques {
+    padding: 100px 7%;
+
+    background: #0b0b0b;
+}
+
+.pizza-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 25px;
+
+    max-width: 1250px;
+
+    margin: auto;
+}
+
+
+/* PIZZA CARD */
+
+.pizza-card {
+    background: #131313;
+
+    border: 1px solid #222;
+
+    overflow: hidden;
+
+    transition: 0.4s;
+}
+
+.pizza-card:hover {
+    transform: translateY(-8px);
+
+    border-color: #f5c400;
+}
+
+
+/* IMAGE */
+
+.pizza-image {
+    height: 280px;
+
+    position: relative;
+
+    overflow: hidden;
+}
+
+.pizza-image img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    transition: 0.5s;
+}
+
+.pizza-card:hover .pizza-image img {
+    transform: scale(1.08);
+}
+
+
+/* BADGE */
+
+.badge {
+    position: absolute;
+
+    top: 15px;
+    left: 15px;
+
+    background: #f5c400;
+    color: #090909;
+
+    padding: 7px 10px;
+
+    font-size: 9px;
+
+    font-weight: 900;
+
+    letter-spacing: 1px;
+}
+
+
+/* PIZZA INFO */
+
+.pizza-info {
+    padding: 23px;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    gap: 15px;
+}
+
+.pizza-info h3 {
+    font-size: 18px;
+
+    margin-bottom: 8px;
+}
+
+.pizza-info p {
+    color: #888;
+
+    font-size: 12px;
+
+    line-height: 1.6;
+
+    max-width: 220px;
+}
+
+.pizza-info strong {
+    color: #f5c400;
+
+    font-size: 16px;
+
+    white-space: nowrap;
+}
+
+
+/* CARD BUTTON */
+
+.btn-card {
+    width: calc(100% - 46px);
+
+    margin: 0 23px 23px;
+
+    padding: 13px;
+
+    border: 1px solid #333;
+
+    background: transparent;
+
+    color: white;
+
+    font-size: 10px;
+
+    font-weight: 800;
+
+    letter-spacing: 1px;
+
+    transition: 0.3s;
+}
+
+.btn-card:hover {
+    background: #f5c400;
+
+    color: #090909;
+
+    border-color: #f5c400;
+}
+
+
+/* CENTER BUTTON */
+
+.center-button {
+    text-align: center;
+
+    margin-top: 45px;
+}
+
+
+/* =========================
+   BANNER
+========================= */
+
+.banner {
+    min-height: 500px;
+
+    display: flex;
+
+    align-items: center;
+
+    position: relative;
+
+    background-image:
+        linear-gradient(
+            90deg,
+            rgba(0,0,0,0.92),
+            rgba(0,0,0,0.4)
+        ),
+        url("https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=2000&q=90");
+
+    background-size: cover;
+    background-position: center;
+}
+
+.banner-content {
+    width: 86%;
+
+    max-width: 1200px;
+
+    margin: auto;
+}
+
+.banner-content > span {
+    color: #f5c400;
+
+    font-size: 11px;
+
+    font-weight: 800;
+
+    letter-spacing: 4px;
+}
+
+.banner h2 {
+    font-family: "Bebas Neue", sans-serif;
+
+    font-size: clamp(50px, 6vw, 80px);
+
+    line-height: 0.9;
+
+    margin: 15px 0;
+}
+
+.banner h2 strong {
+    color: #f5c400;
+}
+
+.banner p {
+    color: #ccc;
+
+    max-width: 500px;
+
+    font-size: 14px;
+
+    line-height: 1.7;
+
+    margin-bottom: 25px;
+}
+
+
+/* =========================
+   CARDÁPIO
+========================= */
+
+.cardapio {
+    padding: 110px 7%;
+
+    background: #101010;
+}
+
+.menu-list {
+    max-width: 900px;
+
+    margin: auto;
+}
+
+.menu-item {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 20px;
+
+    padding: 25px 0;
+
+    border-bottom: 1px solid #292929;
+}
+
+.menu-text h3 {
+    font-size: 17px;
+
+    margin-bottom: 7px;
+}
+
+.menu-text p {
+    color: #858585;
+
+    font-size: 12px;
+}
+
+.menu-item strong {
+    color: #f5c400;
+
+    white-space: nowrap;
+}
+
+
+/* =========================
+   SOBRE
+========================= */
+
+.sobre {
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    min-height: 600px;
+
+    background: #0b0b0b;
+}
+
+.sobre-image {
+    overflow: hidden;
+}
+
+.sobre-image img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+}
+
+.sobre-content {
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: center;
+
+    padding: 80px;
+}
+
+.sobre-content > span {
+    color: #f5c400;
+
+    font-size: 11px;
+
+    font-weight: 800;
+
+    letter-spacing: 3px;
+}
+
+.sobre-content h2 {
+    font-family: "Bebas Neue", sans-serif;
+
+    font-size: 62px;
+
+    line-height: 0.9;
+
+    margin: 18px 0 25px;
+}
+
+.sobre-content h2 strong {
+    color: #f5c400;
+}
+
+.sobre-content p {
+    color: #999;
+
+    max-width: 500px;
+
+    font-size: 14px;
+
+    line-height: 1.8;
+
+    margin-bottom: 15px;
+}
+
+.sobre-content .btn-primary {
+    align-self: flex-start;
+
+    margin-top: 15px;
+}
+
+
+/* =========================
+   FOOTER
+========================= */
+
+footer {
+    background: #050505;
+
+    padding: 60px 7% 25px;
+
+    text-align: center;
+
+    border-top: 1px solid #202020;
+}
+
+.footer-logo {
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    gap: 8px;
+
+    font-family: "Bebas Neue", sans-serif;
+
+    font-size: 30px;
+}
+
+.footer-logo strong {
+    color: #f5c400;
+}
+
+footer p {
+    color: #666;
+
+    font-size: 12px;
+
+    margin-top: 8px;
+}
+
+.footer-links {
+    display: flex;
+
+    justify-content: center;
+
+    gap: 30px;
+
+    margin: 30px 0;
+}
+
+.footer-links a {
+    color: #999;
+
+    font-size: 11px;
+
+    transition: 0.3s;
+}
+
+.footer-links a:hover {
+    color: #f5c400;
+}
+
+.copyright {
+    padding-top: 25px;
+
+    border-top: 1px solid #1d1d1d;
+
+    color: #555;
+
+    font-size: 10px;
+}
+
+
+/* =========================
+   RESPONSIVO
+========================= */
+
+@media (max-width: 900px) {
+
+    .header {
+        padding: 0 5%;
+    }
+
+    .header nav {
+        display: none;
+    }
+
+    .pizza-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .sobre {
+        grid-template-columns: 1fr;
+    }
+
+    .sobre-image {
+        height: 400px;
+    }
+
+    .sobre-content {
+        padding: 60px 8%;
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .header {
+        height: 70px;
+    }
+
+    .logo-fatia {
+        font-size: 27px;
+    }
+
+    .logo-prime {
+        font-size: 17px;
+    }
+
+    .btn-pedido {
+        padding: 10px 13px;
+
+        font-size: 10px;
+    }
+
+    .hero {
+        margin-top: 70px;
+
+        min-height: 650px;
+    }
+
+    .hero-content {
+        width: 86%;
+    }
+
+    .hero h1 {
+        font-size: 75px;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+
+        align-items: flex-start;
+    }
+
+    .destaques {
+        padding: 80px 5%;
+    }
+
+    .section-title h2 {
+        font-size: 48px;
+    }
+
+    .pizza-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pizza-image {
+        height: 300px;
+    }
+
+    .banner {
+        min-height: 550px;
+    }
+
+    .banner-content {
+        width: 86%;
+    }
+
+    .banner h2 {
+        font-size: 58px;
+    }
+
+    .cardapio {
+        padding: 80px 7%;
+    }
+
+    .menu-item {
+        align-items: flex-start;
+    }
+
+    .sobre-content {
+        padding: 60px 7%;
+    }
+
+    .sobre-content h2 {
+        font-size: 52px;
+    }
+
+}
