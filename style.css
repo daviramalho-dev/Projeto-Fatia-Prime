@@ -383,6 +383,11 @@ button {
     transition: 0.5s;
 }
 
+.pizza-image img.pizza-zoom-menor {
+    object-fit: cover;
+    transform: scale(0.92);
+}
+
 .pizza-card:hover .pizza-image img {
     transform: scale(1.08);
 }
