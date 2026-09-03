@@ -763,6 +763,123 @@ footer p {
 }
 
 
+.whatsapp-float {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 20;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 18px;
+    border-radius: 999px;
+    background: #25d366;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .28);
+    transition: transform .2s ease, background .2s ease;
+}
+
+.whatsapp-float:hover {
+    transform: translateY(-3px);
+    background: #1ebe5d;
+}
+
+.whatsapp-icon {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+}
+
+.menu-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.btn-menu-add {
+    padding: 8px 11px;
+    border: 1px solid #f5c400;
+    background: transparent;
+    color: #f5c400;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.btn-menu-add:hover {
+    background: #f5c400;
+    color: #090909;
+}
+
+.cart-count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 18px;
+    height: 18px;
+    margin-left: 4px;
+    border-radius: 50%;
+    background: #090909;
+    color: #f5c400;
+    font-size: 10px;
+}
+
+.cart-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    background: rgba(0, 0, 0, .67);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease;
+}
+
+.cart-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.cart-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    width: min(420px, 100%);
+    height: 100vh;
+    padding: 25px;
+    background: #151515;
+    box-shadow: -8px 0 30px rgba(0, 0, 0, .53);
+    transform: translateX(105%);
+    transition: transform .3s ease;
+}
+
+.cart-panel.is-open { transform: translateX(0); }
+
+.cart-header, .cart-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.cart-header { padding-bottom: 20px; border-bottom: 1px solid #303030; }
+.cart-header h2 { font-family: "Bebas Neue", sans-serif; font-size: 36px; letter-spacing: 1px; }
+.cart-close { border: 0; background: transparent; color: #fff; font-size: 32px; line-height: 1; }
+.cart-items { flex: 1; overflow-y: auto; padding: 15px 0; }
+.cart-empty { margin-top: 30px; color: #999; font-size: 14px; text-align: center; }
+.cart-item { display: flex; justify-content: space-between; gap: 12px; padding: 15px 0; border-bottom: 1px solid #292929; font-size: 13px; }
+.cart-item small { display: block; margin-top: 5px; color: #999; }
+.cart-item-controls { display: flex; align-items: center; gap: 9px; }
+.cart-item-controls button { width: 25px; height: 25px; border: 1px solid #555; background: transparent; color: #fff; font-size: 17px; }
+.cart-footer { padding-top: 18px; border-top: 1px solid #303030; }
+.cart-total { margin-bottom: 17px; font-size: 15px; }
+.cart-total strong { color: #f5c400; font-size: 20px; }
+.cart-footer label { display: block; margin: 12px 0; color: #ddd; font-size: 12px; font-weight: 600; }
+.cart-footer input, .cart-footer textarea { width: 100%; margin-top: 6px; padding: 10px; border: 1px solid #444; background: #0c0c0c; color: #fff; font: inherit; resize: vertical; }
+.checkout-button { width: 100%; border: 0; margin-top: 5px; }
+
 /* =========================
    RESPONSIVO
 ========================= */
@@ -797,6 +914,12 @@ footer p {
 
 
 @media (max-width: 600px) {
+
+    .whatsapp-float {
+        right: 16px;
+        bottom: 16px;
+        padding: 12px 15px;
+    }
 
     .header {
         height: 70px;
@@ -870,6 +993,12 @@ footer p {
 
     .menu-item {
         align-items: flex-start;
+    }
+
+    .menu-actions {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
     }
 
     .sobre-content {
