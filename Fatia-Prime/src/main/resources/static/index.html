@@ -29,8 +29,8 @@
             <a href="#sobre">Sobre nós</a>
         </nav>
 
-        <button class="btn-pedido">
-            Fazer pedido
+        <button class="btn-pedido" type="button" data-open-cart>
+            Fazer pedido <span class="cart-count">0</span>
         </button>
 
     </header>
@@ -97,7 +97,7 @@
             <div class="pizza-grid">
 
                 <!-- PIZZA 1 -->
-                <article class="pizza-card">
+                <article class="pizza-card" data-product="Calabresa Prime" data-price="49.90">
 
                     <div class="pizza-image">
                         <img
@@ -126,7 +126,7 @@
 
                     </div>
 
-                    <button class="btn-card">
+                    <button class="btn-card" type="button">
                         ADICIONAR
                     </button>
 
@@ -134,7 +134,7 @@
 
 
                 <!-- PIZZA 2 -->
-                <article class="pizza-card">
+                <article class="pizza-card" data-product="Havaiana de Frango" data-price="34.90">
 
                     <div class="pizza-image">
 
@@ -166,7 +166,7 @@
 
                     </div>
 
-                    <button class="btn-card">
+                    <button class="btn-card" type="button">
                         ADICIONAR
                     </button>
 
@@ -174,7 +174,7 @@
 
 
                 <!-- PIZZA 3 -->
-                <article class="pizza-card">
+                <article class="pizza-card" data-product="Costela com Catupiry" data-price="56.90">
 
                     <div class="pizza-image">
 
@@ -206,7 +206,7 @@
 
                     </div>
 
-                    <button class="btn-card">
+                    <button class="btn-card" type="button">
                         ADICIONAR
                     </button>
 
@@ -246,7 +246,7 @@
                     especial da Fatia Prime.
                 </p>
 
-                <button class="btn-primary">
+                <button class="btn-primary js-scroll-to-about" type="button">
                     CONHECER A FATIA PRIME
                 </button>
 
@@ -283,9 +283,7 @@
 
                     </div>
 
-                    <strong>
-                        R$ 49,90
-                    </strong>
+                    <div class="menu-actions"><strong>R$ 49,90</strong><button class="btn-menu-add" type="button" data-product="Calabresa Spicy" data-price="49.90">ADICIONAR</button></div>
 
                 </div>
 
@@ -302,9 +300,7 @@
 
                     </div>
 
-                    <strong>
-                        R$ 52,90
-                    </strong>
+                    <div class="menu-actions"><strong>R$ 52,90</strong><button class="btn-menu-add" type="button" data-product="Frango com Catupiry" data-price="52.90">ADICIONAR</button></div>
 
                 </div>
 
@@ -321,9 +317,7 @@
 
                     </div>
 
-                    <strong>
-                        R$ 54,90
-                    </strong>
+                    <div class="menu-actions"><strong>R$ 54,90</strong><button class="btn-menu-add" type="button" data-product="Pepperoni Prime" data-price="54.90">ADICIONAR</button></div>
 
                 </div>
 
@@ -340,9 +334,7 @@
 
                     </div>
 
-                    <strong>
-                        R$ 56,90
-                    </strong>
+                    <div class="menu-actions"><strong>R$ 56,90</strong><button class="btn-menu-add" type="button" data-product="Quatro Queijos" data-price="56.90">ADICIONAR</button></div>
 
                 </div>
 
@@ -360,9 +352,7 @@
 
                     </div>
 
-                    <strong>
-                        R$ 51,90
-                    </strong>
+                    <div class="menu-actions"><strong>R$ 51,90</strong><button class="btn-menu-add" type="button" data-product="Portuguesa" data-price="51.90">ADICIONAR</button></div>
 
                 </div>
 
@@ -404,7 +394,7 @@
                     saborosas, bonitas e feitas com carinho.
                 </p>
 
-                <button class="btn-primary">
+                <button class="btn-primary js-about-whatsapp" type="button">
                     SABER MAIS
                 </button>
 
@@ -444,8 +434,27 @@
 
     </footer>
 
+    <a class="whatsapp-float" href="https://wa.me/5561993637373?text=Ol%C3%A1%21%20Vim%20pelo%20site%20da%20Fatia%20Prime." target="_blank" rel="noopener noreferrer" aria-label="Falar com a Fatia Prime pelo WhatsApp">
+        <svg class="whatsapp-icon" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M16 3a13 13 0 0 0-11.1 19.8L3 29l6.4-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-3.9-.5-5.6-1.5l-.4-.2-3.8 1 1-3.7-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.8-.9-2.1-1s-.5-.1-.7.2-.8 1-.9 1.2-.3.2-.6.1a8.7 8.7 0 0 1-2.5-1.6 9.4 9.4 0 0 1-1.8-2.2c-.2-.3 0-.4.1-.6l.5-.6.2-.5c.1-.2 0-.4 0-.6l-1-2.3c-.3-.7-.5-.6-.7-.6h-.6c-.2 0-.6.1-.9.4s-1.2 1.2-1.2 2.9 1.2 3.3 1.4 3.5a12.4 12.4 0 0 0 4.8 4.2c.7.3 1.2.5 1.7.7.7.2 1.4.2 1.9.1.6-.1 1.8-.7 2.1-1.3s.3-1.2.2-1.3-.2-.2-.5-.4Z" />
+        </svg>
+        <span>WhatsApp</span>
+    </a>
 
-    <script src="script.js"></script>
+    <aside class="cart-panel" aria-label="Seu pedido" aria-hidden="true">
+        <div class="cart-header"><h2>SEU PEDIDO</h2><button class="cart-close" type="button" aria-label="Fechar pedido">×</button></div>
+        <div class="cart-items"><p class="cart-empty">Seu carrinho está vazio.</p></div>
+        <div class="cart-footer">
+            <div class="cart-total"><span>Total</span><strong>R$ 0,00</strong></div>
+            <label>Seu nome<input id="customer-name" type="text" autocomplete="name" placeholder="Como podemos chamar você?"></label>
+            <label>Observações<textarea id="order-notes" rows="3" placeholder="Ex.: sem cebola"></textarea></label>
+            <button class="btn-primary checkout-button" type="button">FINALIZAR NO WHATSAPP</button>
+        </div>
+    </aside>
+    <div class="cart-backdrop" aria-hidden="true"></div>
+
+
+    <script src="js/script.js"></script>
 
 </body>
 </html>
