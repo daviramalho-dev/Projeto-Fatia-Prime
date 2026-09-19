@@ -44,4 +44,12 @@ public class UsuarioController {
             .map(UsuarioResponse::de)
             .toList();
     }
+
+    @GetMapping("/{id}")
+    public UsuarioResponse buscarPorId(@PathVariable Long id) {
+        Usuario usuario = repository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+
+        return UsuarioResponse.de(usuario);
+    }
 }
