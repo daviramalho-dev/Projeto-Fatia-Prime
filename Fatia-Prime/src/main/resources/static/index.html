@@ -519,6 +519,7 @@
                 </p>
 
                 <a class="admin-panel-link" href="#painel-pedidos">IR PARA PAINEL DE PEDIDOS</a>
+                <a class="admin-panel-link" href="#gestao-cardapio">IR PARA GESTÃO DO CARDÁPIO</a>
             </div>
 
             <a class="admin-back-link" href="#cardapio">← Voltar ao cardápio</a>
@@ -568,12 +569,90 @@
                         <button class="admin-order-details-close" type="button" aria-label="Fechar detalhes">×</button>
                     </div>
                     <div class="admin-order-details-status"></div>
+                    <div class="admin-status-editor">
+                        <label>
+                            Alterar status
+                            <select id="admin-order-status-editor">
+                                <option value="Pedido recebido">Pedido recebido</option>
+                                <option value="Pedido em andamento">Pedido em andamento</option>
+                                <option value="Pedido concluído">Pedido concluído</option>
+                            </select>
+                        </label>
+                        <button class="btn-primary admin-status-save" type="button">ATUALIZAR STATUS</button>
+                        <div class="admin-status-message" aria-live="polite"></div>
+                    </div>
                     <div class="admin-order-customer"></div>
                     <div class="admin-order-products">
                         <h4>Produtos</h4>
                         <ul class="admin-order-product-list"></ul>
                         <div class="admin-order-total"><span>Total</span><strong></strong></div>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GESTÃO DO CARDÁPIO -->
+        <section class="admin-catalog" id="gestao-cardapio">
+            <div class="admin-orders-heading">
+                <div>
+                    <span>ÁREA ADMINISTRATIVA</span>
+                    <h2>GESTÃO DO <strong>CARDÁPIO.</strong></h2>
+                    <p>Cadastre, edite e altere a disponibilidade das pizzas do cardápio.</p>
+                </div>
+                <a class="admin-back-link" href="#painel-pedidos">← Voltar aos pedidos</a>
+            </div>
+
+            <div class="admin-catalog-layout">
+                <div class="admin-catalog-panel">
+                    <div class="admin-catalog-panel-heading">
+                        <span>CATÁLOGO</span>
+                        <h3>Pizzas cadastradas</h3>
+                    </div>
+                    <div class="admin-catalog-list" aria-live="polite"></div>
+                    <div class="admin-catalog-empty" hidden>
+                        <strong>Nenhuma pizza cadastrada</strong>
+                        <span>Use o formulário para adicionar uma pizza ao cardápio.</span>
+                    </div>
+                </div>
+
+                <div class="admin-catalog-panel">
+                    <div class="admin-catalog-panel-heading">
+                        <span id="admin-product-form-label">NOVA PIZZA</span>
+                        <h3 id="admin-product-form-title">Adicionar ao cardápio</h3>
+                    </div>
+                    <form id="admin-product-form" novalidate>
+                        <label>
+                            Nome
+                            <input name="productName" type="text" placeholder="Ex.: Margherita Prime" required>
+                        </label>
+                        <label>
+                            Descrição
+                            <textarea name="productDescription" rows="3" placeholder="Ingredientes e características da pizza"></textarea>
+                        </label>
+                        <label>
+                            Categoria
+                            <select name="productCategory" required>
+                                <option value="">Selecione uma categoria</option>
+                                <option value="classicas">Clássicas</option>
+                                <option value="carnes">Carnes</option>
+                                <option value="frango">Frango</option>
+                                <option value="queijos">Queijos</option>
+                            </select>
+                        </label>
+                        <label>
+                            Preço
+                            <input name="productPrice" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="49,90" required>
+                        </label>
+                        <label>
+                            Imagem (URL opcional)
+                            <input name="productImage" type="url" placeholder="https://...">
+                        </label>
+                        <div class="admin-product-form-message" aria-live="polite"></div>
+                        <div class="admin-product-form-actions">
+                            <button class="btn-primary" type="submit">SALVAR PIZZA</button>
+                            <button class="btn-secondary admin-product-cancel" type="button" hidden>CANCELAR EDIÇÃO</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </section>
@@ -654,6 +733,7 @@
             <a href="#sobre">Sobre nós</a>
             <a href="#acesso-admin">Acesso admin</a>
             <a href="#consultar-pedido">Consultar pedido</a>
+            <a href="#gestao-cardapio">Gestão do cardápio</a>
 
         </div>
 

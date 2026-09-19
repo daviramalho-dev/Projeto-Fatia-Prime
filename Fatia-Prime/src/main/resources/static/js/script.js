@@ -2,6 +2,9 @@ const WHATSAPP_NUMBER = '5561993637373';
 const CART_STORAGE_KEY = 'fatia-prime-cart';
 const ORDER_STORAGE_KEY = 'fatia-prime-last-order';
 const ORDER_HISTORY_STORAGE_KEY = 'fatia-prime-orders';
+const PRODUCT_STORAGE_KEY = 'fatia-prime-products';
+const ORDER_STATUSES = ['Pedido recebido', 'Pedido em andamento', 'Pedido concluído'];
+const PRODUCT_CATEGORIES = ['classicas', 'carnes', 'frango', 'queijos'];
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const panel = document.querySelector('.cart-panel');
 const checkoutPanel = document.querySelector('.checkout-panel');
@@ -27,11 +30,23 @@ const adminOrderList = document.querySelector('.admin-order-list');
 const adminOrdersMessage = document.querySelector('.admin-orders-message');
 const adminOrdersEmpty = document.querySelector('.admin-orders-empty');
 const adminOrderDetails = document.querySelector('.admin-order-details');
+const adminOrderStatusEditor = document.querySelector('#admin-order-status-editor');
+const adminStatusMessage = document.querySelector('.admin-status-message');
+const adminStatusSave = document.querySelector('.admin-status-save');
+const adminProductForm = document.querySelector('#admin-product-form');
+const adminCatalogList = document.querySelector('.admin-catalog-list');
+const adminCatalogEmpty = document.querySelector('.admin-catalog-empty');
+const adminProductFormMessage = document.querySelector('.admin-product-form-message');
+const adminProductFormTitle = document.querySelector('#admin-product-form-title');
+const adminProductFormLabel = document.querySelector('#admin-product-form-label');
+const adminProductCancel = document.querySelector('.admin-product-cancel');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
 let cepLookupRequestId = 0;
 let lastRequestedCep = '';
+let editingProductId = null;
+let selectedAdminOrderCode = null;
 
 function sanitizeCart(items) {
     if (!Array.isArray(items)) return [];
@@ -78,6 +93,119 @@ function saveCart() {
 }
 
 window.cart = loadCart();
+
+function productId(name) {
+    return `pizza-${String(name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+}
+
+function parseProductPrice(value) {
+    const normalized = String(value || '').replace(/[^0-9,.-]/g, '').replace(',', '.');
+    return Number(normalized);
+}
+
+function normalizeProduct(product) {
+    if (!product || typeof product !== 'object') return null;
+    const name = String(product.name || '').trim();
+    const category = String(product.category || '').trim();
+    const price = Number(product.price);
+    if (!name || !PRODUCT_CATEGORIES.includes(category) || !Number.isFinite(price) || price <= 0) return null;
+    return {
+        id: product.id || productId(name),
+        name,
+        description: String(product.description || '').trim(),
+        category,
+        price,
+        image: String(product.image || '').trim(),
+        badge: String(product.badge || '').trim(),
+        featured: Boolean(product.featured),
+        active: product.active !== false,
+    };
+}
+
+function readInitialProducts() {
+    const products = [];
+    document.querySelectorAll('.pizza-card').forEach((card) => {
+        const name = card.dataset.product || card.querySelector('h3')?.textContent.trim();
+        const normalized = normalizeProduct({
+            name,
+            description: card.querySelector('.pizza-info p')?.textContent.trim(),
+            category: name === 'Havaiana de Frango' ? 'frango' : 'carnes',
+            price: card.dataset.price,
+            image: card.querySelector('img')?.getAttribute('src'),
+            badge: card.querySelector('.badge')?.textContent.trim(),
+            featured: true,
+        });
+        if (normalized) products.push(normalized);
+    });
+    document.querySelectorAll('.menu-item').forEach((item) => {
+        const button = item.querySelector('.btn-menu-add');
+        const normalized = normalizeProduct({
+            name: button?.dataset.product || item.querySelector('h3')?.textContent.trim(),
+            description: item.querySelector('.menu-text p')?.textContent.trim(),
+            category: item.dataset.category,
+            price: button?.dataset.price || parseProductPrice(item.querySelector('.menu-actions strong')?.textContent),
+        });
+        if (normalized) products.push(normalized);
+    });
+    return products;
+}
+
+function readProductCatalog() {
+    try {
+        const stored = localStorage.getItem(PRODUCT_STORAGE_KEY);
+        if (stored !== null) {
+            const parsed = JSON.parse(stored);
+            return Array.isArray(parsed) ? parsed.map(normalizeProduct).filter(Boolean) : [];
+        }
+    } catch (error) {
+        console.warn('Catálogo inválido no localStorage. Restaurando o catálogo inicial.', error);
+    }
+    const initialProducts = readInitialProducts();
+    try {
+        localStorage.setItem(PRODUCT_STORAGE_KEY, JSON.stringify(initialProducts));
+    } catch (error) {
+        console.warn('Não foi possível salvar o catálogo inicial.', error);
+    }
+    return initialProducts;
+}
+
+function saveProductCatalog(products) {
+    try {
+        localStorage.setItem(PRODUCT_STORAGE_KEY, JSON.stringify(products.map(normalizeProduct).filter(Boolean)));
+        return true;
+    } catch (error) {
+        console.warn('Não foi possível salvar o catálogo.', error);
+        return false;
+    }
+}
+
+function getProductCategoryLabel(category) {
+    return { classicas: 'Clássicas', carnes: 'Carnes', frango: 'Frango', queijos: 'Queijos' }[category] || category;
+}
+
+function renderPublicCatalog() {
+    const pizzaGrid = document.querySelector('.pizza-grid');
+    const menuList = document.querySelector('.menu-list');
+    const products = readProductCatalog().filter((product) => product.active);
+    if (pizzaGrid) {
+        pizzaGrid.innerHTML = products.filter((product) => product.featured).map((product) => `
+            <article class="pizza-card" data-product="${escapeHtml(product.name)}" data-price="${product.price}">
+                <div class="pizza-image">
+                    ${product.image ? `<img class="pizza-zoom-menor" src="${escapeHtml(product.image)}" alt="Pizza ${escapeHtml(product.name)}">` : '<div class="pizza-image-placeholder" aria-hidden="true">FP</div>'}
+                    ${product.badge ? `<span class="badge">${escapeHtml(product.badge)}</span>` : ''}
+                </div>
+                <div class="pizza-info"><div><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div><strong>${money.format(product.price)}</strong></div>
+                <button class="btn-card" type="button">ADICIONAR</button>
+            </article>`).join('');
+    }
+    if (menuList) {
+        menuList.innerHTML = products.filter((product) => !product.featured).map((product) => `
+            <div class="menu-item" data-category="${escapeHtml(product.category)}">
+                <div class="menu-text"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div>
+                <div class="menu-actions"><strong>${money.format(product.price)}</strong><button class="btn-menu-add" type="button" data-product="${escapeHtml(product.name)}" data-price="${product.price}">ADICIONAR</button></div>
+            </div>`).join('');
+    }
+}
 
 function openCart() {
     if (!panel || !backdrop) return;
@@ -205,8 +333,167 @@ function getAdminOrders() {
         });
 }
 
+function persistOrderStatus(orderCode, status) {
+    if (!ORDER_STATUSES.includes(status)) return false;
+    const orders = readOrderHistory();
+    const orderIndex = orders.findIndex((order) => order.code === orderCode);
+    if (orderIndex < 0) return false;
+
+    orders[orderIndex] = { ...orders[orderIndex], status };
+    try {
+        localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify(orders));
+        const lastOrder = JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) || 'null');
+        if (lastOrder?.code === orderCode) {
+            localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify({ ...lastOrder, status }));
+        }
+        return true;
+    } catch (error) {
+        console.warn('Não foi possível atualizar o status do pedido.', error);
+        return false;
+    }
+}
+
+function showAdminStatusMessage(message, type = 'error') {
+    if (!adminStatusMessage) return;
+    adminStatusMessage.textContent = message;
+    adminStatusMessage.className = `admin-status-message ${type}`.trim();
+}
+
+function renderAdminProducts() {
+    if (!adminCatalogList || !adminCatalogEmpty) return;
+    const products = readProductCatalog();
+    adminCatalogList.innerHTML = products.map((product) => `
+        <article class="admin-product-card ${product.active ? '' : 'is-inactive'}">
+            <div class="admin-product-card-info">
+                <div class="admin-product-card-title">
+                    <strong>${escapeHtml(product.name)}</strong>
+                    <span class="admin-product-state ${product.active ? 'is-active' : 'is-inactive'}">${product.active ? 'Ativa' : 'Desativada'}</span>
+                </div>
+                <span>${escapeHtml(getProductCategoryLabel(product.category))} · ${money.format(product.price)}</span>
+                <small>${escapeHtml(product.description || 'Sem descrição')}</small>
+            </div>
+            <div class="admin-product-card-actions">
+                <button class="btn-secondary" type="button" data-edit-product="${escapeHtml(product.id)}">EDITAR</button>
+                <button class="${product.active ? 'btn-danger' : 'btn-secondary'}" type="button" data-toggle-product="${escapeHtml(product.id)}">${product.active ? 'DESATIVAR' : 'REATIVAR'}</button>
+            </div>
+        </article>`).join('');
+    adminCatalogEmpty.hidden = products.length > 0;
+}
+
+function showAdminProductMessage(message, type = 'error') {
+    if (!adminProductFormMessage) return;
+    adminProductFormMessage.textContent = message;
+    adminProductFormMessage.className = `admin-product-form-message ${type}`.trim();
+}
+
+function resetAdminProductForm() {
+    if (!adminProductForm) return;
+    adminProductForm.reset();
+    editingProductId = null;
+    if (adminProductFormTitle) adminProductFormTitle.textContent = 'Adicionar ao cardápio';
+    if (adminProductFormLabel) adminProductFormLabel.textContent = 'NOVA PIZZA';
+    if (adminProductCancel) adminProductCancel.hidden = true;
+    showAdminProductMessage('');
+}
+
+function editAdminProduct(product) {
+    if (!adminProductForm || !product) return;
+    editingProductId = product.id;
+    adminProductForm.elements.namedItem('productName').value = product.name;
+    adminProductForm.elements.namedItem('productDescription').value = product.description;
+    adminProductForm.elements.namedItem('productCategory').value = product.category;
+    adminProductForm.elements.namedItem('productPrice').value = product.price;
+    adminProductForm.elements.namedItem('productImage').value = product.image;
+    if (adminProductFormTitle) adminProductFormTitle.textContent = 'Editar pizza';
+    if (adminProductFormLabel) adminProductFormLabel.textContent = 'EDIÇÃO DE PIZZA';
+    if (adminProductCancel) adminProductCancel.hidden = false;
+    showAdminProductMessage('');
+    adminProductForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function toggleAdminProduct(productIdValue) {
+    const products = readProductCatalog();
+    const product = products.find((item) => item.id === productIdValue);
+    if (!product) return;
+    if (product.active && !window.confirm(`Deseja realmente desativar a pizza "${product.name}"?`)) return;
+    product.active = !product.active;
+    if (!saveProductCatalog(products)) {
+        showAdminProductMessage('Não foi possível atualizar a disponibilidade da pizza.');
+        return;
+    }
+    renderPublicCatalog();
+    renderAdminProducts();
+    applyCategoryFilter('all');
+    showAdminProductMessage(product.active ? 'Pizza reativada com sucesso.' : 'Pizza desativada com sucesso.', 'success');
+}
+
+function submitAdminProduct(event) {
+    event.preventDefault();
+    if (!adminProductForm) return;
+    const formData = new FormData(adminProductForm);
+    const name = String(formData.get('productName') || '').trim();
+    const description = String(formData.get('productDescription') || '').trim();
+    const category = String(formData.get('productCategory') || '').trim();
+    const price = Number(formData.get('productPrice'));
+    const image = String(formData.get('productImage') || '').trim();
+
+    if (!name) {
+        showAdminProductMessage('Informe o nome da pizza.');
+        adminProductForm.elements.namedItem('productName').focus();
+        return;
+    }
+    if (!PRODUCT_CATEGORIES.includes(category)) {
+        showAdminProductMessage('Selecione uma categoria válida.');
+        adminProductForm.elements.namedItem('productCategory').focus();
+        return;
+    }
+    if (!Number.isFinite(price) || price <= 0) {
+        showAdminProductMessage('Informe um preço maior que zero.');
+        adminProductForm.elements.namedItem('productPrice').focus();
+        return;
+    }
+
+    const products = readProductCatalog();
+    if (editingProductId) {
+        const product = products.find((item) => item.id === editingProductId);
+        if (!product) {
+            showAdminProductMessage('A pizza selecionada não foi encontrada.');
+            return;
+        }
+        const duplicate = products.find((item) => item.id !== editingProductId && item.name.toLowerCase() === name.toLowerCase());
+        if (duplicate) {
+            showAdminProductMessage('Já existe outra pizza com este nome.');
+            return;
+        }
+        Object.assign(product, { name, description, category, price, image });
+        showAdminProductMessage('Pizza atualizada com sucesso.', 'success');
+    } else {
+        if (products.some((item) => item.name.toLowerCase() === name.toLowerCase())) {
+            showAdminProductMessage('Já existe uma pizza com este nome.');
+            return;
+        }
+        products.push(normalizeProduct({ id: productId(name), name, description, category, price, image, active: true }));
+        showAdminProductMessage('Pizza cadastrada com sucesso.', 'success');
+    }
+
+    if (!saveProductCatalog(products)) {
+        showAdminProductMessage('Não foi possível salvar a pizza.');
+        return;
+    }
+    renderPublicCatalog();
+    renderAdminProducts();
+    applyCategoryFilter('all');
+    adminProductForm.reset();
+    editingProductId = null;
+    if (adminProductFormTitle) adminProductFormTitle.textContent = 'Adicionar ao cardápio';
+    if (adminProductFormLabel) adminProductFormLabel.textContent = 'NOVA PIZZA';
+    if (adminProductCancel) adminProductCancel.hidden = true;
+}
+
 function renderAdminOrderDetails(order) {
     if (!adminOrderDetails) return;
+
+    selectedAdminOrderCode = order.code;
 
     const detailsCode = adminOrderDetails.querySelector('.admin-order-details-code');
     const detailsStatus = adminOrderDetails.querySelector('.admin-order-details-status');
@@ -225,6 +512,8 @@ function renderAdminOrderDetails(order) {
     if (detailsStatus) {
         detailsStatus.innerHTML = `<span class="admin-order-status ${getOrderStatusClass(order.status)}">${escapeHtml(order.status)}</span><span>${escapeHtml(formatOrderDate(order.createdAt))}</span>`;
     }
+    if (adminOrderStatusEditor) adminOrderStatusEditor.value = ORDER_STATUSES.includes(order.status) ? order.status : ORDER_STATUSES[0];
+    showAdminStatusMessage('');
     if (customerElement) {
         customerElement.innerHTML = customerFields.length
             ? customerFields.map(([label, value]) => `<div><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span></div>`).join('')
@@ -719,14 +1008,20 @@ function applyCategoryFilter(category) {
     });
 }
 
-document.querySelectorAll('.btn-card').forEach((button) => {
-    button.addEventListener('click', () => addProduct(button.closest('[data-product]')));
-});
-document.querySelectorAll('.btn-menu-add').forEach((button) => {
-    button.addEventListener('click', () => addProduct(button));
-});
+renderPublicCatalog();
+
 document.querySelectorAll('.menu-filter-button').forEach((button) => {
     button.addEventListener('click', () => applyCategoryFilter(button.dataset.filter));
+});
+
+document.querySelector('.pizza-grid')?.addEventListener('click', (event) => {
+    const button = event.target.closest('.btn-card');
+    if (button) addProduct(button.closest('[data-product]'));
+});
+
+document.querySelector('.menu-list')?.addEventListener('click', (event) => {
+    const button = event.target.closest('.btn-menu-add');
+    if (button) addProduct(button);
 });
 
 document.querySelector('[data-open-cart]').addEventListener('click', openCart);
@@ -834,6 +1129,39 @@ if (adminOrderList) {
     });
 }
 
+adminStatusSave?.addEventListener('click', () => {
+    const status = adminOrderStatusEditor?.value;
+    if (!selectedAdminOrderCode || !ORDER_STATUSES.includes(status)) {
+        showAdminStatusMessage('Selecione um pedido e um status válido.');
+        return;
+    }
+    if (!persistOrderStatus(selectedAdminOrderCode, status)) {
+        showAdminStatusMessage('Não foi possível atualizar o status do pedido.');
+        return;
+    }
+    const updatedOrder = getAdminOrders().find((order) => order.code === selectedAdminOrderCode);
+    if (updatedOrder) renderAdminOrderDetails(updatedOrder);
+    renderAdminOrders();
+    showAdminStatusMessage('Status do pedido atualizado com sucesso.', 'success');
+});
+
+if (adminCatalogList) {
+    adminCatalogList.addEventListener('click', (event) => {
+        const editButton = event.target.closest('[data-edit-product]');
+        const toggleButton = event.target.closest('[data-toggle-product]');
+        const products = readProductCatalog();
+        if (editButton) {
+            editAdminProduct(products.find((product) => product.id === editButton.dataset.editProduct));
+        }
+        if (toggleButton) {
+            toggleAdminProduct(toggleButton.dataset.toggleProduct);
+        }
+    });
+}
+
+adminProductForm?.addEventListener('submit', submitAdminProduct);
+adminProductCancel?.addEventListener('click', resetAdminProductForm);
+
 document.querySelectorAll('[data-phone-mask]').forEach((field) => {
     field.addEventListener('input', () => {
         const cursorPosition = field.selectionStart;
@@ -869,6 +1197,7 @@ if (checkoutForm) {
 
 document.querySelector('.admin-order-details-close')?.addEventListener('click', () => {
     if (adminOrderDetails) adminOrderDetails.hidden = true;
+    selectedAdminOrderCode = null;
 });
 
 if (checkoutForm) {
@@ -970,5 +1299,6 @@ document.querySelector('.js-about-whatsapp').addEventListener('click', () => {
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Olá! Quero saber mais sobre a Fatia Prime.')}`, '_blank', 'noopener,noreferrer');
 });
 
+renderAdminProducts();
 applyCategoryFilter('all');
 updateCart();
