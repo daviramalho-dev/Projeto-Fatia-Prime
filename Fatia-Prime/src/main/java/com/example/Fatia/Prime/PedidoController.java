@@ -36,6 +36,14 @@ public class PedidoController {
         return PedidoResponse.de(pedido);
     }
 
+    @GetMapping("/consulta")
+    public List<ConsultaPedidoResponse> consultar(
+        @RequestParam(required = false) String codigo,
+        @RequestParam(required = false) String telefone
+    ) {
+        return pedidoService.consultar(codigo, telefone);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PedidoResponse criar(@Valid @RequestBody PedidoRequest request) {
