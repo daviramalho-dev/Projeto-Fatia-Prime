@@ -500,6 +500,31 @@
         </form>
     </aside>
 
+    <aside class="confirmation-panel" aria-label="Confirmação do pedido" aria-hidden="true">
+        <div class="confirmation-header">
+            <span class="confirmation-badge">PEDIDO CONFIRMADO</span>
+            <button class="confirmation-close" type="button" aria-label="Fechar confirmação">×</button>
+        </div>
+
+        <div class="confirmation-content">
+            <h2>Pedido realizado com sucesso!</h2>
+            <p class="confirmation-code">Pedido FP-000000-ABC123</p>
+
+            <div class="confirmation-section">
+                <h3>Resumo do pedido</h3>
+                <ul class="confirmation-items"></ul>
+                <div class="confirmation-total"><span>Total</span><strong>R$ 0,00</strong></div>
+            </div>
+
+            <div class="confirmation-customer">
+                <strong>Dados do cliente</strong>
+                <span>Nome, telefone e endereço aparecerão aqui.</span>
+            </div>
+        </div>
+
+        <button class="btn-primary confirmation-continue" type="button">VOLTAR AO CARDÁPIO</button>
+    </aside>
+
     <div class="cart-backdrop" aria-hidden="true"></div>
 
 
