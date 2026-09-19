@@ -1,6 +1,8 @@
 package com.example.Fatia.Prime;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -67,6 +69,31 @@ public class PedidoService {
 
         pedido.setValorTotal(total);
         return pedidoRepository.saveAndFlush(pedido);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConsultaPedidoResponse> consultar(String codigo, String telefone) {
+        String codigoNormalizado = codigo == null ? "" : codigo.trim().toUpperCase(Locale.ROOT);
+        String telefoneNormalizado = telefone == null ? "" : telefone.replaceAll("\\D", "");
+
+        if (codigoNormalizado.isBlank() && telefoneNormalizado.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe o código ou o telefone do pedido");
+        }
+        if (!codigoNormalizado.isBlank() && !telefoneNormalizado.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe apenas o código ou o telefone do pedido");
+        }
+        if (!telefoneNormalizado.isBlank() && telefoneNormalizado.length() < 8) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefone inválido");
+        }
+
+        List<Pedido> pedidos = !codigoNormalizado.isBlank()
+            ? pedidoRepository.findByCodigoForConsulta(codigoNormalizado).map(List::of).orElseGet(List::of)
+            : pedidoRepository.findAllByTelefoneForConsulta(telefoneNormalizado);
+
+        if (pedidos.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido não encontrado");
+        }
+        return pedidos.stream().map(ConsultaPedidoResponse::de).toList();
     }
 
     private String gerarCodigoUnico() {
