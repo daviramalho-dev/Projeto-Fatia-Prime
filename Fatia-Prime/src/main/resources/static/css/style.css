@@ -8,6 +8,10 @@
     box-sizing: border-box;
 }
 
+[hidden] {
+    display: none !important;
+}
+
 html {
     scroll-behavior: smooth;
 }
@@ -105,6 +109,77 @@ button {
 
 .header nav a:hover {
     color: #f5c400;
+}
+
+.admin-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 82px;
+    padding: 0 7%;
+    background: #090909;
+    border-bottom: 1px solid #202020;
+}
+
+.admin-header-brand {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    transform: skew(-5deg);
+    font-family: "Bebas Neue", sans-serif;
+    font-size: 27px;
+    letter-spacing: 1px;
+}
+
+.admin-header-brand strong {
+    color: #f5c400;
+}
+
+.admin-header-brand small {
+    color: #888;
+    font-family: "Montserrat", sans-serif;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.admin-nav {
+    display: flex;
+    gap: 34px;
+}
+
+.admin-nav a {
+    color: #cfcfcf;
+    font-size: 12px;
+    font-weight: 700;
+    transition: color .2s ease;
+}
+
+.admin-nav a:hover,
+.admin-nav a:focus-visible {
+    color: #f5c400;
+}
+
+.admin-logout {
+    padding: 10px 16px;
+    border: 1px solid #f5c400;
+    background: transparent;
+    color: #f5c400;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    transition: background .2s ease, color .2s ease;
+}
+
+.admin-logout:hover,
+.admin-logout:focus-visible {
+    background: #f5c400;
+    color: #090909;
 }
 
 
@@ -2303,6 +2378,14 @@ footer p {
         display: none;
     }
 
+    .admin-header {
+        padding: 0 5%;
+    }
+
+    .admin-nav {
+        gap: 18px;
+    }
+
     .pizza-grid {
         grid-template-columns: 1fr 1fr;
     }
@@ -2356,6 +2439,33 @@ footer p {
 
     .header {
         height: 70px;
+    }
+
+    .admin-header {
+        min-height: 70px;
+        padding: 0 5%;
+    }
+
+    .admin-header-brand {
+        font-size: 22px;
+        gap: 4px;
+    }
+
+    .admin-header-brand small {
+        font-size: 8px;
+    }
+
+    .admin-nav {
+        gap: 10px;
+    }
+
+    .admin-nav a {
+        font-size: 10px;
+    }
+
+    .admin-logout {
+        padding: 8px 10px;
+        font-size: 9px;
     }
 
     .logo-fatia {

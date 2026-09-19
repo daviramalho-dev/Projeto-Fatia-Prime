@@ -40,6 +40,15 @@ const adminProductFormMessage = document.querySelector('.admin-product-form-mess
 const adminProductFormTitle = document.querySelector('#admin-product-form-title');
 const adminProductFormLabel = document.querySelector('#admin-product-form-label');
 const adminProductCancel = document.querySelector('.admin-product-cancel');
+const adminAccess = document.querySelector('.admin-access');
+const adminHeader = document.querySelector('.admin-header');
+const adminLogout = document.querySelector('.admin-logout');
+const adminOrdersSection = document.querySelector('.admin-orders');
+const adminCatalogSection = document.querySelector('.admin-catalog');
+const publicHeader = document.querySelector('.public-header');
+const publicFooter = document.querySelector('footer');
+const publicOrderTracking = document.querySelector('.order-tracking');
+const publicWhatsapp = document.querySelector('.whatsapp-float');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
@@ -47,6 +56,48 @@ let cepLookupRequestId = 0;
 let lastRequestedCep = '';
 let editingProductId = null;
 let selectedAdminOrderCode = null;
+
+function setInterfaceMode(mode) {
+    const isPublic = mode === 'public';
+    const isLogin = mode === 'admin-login';
+    const isWorkspace = mode === 'admin-workspace';
+    document.body.classList.toggle('admin-mode', isWorkspace);
+    if (adminHeader) adminHeader.hidden = !isWorkspace;
+    if (publicHeader) publicHeader.hidden = !isPublic;
+    if (adminAccess) adminAccess.hidden = !isLogin;
+    if (adminOrdersSection) adminOrdersSection.hidden = !isWorkspace;
+    if (adminCatalogSection) adminCatalogSection.hidden = !isWorkspace;
+    if (publicFooter) publicFooter.hidden = !isPublic;
+    if (publicOrderTracking) publicOrderTracking.hidden = !isPublic;
+    if (publicWhatsapp) publicWhatsapp.hidden = !isPublic;
+    document.querySelectorAll('main > section').forEach((section) => {
+        const isAdminSection = section.classList.contains('admin-access')
+            || section.classList.contains('admin-orders')
+            || section.classList.contains('admin-catalog');
+        section.hidden = isAdminSection ? !((isLogin && section.classList.contains('admin-access')) || (isWorkspace && !section.classList.contains('admin-access'))) : !isPublic;
+    });
+    if (isPublic) {
+        window.history.replaceState({}, '', '#inicio');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+        closeCart();
+        closeCheckout();
+        closeConfirmation();
+    }
+}
+
+function openAdminLogin() {
+    setInterfaceMode('admin-login');
+    window.location.hash = 'acesso-admin';
+    adminAccess?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    adminLoginForm?.elements.namedItem('adminEmail')?.focus();
+}
+
+function openAdminWorkspace() {
+    setInterfaceMode('admin-workspace');
+    window.location.hash = 'painel-pedidos';
+    adminOrdersSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 function sanitizeCart(items) {
     if (!Array.isArray(items)) return [];
@@ -953,6 +1004,12 @@ function openCheckout() {
     if (!checkoutPanel) return;
 
     renderCheckoutSummary();
+    const cartCustomerName = document.querySelector('#customer-name')?.value.trim();
+    const cartOrderNotes = document.querySelector('#order-notes')?.value.trim();
+    const checkoutName = checkoutForm?.elements.namedItem('customerName');
+    const checkoutNotes = checkoutForm?.elements.namedItem('customerNotes');
+    if (checkoutName && cartCustomerName && !checkoutName.value) checkoutName.value = cartCustomerName;
+    if (checkoutNotes && cartOrderNotes && !checkoutNotes.value) checkoutNotes.value = cartOrderNotes;
     checkoutPanel.classList.add('is-open');
     if (backdrop) {
         backdrop.classList.add('is-open');
@@ -1093,6 +1150,7 @@ if (adminLoginForm) {
         if (!validateAdminLogin()) return;
 
         showAdminLoginMessage('Dados válidos. A autenticação segura será concluída pelo servidor.', 'success');
+        openAdminWorkspace();
     });
 
     adminLoginForm.addEventListener('input', (event) => {
@@ -1115,6 +1173,28 @@ if (adminLoginForm) {
         });
     }
 }
+
+document.querySelectorAll('.js-open-admin').forEach((link) => {
+    link.addEventListener('click', (event) => {
+        event.preventDefault();
+        openAdminLogin();
+    });
+});
+
+document.querySelector('.js-exit-admin')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    setInterfaceMode('public');
+    document.querySelector('#cardapio')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+adminLogout?.addEventListener('click', () => {
+    setInterfaceMode('public');
+    adminLoginForm?.reset();
+    if (adminLoginMessage) {
+        adminLoginMessage.textContent = '';
+        adminLoginMessage.classList.remove('success', 'error');
+    }
+});
 
 if (adminOrderList) {
     renderAdminOrders();
@@ -1290,6 +1370,10 @@ document.querySelector('.confirmation-continue').addEventListener('click', () =>
     if (checkoutForm) {
         checkoutForm.reset();
     }
+    const cartCustomerName = document.querySelector('#customer-name');
+    const cartOrderNotes = document.querySelector('#order-notes');
+    if (cartCustomerName) cartCustomerName.value = '';
+    if (cartOrderNotes) cartOrderNotes.value = '';
 });
 
 document.querySelector('.js-scroll-to-about').addEventListener('click', () => {
@@ -1302,3 +1386,5 @@ document.querySelector('.js-about-whatsapp').addEventListener('click', () => {
 renderAdminProducts();
 applyCategoryFilter('all');
 updateCart();
+setInterfaceMode('public');
+if (window.location.hash === '#acesso-admin') openAdminLogin();
