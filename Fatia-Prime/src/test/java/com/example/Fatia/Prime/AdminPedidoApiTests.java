@@ -44,6 +44,9 @@ class AdminPedidoApiTests {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private PedidoService pedidoService;
+
     private Usuario admin;
     private Pedido pedido;
 
@@ -81,6 +84,30 @@ class AdminPedidoApiTests {
             .andExpect(jsonPath("$[0].status").value("Pedido recebido"))
             .andExpect(jsonPath("$[0].itens[0].quantidade").value(2))
             .andExpect(jsonPath("$[0].total").value(99.80));
+    }
+
+    @Test
+    void listaEPermiteDetalharPedidoPublicoSemUsuario() throws Exception {
+        Pedido pedidoPublico = pedidoService.criar(new PedidoRequest(
+            null,
+            "Cliente Público",
+            "publico-admin@fatiaprime.test",
+            "(61) 99999-1111",
+            "Rua Pública, 10",
+            "Sem cebola",
+            List.of(new ItemPedidoRequest(pedido.getItens().get(0).getProduto().getId(), 1))
+        ));
+
+        mockMvc.perform(get("/api/admin/pedidos").session(adminSession()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[?(@.id == %d)].nomeCliente".formatted(pedidoPublico.getId()))
+                .value("Cliente Público"));
+
+        mockMvc.perform(get("/api/admin/pedidos/{id}", pedidoPublico.getId()).session(adminSession()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.nomeCliente").value("Cliente Público"))
+            .andExpect(jsonPath("$.telefone").value("(61) 99999-1111"))
+            .andExpect(jsonPath("$.endereco").value("Rua Pública, 10"));
     }
 
     @Test

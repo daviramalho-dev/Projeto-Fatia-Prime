@@ -84,6 +84,29 @@ class SecurityIntegrationTests {
     }
 
     @Test
+    void regularUserCannotListAdministrativeOrders() throws Exception {
+        usuarioRepository.saveAndFlush(new Usuario(
+            "Usuário Comum",
+            "user-admin-pedidos@fatiaprime.test",
+            passwordEncoder.encode(PASSWORD),
+            Perfil.USER
+        ));
+
+        var session = mockMvc.perform(post("/api/auth/login")
+                .with(csrf())
+                .param("email", "user-admin-pedidos@fatiaprime.test")
+                .param("senha", PASSWORD))
+            .andExpect(status().isNoContent())
+            .andReturn()
+            .getRequest()
+            .getSession();
+
+        mockMvc.perform(get("/api/admin/pedidos")
+                .session((org.springframework.mock.web.MockHttpSession) session))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
     void publicProductEndpointRemainsAccessibleAnonymously() throws Exception {
         mockMvc.perform(get("/api/produtos"))
             .andExpect(status().isOk());

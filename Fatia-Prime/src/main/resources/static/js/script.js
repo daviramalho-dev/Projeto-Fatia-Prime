@@ -251,7 +251,11 @@ async function loadAdminOrders() {
         }
         const data = await response.json();
         if (requestId !== adminOrdersRequestId) return;
-        adminOrders = Array.isArray(data) ? data.map(normalizeAdminOrder) : [];
+        if (!Array.isArray(data)) throw new Error('A resposta da API de pedidos está indisponível.');
+        adminOrders = data.map(normalizeAdminOrder);
+        if (adminOrders.some((order) => !order.id || !order.code || !Array.isArray(order.items))) {
+            throw new Error('A resposta da API de pedidos está indisponível.');
+        }
         renderAdminOrders();
     } catch (error) {
         if (requestId !== adminOrdersRequestId) return;
