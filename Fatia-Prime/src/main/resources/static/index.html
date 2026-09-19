@@ -415,6 +415,59 @@
 
 
     <!-- FOOTER -->
+    <section class="order-tracking" id="consultar-pedido">
+        <div class="section-title">
+            <span>CONSULTE SEU PEDIDO</span>
+            <h2>RASTREAR PEDIDO</h2>
+            <p>Informe o código de acompanhamento ou o telefone para consultar o status do seu pedido.</p>
+        </div>
+
+        <div class="order-query-panel">
+            <form id="order-query-form" novalidate>
+                <div class="order-query-grid">
+                    <label>
+                        Código de acompanhamento
+                        <input id="order-query-code" type="text" placeholder="FP-20260918-ABC123" autocomplete="off">
+                    </label>
+                    <label>
+                        Telefone
+                        <input id="order-query-phone" type="tel" placeholder="(11) 99999-9999" autocomplete="tel">
+                    </label>
+                </div>
+
+                <div class="order-query-actions">
+                    <button class="btn-primary" type="submit">CONSULTAR PEDIDO</button>
+                    <a class="btn-secondary order-query-back" href="#cardapio">VOLTAR AO CARDÁPIO</a>
+                </div>
+            </form>
+
+            <div class="order-query-message" aria-live="polite"></div>
+
+            <div class="order-query-result" hidden>
+                <div class="order-query-header">
+                    <span class="order-query-status status-received">Pedido recebido</span>
+                </div>
+
+                <div class="order-query-details">
+                    <div class="order-query-meta">
+                        <strong>Código</strong>
+                        <span class="order-query-code-value">Pedido FP-000000-ABC123</span>
+                    </div>
+                    <div class="order-query-meta">
+                        <strong>Telefone</strong>
+                        <span class="order-query-phone-value">(11) 99999-9999</span>
+                    </div>
+                </div>
+
+                <div class="order-query-summary">
+                    <h3>Resumo do pedido</h3>
+                    <ul class="order-query-items"></ul>
+                    <div class="order-query-total"><span>Total</span><strong>R$ 0,00</strong></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <footer>
 
         <div class="footer-logo">
@@ -431,6 +484,7 @@
             <a href="#inicio">Início</a>
             <a href="#cardapio">Cardápio</a>
             <a href="#sobre">Sobre nós</a>
+            <a href="#consultar-pedido">Consultar pedido</a>
 
         </div>
 

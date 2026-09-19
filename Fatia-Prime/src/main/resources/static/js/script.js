@@ -1,6 +1,7 @@
 const WHATSAPP_NUMBER = '5561993637373';
 const CART_STORAGE_KEY = 'fatia-prime-cart';
 const ORDER_STORAGE_KEY = 'fatia-prime-last-order';
+const ORDER_HISTORY_STORAGE_KEY = 'fatia-prime-orders';
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const panel = document.querySelector('.cart-panel');
 const checkoutPanel = document.querySelector('.checkout-panel');
@@ -13,6 +14,11 @@ const confirmationSummaryElement = document.querySelector('.confirmation-items')
 const confirmationCodeElement = document.querySelector('.confirmation-code');
 const confirmationCustomerElement = document.querySelector('.confirmation-customer');
 const confirmationTotalElement = document.querySelector('.confirmation-total strong');
+const orderQueryForm = document.querySelector('#order-query-form');
+const orderQueryMessage = document.querySelector('.order-query-message');
+const orderQueryResult = document.querySelector('.order-query-result');
+const orderQueryCode = document.querySelector('#order-query-code');
+const orderQueryPhone = document.querySelector('#order-query-phone');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
@@ -104,11 +110,56 @@ function generateOrderCode() {
 }
 
 function saveRecentOrder(orderData) {
+    const normalizedOrder = {
+        ...orderData,
+        status: orderData.status || getOrderStatus(orderData.code, orderData.phone),
+        createdAt: new Date().toISOString(),
+    };
+
     try {
-        localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(orderData));
+        localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(normalizedOrder));
     } catch (error) {
         console.warn('Não foi possível salvar o último pedido no localStorage.', error);
     }
+
+    try {
+        const history = readOrderHistory();
+        const existingIndex = history.findIndex((item) => item.code === normalizedOrder.code);
+        if (existingIndex >= 0) {
+            history[existingIndex] = normalizedOrder;
+        } else {
+            history.push(normalizedOrder);
+        }
+        localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify(history));
+    } catch (error) {
+        console.warn('Não foi possível salvar o histórico de pedidos no localStorage.', error);
+    }
+}
+
+function readOrderHistory() {
+    try {
+        const stored = localStorage.getItem(ORDER_HISTORY_STORAGE_KEY);
+        if (!stored) {
+            const recentOrder = localStorage.getItem(ORDER_STORAGE_KEY);
+            if (!recentOrder) return [];
+            return [JSON.parse(recentOrder)];
+        }
+        const parsed = JSON.parse(stored);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        console.warn('Não foi possível ler o histórico de pedidos.', error);
+        return [];
+    }
+}
+
+function getOrderStatus(code, phone) {
+    const seed = `${code || ''}${phone || ''}`;
+    let hash = 0;
+    for (let index = 0; index < seed.length; index += 1) {
+        hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+    }
+    const states = ['Pedido recebido', 'Pedido em andamento', 'Pedido concluído'];
+    return states[hash % states.length];
 }
 
 function renderConfirmation(orderData) {
@@ -183,6 +234,89 @@ function isValidPhone(value) {
 
 function isValidEmail(value) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function getOrderQueryStatusLabel(status) {
+    const mapping = {
+        'Pedido recebido': 'status-received',
+        'Pedido em andamento': 'status-progress',
+        'Pedido concluído': 'status-finished',
+    };
+    return mapping[status] || 'status-received';
+}
+
+function findOrderByCodeOrPhone(code, phone) {
+    const normalizedCode = String(code || '').trim().toUpperCase();
+    const normalizedPhone = String(phone || '').replace(/\D/g, '');
+    const candidates = [...readOrderHistory()];
+    const lastOrder = localStorage.getItem(ORDER_STORAGE_KEY);
+    if (lastOrder) {
+        try {
+            const parsed = JSON.parse(lastOrder);
+            if (!candidates.some((item) => item.code === parsed.code)) {
+                candidates.push(parsed);
+            }
+        } catch (error) {
+            console.warn('Não foi possível carregar o último pedido para consulta.', error);
+        }
+    }
+
+    return candidates.find((order) => {
+        const orderCode = String(order.code || '').trim().toUpperCase();
+        const orderPhone = String(order.phone || '').replace(/\D/g, '');
+        const matchesCode = !normalizedCode || orderCode === normalizedCode;
+        const matchesPhone = !normalizedPhone || orderPhone === normalizedPhone;
+        return matchesCode && matchesPhone;
+    }) || null;
+}
+
+function showOrderQueryMessage(message) {
+    if (!orderQueryMessage) return;
+    orderQueryMessage.textContent = message;
+    orderQueryMessage.classList.remove('success');
+    orderQueryMessage.classList.add('error');
+}
+
+function renderOrderQueryResult(orderData) {
+    if (!orderQueryResult || !orderQueryCode || !orderQueryPhone) return;
+
+    orderQueryResult.hidden = false;
+    const status = orderData.status || getOrderStatus(orderData.code, orderData.phone);
+    const list = Array.isArray(orderData.items) ? orderData.items : [];
+    const total = Number(orderData.total) || 0;
+
+    const codeValue = document.querySelector('.order-query-code-value');
+    const phoneValue = document.querySelector('.order-query-phone-value');
+    if (codeValue) {
+        codeValue.textContent = `Pedido ${orderData.code || 'Não informado'}`;
+    }
+    if (phoneValue) {
+        phoneValue.textContent = orderData.phone || 'Não informado';
+    }
+    const statusBadge = document.querySelector('.order-query-status');
+    if (statusBadge) {
+        statusBadge.textContent = status;
+        statusBadge.className = `order-query-status ${getOrderQueryStatusLabel(status)}`;
+    }
+
+    const resultItems = document.querySelector('.order-query-items');
+    const resultTotal = document.querySelector('.order-query-total strong');
+    if (resultItems) {
+        resultItems.innerHTML = list.length
+            ? list.map((item) => `
+                <li>
+                    <div>
+                        <strong>${item.name}</strong>
+                        <small>${Number(item.quantity)}x • ${money.format(Number(item.price))}</small>
+                    </div>
+                    <strong>${money.format(Number(item.price) * Number(item.quantity))}</strong>
+                </li>`).join('')
+            : '<li><span>Não há itens neste pedido.</span></li>';
+    }
+
+    if (resultTotal) {
+        resultTotal.textContent = money.format(total);
+    }
 }
 
 function cartItemsAreValid() {
@@ -346,6 +480,41 @@ itemsElement.addEventListener('click', (event) => {
 document.querySelector('.checkout-button').addEventListener('click', () => {
     openCheckout();
 });
+
+if (orderQueryForm) {
+    orderQueryForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const codeValue = String(orderQueryForm.querySelector('#order-query-code')?.value || '').trim();
+        const phoneValue = String(orderQueryForm.querySelector('#order-query-phone')?.value || '').trim();
+
+        if (!codeValue && !phoneValue) {
+            showOrderQueryMessage('Informe o código de acompanhamento ou o telefone para consultar o pedido.');
+            if (orderQueryResult) orderQueryResult.hidden = true;
+            return;
+        }
+
+        if (phoneValue && !isValidPhone(phoneValue)) {
+            showOrderQueryMessage('Telefone inválido.');
+            if (orderQueryResult) orderQueryResult.hidden = true;
+            return;
+        }
+
+        const result = findOrderByCodeOrPhone(codeValue, phoneValue);
+        if (!result) {
+            showOrderQueryMessage('Pedido não encontrado. Verifique o código ou telefone informado.');
+            if (orderQueryResult) orderQueryResult.hidden = true;
+            return;
+        }
+
+        if (orderQueryMessage) {
+            orderQueryMessage.textContent = 'Pedido encontrado.';
+            orderQueryMessage.classList.remove('error');
+            orderQueryMessage.classList.add('success');
+        }
+
+        renderOrderQueryResult(result);
+    });
+}
 
 if (checkoutForm) {
     checkoutForm.addEventListener('submit', (event) => {
