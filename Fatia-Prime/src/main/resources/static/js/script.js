@@ -1,5 +1,6 @@
 const WHATSAPP_NUMBER = '5561993637373';
 const CART_STORAGE_KEY = 'fatia-prime-cart';
+const ORDER_STORAGE_KEY = 'fatia-prime-last-order';
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const panel = document.querySelector('.cart-panel');
 const checkoutPanel = document.querySelector('.checkout-panel');
@@ -15,7 +16,6 @@ const confirmationTotalElement = document.querySelector('.confirmation-total str
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
-const ORDER_STORAGE_KEY = 'fatia-prime-last-order';
 
 function sanitizeCart(items) {
     if (!Array.isArray(items)) return [];
@@ -64,12 +64,14 @@ function saveCart() {
 window.cart = loadCart();
 
 function openCart() {
+    if (!panel || !backdrop) return;
     panel.classList.add('is-open');
     backdrop.classList.add('is-open');
     panel.setAttribute('aria-hidden', 'false');
 }
 
 function closeCart() {
+    if (!panel || !backdrop) return;
     panel.classList.remove('is-open');
     backdrop.classList.remove('is-open');
     panel.setAttribute('aria-hidden', 'true');
@@ -82,6 +84,7 @@ function closeCheckout() {
     if (checkoutMessage) {
         checkoutMessage.textContent = '';
         checkoutMessage.classList.remove('success');
+        checkoutMessage.classList.remove('error');
     }
 }
 
@@ -89,7 +92,9 @@ function closeConfirmation() {
     if (!confirmationPanel) return;
     confirmationPanel.classList.remove('is-open');
     confirmationPanel.setAttribute('aria-hidden', 'true');
-    backdrop.classList.remove('is-open');
+    if (backdrop) {
+        backdrop.classList.remove('is-open');
+    }
 }
 
 function generateOrderCode() {
@@ -107,7 +112,7 @@ function saveRecentOrder(orderData) {
 }
 
 function renderConfirmation(orderData) {
-    if (!confirmationPanel || !confirmationSummaryElement || !confirmationCodeElement || !confirmationTotalElement) {
+    if (!confirmationPanel || !confirmationSummaryElement || !confirmationCodeElement || !confirmationTotalElement || !confirmationCustomerElement) {
         return;
     }
 
@@ -119,9 +124,9 @@ function renderConfirmation(orderData) {
         <li>
             <div>
                 <strong>${item.name}</strong>
-                <small>${item.quantity}x • R$ ${Number(item.price).toFixed(2).replace('.', ',')} cada</small>
+                <small>${item.quantity}x • ${money.format(Number(item.price))} cada</small>
             </div>
-            <strong>R$ ${(Number(item.price) * Number(item.quantity)).toFixed(2).replace('.', ',')}</strong>
+            <strong>${money.format(Number(item.price) * Number(item.quantity))}</strong>
         </li>`).join('');
     confirmationTotalElement.textContent = money.format(Number(data.total));
 
@@ -131,7 +136,9 @@ function renderConfirmation(orderData) {
         data.address ? `Endereço: ${data.address}` : null,
     ].filter(Boolean).join(' • ');
 
-    confirmationCustomerElement.innerHTML = customerInfo ? `<strong>Dados do cliente</strong><span>${customerInfo}</span>` : '<strong>Dados do cliente</strong><span>Não informado.</span>';
+    confirmationCustomerElement.innerHTML = customerInfo
+        ? `<strong>Dados do cliente</strong><span>${customerInfo}</span>`
+        : '<strong>Dados do cliente</strong><span>Não informado.</span>';
 }
 
 function openConfirmation(orderData) {
@@ -139,9 +146,13 @@ function openConfirmation(orderData) {
     renderConfirmation(orderData);
     confirmationPanel.classList.add('is-open');
     confirmationPanel.setAttribute('aria-hidden', 'false');
-    backdrop.classList.add('is-open');
-    checkoutPanel?.classList.remove('is-open');
-    checkoutPanel?.setAttribute('aria-hidden', 'true');
+    if (backdrop) {
+        backdrop.classList.add('is-open');
+    }
+    if (checkoutPanel) {
+        checkoutPanel.classList.remove('is-open');
+        checkoutPanel.setAttribute('aria-hidden', 'true');
+    }
 }
 
 function renderCheckoutSummary() {
@@ -161,9 +172,85 @@ function renderCheckoutSummary() {
     checkoutTotalElement.textContent = money.format(cartTotal());
 }
 
+function normalizePhone(value) {
+    return String(value || '').replace(/\D/g, '');
+}
+
+function isValidPhone(value) {
+    const digits = normalizePhone(value);
+    return digits.length === 10 || digits.length === 11;
+}
+
+function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function cartItemsAreValid() {
+    return Array.isArray(window.cart)
+        && window.cart.length > 0
+        && window.cart.every((item) => item
+            && typeof item === 'object'
+            && typeof item.name === 'string'
+            && item.name.trim()
+            && Number.isFinite(Number(item.price))
+            && Number(item.price) >= 0
+            && Number.isFinite(Number(item.quantity))
+            && Number(item.quantity) > 0);
+}
+
+function cartTotal() {
+    if (!Array.isArray(window.cart) || !cartItemsAreValid()) {
+        return 0;
+    }
+
+    return window.cart.reduce((total, item) => total + Number(item.price) * Number(item.quantity), 0);
+}
+
+function showCheckoutMessage(message, isSuccess = false) {
+    if (!checkoutMessage) return;
+    checkoutMessage.textContent = message;
+    checkoutMessage.classList.toggle('success', isSuccess);
+    checkoutMessage.classList.toggle('error', !isSuccess);
+}
+
+function clearCheckoutValidation() {
+    if (!checkoutForm) return;
+
+    checkoutForm.querySelectorAll('.is-invalid').forEach((field) => field.classList.remove('is-invalid'));
+    checkoutForm.querySelectorAll('[aria-invalid="true"]').forEach((field) => field.setAttribute('aria-invalid', 'false'));
+}
+
+function markFieldInvalid(fieldName, message) {
+    if (!checkoutForm) return;
+
+    const field = checkoutForm.elements.namedItem(fieldName);
+    if (!field) return;
+
+    field.classList.add('is-invalid');
+    field.setAttribute('aria-invalid', 'true');
+    showCheckoutMessage(message, false);
+    field.focus();
+}
+
 function openCheckout() {
-    if (!window.cart.length) {
-        alert('Adicione ao menos uma pizza ao pedido.');
+    if (!Array.isArray(window.cart) || !window.cart.length || !cartItemsAreValid()) {
+        const message = !Array.isArray(window.cart) || !window.cart.length ? 'Carrinho vazio.' : 'Itens do carrinho inválidos.';
+        if (checkoutMessage) {
+            showCheckoutMessage(message, false);
+        } else {
+            alert(message);
+        }
+        return;
+    }
+
+    const total = cartTotal();
+    if (!Number.isFinite(total) || total < 0) {
+        const message = 'Total do pedido inválido.';
+        if (checkoutMessage) {
+            showCheckoutMessage(message, false);
+        } else {
+            alert(message);
+        }
         return;
     }
 
@@ -171,14 +258,14 @@ function openCheckout() {
 
     renderCheckoutSummary();
     checkoutPanel.classList.add('is-open');
-    backdrop.classList.add('is-open');
+    if (backdrop) {
+        backdrop.classList.add('is-open');
+    }
     checkoutPanel.setAttribute('aria-hidden', 'false');
-    panel.classList.remove('is-open');
-    panel.setAttribute('aria-hidden', 'true');
-}
-
-function cartTotal() {
-    return window.cart.reduce((total, item) => total + item.price * item.quantity, 0);
+    if (panel) {
+        panel.classList.remove('is-open');
+        panel.setAttribute('aria-hidden', 'true');
+    }
 }
 
 function updateCart() {
@@ -241,6 +328,7 @@ document.querySelector('.checkout-close').addEventListener('click', closeCheckou
 backdrop.addEventListener('click', () => {
     closeCart();
     closeCheckout();
+    closeConfirmation();
 });
 
 itemsElement.addEventListener('click', (event) => {
@@ -262,6 +350,8 @@ document.querySelector('.checkout-button').addEventListener('click', () => {
 if (checkoutForm) {
     checkoutForm.addEventListener('submit', (event) => {
         event.preventDefault();
+        clearCheckoutValidation();
+
         const formData = new FormData(checkoutForm);
         const customer = String(formData.get('customerName') || '').trim();
         const email = String(formData.get('customerEmail') || '').trim();
@@ -270,70 +360,43 @@ if (checkoutForm) {
         const notes = String(formData.get('customerNotes') || '').trim();
 
         if (!customer) {
-            if (checkoutMessage) {
-                checkoutMessage.textContent = 'Informe seu nome.';
-                checkoutMessage.classList.remove('success');
-            }
+            markFieldInvalid('customerName', 'Informe seu nome.');
             return;
         }
 
         if (!email) {
-            if (checkoutMessage) {
-                checkoutMessage.textContent = 'Informe seu e-mail.';
-                checkoutMessage.classList.remove('success');
-            }
+            markFieldInvalid('customerEmail', 'Informe seu e-mail.');
             return;
         }
 
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            if (checkoutMessage) {
-                checkoutMessage.textContent = 'E-mail inválido.';
-                checkoutMessage.classList.remove('success');
-            }
+        if (!isValidEmail(email)) {
+            markFieldInvalid('customerEmail', 'E-mail inválido.');
             return;
         }
 
         if (!address) {
-            if (checkoutMessage) {
-                checkoutMessage.textContent = 'Informe seu endereço.';
-                checkoutMessage.classList.remove('success');
-            }
+            markFieldInvalid('customerAddress', 'Informe seu endereço.');
             return;
         }
 
         if (!phone) {
-            if (checkoutMessage) {
-                checkoutMessage.textContent = 'Informe seu telefone.';
-                checkoutMessage.classList.remove('success');
-            }
+            markFieldInvalid('customerPhone', 'Informe seu telefone.');
             return;
         }
 
-        const cleanPhone = phone.replace(/\D/g, '');
-        const phoneIsValid = cleanPhone.length === 10 || cleanPhone.length === 11;
-
-        if (!phoneIsValid) {
-            if (checkoutMessage) {
-                checkoutMessage.textContent = 'Telefone inválido.';
-                checkoutMessage.classList.remove('success');
-            }
+        if (!isValidPhone(phone)) {
+            markFieldInvalid('customerPhone', 'Telefone inválido.');
             return;
         }
 
-        if (!Array.isArray(window.cart) || !window.cart.length || !window.cart.every((item) => item && Number(item.quantity) > 0 && Number(item.price) >= 0)) {
-            if (checkoutMessage) {
-                checkoutMessage.textContent = 'Carrinho vazio.';
-                checkoutMessage.classList.remove('success');
-            }
+        if (!Array.isArray(window.cart) || !window.cart.length || !cartItemsAreValid()) {
+            showCheckoutMessage('Carrinho vazio.', false);
             return;
         }
 
         const total = cartTotal();
         if (!Number.isFinite(total) || total < 0) {
-            if (checkoutMessage) {
-                checkoutMessage.textContent = 'Total do pedido inválido.';
-                checkoutMessage.classList.remove('success');
-            }
+            showCheckoutMessage('Total do pedido inválido.', false);
             return;
         }
 
@@ -364,12 +427,7 @@ if (checkoutForm) {
         ].filter(Boolean).join('\n');
 
         saveRecentOrder(orderData);
-
-        if (checkoutMessage) {
-            checkoutMessage.textContent = 'Pedido preparado para envio.';
-            checkoutMessage.classList.add('success');
-        }
-
+        showCheckoutMessage('Pedido preparado para envio.', true);
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
         openConfirmation(orderData);
     });

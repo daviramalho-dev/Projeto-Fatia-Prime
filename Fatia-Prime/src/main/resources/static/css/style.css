@@ -1030,6 +1030,16 @@ footer p {
     color: #6de59b;
 }
 
+.checkout-message.error {
+    color: #ff8a80;
+}
+
+.checkout-form-grid input.is-invalid,
+.checkout-form-grid textarea.is-invalid {
+    border-color: #ff8a80;
+    box-shadow: 0 0 0 1px rgba(255, 138, 128, 0.55);
+}
+
 .checkout-submit {
     width: 100%;
     border: 0;
