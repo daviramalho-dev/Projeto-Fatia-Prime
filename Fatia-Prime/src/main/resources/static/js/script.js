@@ -19,6 +19,8 @@ const orderQueryMessage = document.querySelector('.order-query-message');
 const orderQueryResult = document.querySelector('.order-query-result');
 const orderQueryCode = document.querySelector('#order-query-code');
 const orderQueryPhone = document.querySelector('#order-query-phone');
+const adminLoginForm = document.querySelector('#admin-login-form');
+const adminLoginMessage = document.querySelector('.admin-login-message');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
@@ -234,6 +236,56 @@ function isValidPhone(value) {
 
 function isValidEmail(value) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function showAdminLoginMessage(message, type = 'error') {
+    if (!adminLoginMessage) return;
+    adminLoginMessage.textContent = message;
+    adminLoginMessage.classList.toggle('success', type === 'success');
+    adminLoginMessage.classList.toggle('error', type === 'error');
+}
+
+function clearAdminLoginState() {
+    if (!adminLoginForm) return;
+    adminLoginForm.querySelectorAll('.is-invalid').forEach((field) => field.classList.remove('is-invalid'));
+    if (adminLoginMessage) {
+        adminLoginMessage.textContent = '';
+        adminLoginMessage.classList.remove('success', 'error');
+    }
+}
+
+function validateAdminLogin() {
+    if (!adminLoginForm) return false;
+
+    const emailField = adminLoginForm.elements.namedItem('adminEmail');
+    const passwordField = adminLoginForm.elements.namedItem('adminPassword');
+    const email = String(emailField.value || '').trim();
+    const password = String(passwordField.value || '');
+
+    clearAdminLoginState();
+
+    if (!email) {
+        emailField.classList.add('is-invalid');
+        showAdminLoginMessage('Informe o e-mail administrativo.');
+        emailField.focus();
+        return false;
+    }
+
+    if (!isValidEmail(email)) {
+        emailField.classList.add('is-invalid');
+        showAdminLoginMessage('Informe um e-mail válido.');
+        emailField.focus();
+        return false;
+    }
+
+    if (!password) {
+        passwordField.classList.add('is-invalid');
+        showAdminLoginMessage('Informe a palavra-passe.');
+        passwordField.focus();
+        return false;
+    }
+
+    return true;
 }
 
 function getOrderQueryStatusLabel(status) {
@@ -514,6 +566,38 @@ if (orderQueryForm) {
 
         renderOrderQueryResult(result);
     });
+}
+
+if (adminLoginForm) {
+    const passwordField = adminLoginForm.elements.namedItem('adminPassword');
+    const passwordToggle = adminLoginForm.querySelector('.admin-password-toggle');
+
+    adminLoginForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        if (!validateAdminLogin()) return;
+
+        showAdminLoginMessage('Dados válidos. A autenticação segura será concluída pelo servidor.', 'success');
+    });
+
+    adminLoginForm.addEventListener('input', (event) => {
+        if (event.target.matches('input')) {
+            event.target.classList.remove('is-invalid');
+            if (adminLoginMessage) {
+                adminLoginMessage.textContent = '';
+                adminLoginMessage.classList.remove('success', 'error');
+            }
+        }
+    });
+
+    if (passwordToggle && passwordField) {
+        passwordToggle.addEventListener('click', () => {
+            const isPasswordVisible = passwordField.type === 'text';
+            passwordField.type = isPasswordVisible ? 'password' : 'text';
+            passwordToggle.textContent = isPasswordVisible ? 'Mostrar' : 'Ocultar';
+            passwordToggle.setAttribute('aria-label', isPasswordVisible ? 'Mostrar palavra-passe' : 'Ocultar palavra-passe');
+            passwordToggle.setAttribute('aria-pressed', String(!isPasswordVisible));
+        });
+    }
 }
 
 if (checkoutForm) {
