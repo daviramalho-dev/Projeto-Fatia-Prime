@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -12,10 +11,11 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/usuarios")
 public class UsuarioController {
     private final UsuarioRepository repository;
-    private final PasswordEncoder encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    private final PasswordEncoder encoder;
 
-    public UsuarioController(UsuarioRepository repository) {
+    public UsuarioController(UsuarioRepository repository, PasswordEncoder encoder) {
         this.repository = repository;
+        this.encoder = encoder;
     }
 
     @PostMapping

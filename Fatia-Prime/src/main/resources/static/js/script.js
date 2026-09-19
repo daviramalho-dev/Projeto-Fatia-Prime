@@ -99,6 +99,53 @@ function openAdminWorkspace() {
     adminOrdersSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function readCookie(name) {
+    const prefix = `${name}=`;
+    const cookie = document.cookie.split('; ').find((item) => item.startsWith(prefix));
+    return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : '';
+}
+
+async function getCsrfToken() {
+    const response = await fetch('/api/auth/csrf', { credentials: 'same-origin' });
+    if (!response.ok) throw new Error('csrf');
+    const data = await response.json();
+    return data.token || readCookie('XSRF-TOKEN');
+}
+
+async function authenticateAdmin(email, senha) {
+    const csrfToken = await getCsrfToken();
+    const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-XSRF-TOKEN': csrfToken,
+        },
+        body: new URLSearchParams({ email, senha }),
+    });
+
+    if (!response.ok) {
+        let message = 'Não foi possível autenticar. Verifique o e-mail e a palavra-passe.';
+        try {
+            const data = await response.json();
+            if (data.message) message = data.message;
+        } catch (error) {
+            // Mantém uma mensagem amigável quando o servidor não retorna JSON.
+        }
+        throw new Error(message);
+    }
+}
+
+async function logoutAdmin() {
+    const csrfToken = await getCsrfToken();
+    const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-XSRF-TOKEN': csrfToken },
+    });
+    if (!response.ok) throw new Error('logout');
+}
+
 function sanitizeCart(items) {
     if (!Array.isArray(items)) return [];
 
@@ -1145,12 +1192,31 @@ if (adminLoginForm) {
     const passwordField = adminLoginForm.elements.namedItem('adminPassword');
     const passwordToggle = adminLoginForm.querySelector('.admin-password-toggle');
 
-    adminLoginForm.addEventListener('submit', (event) => {
+    adminLoginForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (!validateAdminLogin()) return;
 
-        showAdminLoginMessage('Dados válidos. A autenticação segura será concluída pelo servidor.', 'success');
-        openAdminWorkspace();
+        const submitButton = adminLoginForm.querySelector('.admin-login-submit');
+        const email = String(adminLoginForm.elements.namedItem('adminEmail').value || '').trim();
+        const senha = String(passwordField.value || '');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'ENTRANDO...';
+        }
+        showAdminLoginMessage('Autenticando...', 'success');
+
+        try {
+            await authenticateAdmin(email, senha);
+            showAdminLoginMessage('Autenticação realizada com sucesso.', 'success');
+            openAdminWorkspace();
+        } catch (error) {
+            showAdminLoginMessage(error.message || 'Não foi possível autenticar. Tente novamente.');
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = 'ENTRAR';
+            }
+        }
     });
 
     adminLoginForm.addEventListener('input', (event) => {
@@ -1187,12 +1253,18 @@ document.querySelector('.js-exit-admin')?.addEventListener('click', (event) => {
     document.querySelector('#cardapio')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
-adminLogout?.addEventListener('click', () => {
-    setInterfaceMode('public');
-    adminLoginForm?.reset();
-    if (adminLoginMessage) {
-        adminLoginMessage.textContent = '';
-        adminLoginMessage.classList.remove('success', 'error');
+adminLogout?.addEventListener('click', async () => {
+    adminLogout.disabled = true;
+    try {
+        await logoutAdmin();
+        setInterfaceMode('public');
+        adminLoginForm?.reset();
+        if (adminLoginMessage) {
+            adminLoginMessage.textContent = '';
+            adminLoginMessage.classList.remove('success', 'error');
+        }
+    } finally {
+        adminLogout.disabled = false;
     }
 });
 
