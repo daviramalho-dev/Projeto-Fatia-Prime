@@ -1,0 +1,9 @@
+package com.example.Fatia.Prime;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record AdminPedidoStatusRequest(
+    @NotBlank(message = "O status é obrigatório")
+    String status
+) {
+}

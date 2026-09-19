@@ -22,6 +22,12 @@ public class Pedido {
     @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao;
 
+    @Column(name = "codigo", unique = true, length = 40)
+    private String codigo;
+
+    @Column(name = "status", length = 40)
+    private String status = "Pedido recebido";
+
     @Column(name = "valor_total", nullable = false, precision = 10, scale = 2)
     private BigDecimal valorTotal;
 
@@ -53,6 +59,22 @@ public class Pedido {
 
     public LocalDateTime getDataCriacao() {
         return dataCriacao;
+    }
+
+    public String getCodigo() {
+        return codigo;
+    }
+
+    public void setCodigo(String codigo) {
+        this.codigo = codigo;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public BigDecimal getValorTotal() {

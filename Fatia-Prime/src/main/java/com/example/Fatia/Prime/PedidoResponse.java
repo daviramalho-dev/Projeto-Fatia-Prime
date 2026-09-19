@@ -7,6 +7,8 @@ import java.util.List;
 public record PedidoResponse(
     Long id,
     Long usuarioId,
+    String codigo,
+    String status,
     LocalDateTime dataCriacao,
     BigDecimal valorTotal,
     String observacoes,
@@ -20,6 +22,8 @@ public record PedidoResponse(
         return new PedidoResponse(
             pedido.getId(),
             pedido.getUsuario() != null ? pedido.getUsuario().getId() : null,
+            pedido.getCodigo(),
+            pedido.getStatus(),
             pedido.getDataCriacao(),
             pedido.getValorTotal(),
             pedido.getObservacoes(),

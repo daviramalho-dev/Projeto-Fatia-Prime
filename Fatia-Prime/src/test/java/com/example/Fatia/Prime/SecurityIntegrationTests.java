@@ -30,10 +30,14 @@ class SecurityIntegrationTests {
     private UsuarioRepository usuarioRepository;
 
     @Autowired
+    private PedidoRepository pedidoRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void cleanUsers() {
+        pedidoRepository.deleteAll();
         usuarioRepository.deleteAll();
     }
 
