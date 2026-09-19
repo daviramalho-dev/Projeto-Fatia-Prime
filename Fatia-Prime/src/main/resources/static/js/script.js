@@ -751,7 +751,7 @@ function renderConfirmation(orderData) {
         return;
     }
 
-    const data = orderData || JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) || 'null');
+    const data = orderData;
     if (!data) return;
 
     confirmationCodeElement.textContent = `Pedido ${data.code}`;
@@ -963,29 +963,77 @@ function getOrderQueryStatusLabel(status) {
     return mapping[status] || 'status-received';
 }
 
-function findOrderByCodeOrPhone(code, phone) {
-    const normalizedCode = String(code || '').trim().toUpperCase();
-    const normalizedPhone = String(phone || '').replace(/\D/g, '');
-    const candidates = [...readOrderHistory()];
-    const lastOrder = localStorage.getItem(ORDER_STORAGE_KEY);
-    if (lastOrder) {
-        try {
-            const parsed = JSON.parse(lastOrder);
-            if (!candidates.some((item) => item.code === parsed.code)) {
-                candidates.push(parsed);
-            }
-        } catch (error) {
-            console.warn('Não foi possível carregar o último pedido para consulta.', error);
+function normalizePublicOrder(order) {
+    if (!order || typeof order !== 'object' || !order.codigo || !Array.isArray(order.itens)) {
+        return null;
+    }
+
+    const total = Number(order.valorTotal);
+    if (!Number.isFinite(total)) return null;
+
+    const items = order.itens.map((item) => {
+        if (!item || typeof item !== 'object') return null;
+        const price = Number(item.precoUnitario);
+        const subtotal = Number(item.subtotal);
+        const quantity = Number(item.quantidade);
+        if (!Number.isFinite(price) || !Number.isFinite(subtotal) || !Number.isFinite(quantity)) {
+            return null;
+        }
+        return {
+            name: String(item.nomeProduto || 'Produto não informado'),
+            quantity,
+            price,
+            subtotal,
+        };
+    });
+
+    if (items.some((item) => !item)) return null;
+
+    return {
+        code: String(order.codigo),
+        status: String(order.status || 'Status não informado'),
+        createdAt: order.dataCriacao,
+        total,
+        notes: order.observacoes || '',
+        customer: order.nomeCliente || '',
+        email: order.emailCliente || '',
+        phone: order.telefone || '',
+        items,
+    };
+}
+
+async function queryOrdersByApi(code, phone) {
+    const params = new URLSearchParams();
+    if (code) params.set('codigo', code);
+    else params.set('telefone', normalizePhone(phone));
+
+    const response = await fetch(`/api/pedidos/consulta?${params.toString()}`, {
+        credentials: 'same-origin',
+    });
+
+    let data = null;
+    try {
+        data = await response.json();
+    } catch (error) {
+        if (!response.ok) {
+            throw new Error('Não foi possível consultar o pedido. Tente novamente.');
         }
     }
 
-    return candidates.find((order) => {
-        const orderCode = String(order.code || '').trim().toUpperCase();
-        const orderPhone = String(order.phone || '').replace(/\D/g, '');
-        const matchesCode = !normalizedCode || orderCode === normalizedCode;
-        const matchesPhone = !normalizedPhone || orderPhone === normalizedPhone;
-        return matchesCode && matchesPhone;
-    }) || null;
+    if (!response.ok) {
+        if (response.status === 404) return [];
+        throw new Error(data?.message || 'Não foi possível consultar o pedido. Tente novamente.');
+    }
+
+    if (!Array.isArray(data)) {
+        throw new Error('A resposta da consulta está indisponível. Tente novamente.');
+    }
+
+    const orders = data.map(normalizePublicOrder);
+    if (orders.some((order) => !order)) {
+        throw new Error('A resposta da consulta está indisponível. Tente novamente.');
+    }
+    return orders;
 }
 
 function showOrderQueryMessage(message) {
@@ -1027,7 +1075,7 @@ function renderOrderQueryResult(orderData) {
                         <strong>${item.name}</strong>
                         <small>${Number(item.quantity)}x • ${money.format(Number(item.price))}</small>
                     </div>
-                    <strong>${money.format(Number(item.price) * Number(item.quantity))}</strong>
+                    <strong>${money.format(Number(item.subtotal))}</strong>
                 </li>`).join('')
             : '<li><span>Não há itens neste pedido.</span></li>';
     }
@@ -1212,13 +1260,20 @@ document.querySelector('.checkout-button').addEventListener('click', () => {
 });
 
 if (orderQueryForm) {
-    orderQueryForm.addEventListener('submit', (event) => {
+    orderQueryForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const codeValue = String(orderQueryForm.querySelector('#order-query-code')?.value || '').trim();
         const phoneValue = String(orderQueryForm.querySelector('#order-query-phone')?.value || '').trim();
+        const submitButton = orderQueryForm.querySelector('button[type="submit"]');
 
         if (!codeValue && !phoneValue) {
             showOrderQueryMessage('Informe o código de acompanhamento ou o telefone para consultar o pedido.');
+            if (orderQueryResult) orderQueryResult.hidden = true;
+            return;
+        }
+
+        if (codeValue && phoneValue) {
+            showOrderQueryMessage('Informe somente o código ou o telefone para consultar o pedido.');
             if (orderQueryResult) orderQueryResult.hidden = true;
             return;
         }
@@ -1229,20 +1284,34 @@ if (orderQueryForm) {
             return;
         }
 
-        const result = findOrderByCodeOrPhone(codeValue, phoneValue);
-        if (!result) {
-            showOrderQueryMessage('Pedido não encontrado. Verifique o código ou telefone informado.');
-            if (orderQueryResult) orderQueryResult.hidden = true;
-            return;
-        }
-
+        if (submitButton) submitButton.disabled = true;
+        if (orderQueryResult) orderQueryResult.hidden = true;
         if (orderQueryMessage) {
-            orderQueryMessage.textContent = 'Pedido encontrado.';
-            orderQueryMessage.classList.remove('error');
-            orderQueryMessage.classList.add('success');
+            orderQueryMessage.textContent = 'Consultando pedido...';
+            orderQueryMessage.classList.remove('error', 'success');
         }
 
-        renderOrderQueryResult(result);
+        try {
+            const results = await queryOrdersByApi(codeValue, phoneValue);
+            if (!results.length) {
+                showOrderQueryMessage('Pedido não encontrado. Verifique o código ou telefone informado.');
+                return;
+            }
+
+            if (orderQueryMessage) {
+                orderQueryMessage.textContent = results.length > 1
+                    ? `${results.length} pedidos encontrados. Exibindo o mais recente.`
+                    : 'Pedido encontrado.';
+                orderQueryMessage.classList.remove('error');
+                orderQueryMessage.classList.add('success');
+            }
+
+            renderOrderQueryResult(results[0]);
+        } catch (error) {
+            showOrderQueryMessage(error.message || 'Não foi possível consultar o pedido. Tente novamente.');
+        } finally {
+            if (submitButton) submitButton.disabled = false;
+        }
     });
 }
 
