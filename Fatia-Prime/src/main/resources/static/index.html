@@ -365,6 +365,70 @@
 
                 </div>
 
+                <div class="menu-item" data-category="classicas">
+                    <div class="menu-text">
+                        <h3>Margherita Prime</h3>
+                        <p>Molho de tomate, mozzarella, tomate fresco e manjericão.</p>
+                    </div>
+                    <div class="menu-actions"><strong>R$ 48,90</strong><button class="btn-menu-add" type="button" data-product="Margherita Prime" data-price="48.90">ADICIONAR</button></div>
+                </div>
+
+                <div class="menu-item" data-category="classicas">
+                    <div class="menu-text">
+                        <h3>Napolitana</h3>
+                        <p>Presunto, mozzarella, tomate, parmesão e orégano.</p>
+                    </div>
+                    <div class="menu-actions"><strong>R$ 50,90</strong><button class="btn-menu-add" type="button" data-product="Napolitana" data-price="50.90">ADICIONAR</button></div>
+                </div>
+
+                <div class="menu-item" data-category="carnes">
+                    <div class="menu-text">
+                        <h3>Bacon Prime</h3>
+                        <p>Bacon crocante, mozzarella, cebola caramelizada e barbecue.</p>
+                    </div>
+                    <div class="menu-actions"><strong>R$ 55,90</strong><button class="btn-menu-add" type="button" data-product="Bacon Prime" data-price="55.90">ADICIONAR</button></div>
+                </div>
+
+                <div class="menu-item" data-category="carnes">
+                    <div class="menu-text">
+                        <h3>Carne Seca com Cebola</h3>
+                        <p>Carne seca desfiada, mozzarella, cebola roxa e catupiry.</p>
+                    </div>
+                    <div class="menu-actions"><strong>R$ 59,90</strong><button class="btn-menu-add" type="button" data-product="Carne Seca com Cebola" data-price="59.90">ADICIONAR</button></div>
+                </div>
+
+                <div class="menu-item" data-category="frango">
+                    <div class="menu-text">
+                        <h3>Frango Prime</h3>
+                        <p>Frango temperado, mozzarella, milho, bacon e molho especial.</p>
+                    </div>
+                    <div class="menu-actions"><strong>R$ 54,90</strong><button class="btn-menu-add" type="button" data-product="Frango Prime" data-price="54.90">ADICIONAR</button></div>
+                </div>
+
+                <div class="menu-item" data-category="frango">
+                    <div class="menu-text">
+                        <h3>Frango com Milho</h3>
+                        <p>Frango desfiado, mozzarella, milho verde e requeijão cremoso.</p>
+                    </div>
+                    <div class="menu-actions"><strong>R$ 51,90</strong><button class="btn-menu-add" type="button" data-product="Frango com Milho" data-price="51.90">ADICIONAR</button></div>
+                </div>
+
+                <div class="menu-item" data-category="queijos">
+                    <div class="menu-text">
+                        <h3>Brie com Geleia</h3>
+                        <p>Queijo brie, mozzarella, geleia de pimenta e castanhas.</p>
+                    </div>
+                    <div class="menu-actions"><strong>R$ 58,90</strong><button class="btn-menu-add" type="button" data-product="Brie com Geleia" data-price="58.90">ADICIONAR</button></div>
+                </div>
+
+                <div class="menu-item" data-category="queijos">
+                    <div class="menu-text">
+                        <h3>Provolone Prime</h3>
+                        <p>Provolone, mozzarella, parmesão, tomate seco e orégano.</p>
+                    </div>
+                    <div class="menu-actions"><strong>R$ 57,90</strong><button class="btn-menu-add" type="button" data-product="Provolone Prime" data-price="57.90">ADICIONAR</button></div>
+                </div>
+
             </div>
 
         </section>
@@ -535,7 +599,7 @@
                     </label>
                     <label>
                         Telefone
-                        <input id="order-query-phone" type="tel" placeholder="(11) 99999-9999" autocomplete="tel">
+                        <input id="order-query-phone" type="tel" data-phone-mask inputmode="numeric" maxlength="15" placeholder="(11) 98765-4321" autocomplete="tel">
                     </label>
                 </div>
 
@@ -641,18 +705,54 @@
                     E-mail*
                     <input name="customerEmail" type="email" autocomplete="email" placeholder="seu@email.com" required>
                 </label>
-                <label class="field-full">
-                    Endereço*
-                    <input name="customerAddress" type="text" autocomplete="street-address" placeholder="Rua, número, bairro" required>
-                </label>
                 <label>
                     Telefone*
-                    <input name="customerPhone" type="tel" autocomplete="tel" placeholder="(00) 00000-0000" required>
+                    <input name="customerPhone" type="tel" data-phone-mask autocomplete="tel" inputmode="numeric" maxlength="15" placeholder="(11) 98765-4321" required>
                 </label>
                 <label>
                     Entrega / Observações
                     <textarea name="customerNotes" rows="3" placeholder="Ex.: sem cebola, entregar perto da garagem"></textarea>
                 </label>
+                <div class="checkout-address-section field-full">
+                    <div class="checkout-address-heading">
+                        <strong>Endereço de entrega</strong>
+                        <span>Opcional. Informe o CEP para preencher os dados automaticamente.</span>
+                    </div>
+                    <div class="checkout-address-grid">
+                        <label>
+                            CEP
+                            <input name="customerCep" type="text" data-cep autocomplete="postal-code" inputmode="numeric" maxlength="9" placeholder="00000-000">
+                        </label>
+                        <label>
+                            Estado
+                            <select name="customerState" autocomplete="address-level1">
+                                <option value="">UF</option>
+                                <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option>
+                            </select>
+                        </label>
+                        <label class="address-field-wide">
+                            Rua / logradouro
+                            <input name="customerStreet" type="text" autocomplete="street-address" placeholder="Rua, avenida ou praça">
+                        </label>
+                        <label>
+                            Número
+                            <input name="customerNumber" type="text" inputmode="numeric" placeholder="Número">
+                        </label>
+                        <label>
+                            Complemento
+                            <input name="customerComplement" type="text" placeholder="Apto, bloco, referência">
+                        </label>
+                        <label>
+                            Bairro
+                            <input name="customerNeighborhood" type="text" autocomplete="address-level2" placeholder="Bairro">
+                        </label>
+                        <label>
+                            Cidade
+                            <input name="customerCity" type="text" autocomplete="address-level2" placeholder="Cidade">
+                        </label>
+                    </div>
+                    <div class="address-lookup-message" aria-live="polite"></div>
+                </div>
             </div>
             <div class="checkout-message" aria-live="polite"></div>
             <button class="btn-primary checkout-submit" type="submit">FINALIZAR PEDIDO</button>

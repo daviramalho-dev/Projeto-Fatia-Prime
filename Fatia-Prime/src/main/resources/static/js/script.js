@@ -30,6 +30,8 @@ const adminOrderDetails = document.querySelector('.admin-order-details');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
+let cepLookupRequestId = 0;
+let lastRequestedCep = '';
 
 function sanitizeCart(items) {
     if (!Array.isArray(items)) return [];
@@ -213,7 +215,7 @@ function renderAdminOrderDetails(order) {
     const totalElement = adminOrderDetails.querySelector('.admin-order-total strong');
     const customerFields = [
         ['Nome', order.customer],
-        ['Telefone', order.phone],
+        ['Telefone', order.phone ? formatPhone(order.phone) : ''],
         ['E-mail', order.email],
         ['Endereço', order.address],
         ['Observações', order.notes],
@@ -272,7 +274,7 @@ function renderAdminOrders() {
                     </div>
                     <div class="admin-order-card-meta">
                         <span>${escapeHtml(order.customer || 'Cliente não informado')}</span>
-                        <span>${escapeHtml(order.phone || 'Telefone não informado')}</span>
+                        <span>${escapeHtml(order.phone ? formatPhone(order.phone) : 'Telefone não informado')}</span>
                         <span>${itemCount} ${itemCount === 1 ? 'item' : 'itens'}</span>
                         <span>${escapeHtml(formatOrderDate(order.createdAt))}</span>
                     </div>
@@ -362,6 +364,90 @@ function renderCheckoutSummary() {
 
 function normalizePhone(value) {
     return String(value || '').replace(/\D/g, '');
+}
+
+function formatPhone(value) {
+    const digits = normalizePhone(value).slice(0, 11);
+    if (!digits) return '';
+    if (digits.length <= 2) return `(${digits}`;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+function formatCep(value) {
+    const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+function setAddressLookupMessage(form, message, type = '') {
+    const element = form?.querySelector('.address-lookup-message');
+    if (!element) return;
+    element.textContent = message;
+    element.className = `address-lookup-message ${type}`.trim();
+}
+
+function composeAddress(formData) {
+    const cep = String(formData.get('customerCep') || '').trim();
+    const street = String(formData.get('customerStreet') || '').trim();
+    const number = String(formData.get('customerNumber') || '').trim();
+    const complement = String(formData.get('customerComplement') || '').trim();
+    const neighborhood = String(formData.get('customerNeighborhood') || '').trim();
+    const city = String(formData.get('customerCity') || '').trim();
+    const state = String(formData.get('customerState') || '').trim();
+    const streetLine = [street, number].filter(Boolean).join(', ');
+    const cityLine = [city, state].filter(Boolean).join(' - ');
+
+    return [streetLine, complement, neighborhood, cityLine, cep && `CEP ${cep}`]
+        .filter(Boolean)
+        .join(' • ');
+}
+
+async function lookupAddressByCep(form) {
+    const cepField = form?.elements.namedItem('customerCep');
+    if (!cepField) return;
+
+    const cep = String(cepField.value || '').replace(/\D/g, '');
+    if (cep.length !== 8) {
+        lastRequestedCep = '';
+        setAddressLookupMessage(form, cep ? 'Digite um CEP com 8 números.' : '');
+        return;
+    }
+
+    if (cep === lastRequestedCep) return;
+    lastRequestedCep = cep;
+
+    const requestId = ++cepLookupRequestId;
+    setAddressLookupMessage(form, 'Consultando CEP...');
+
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        if (!response.ok) throw new Error('CEP unavailable');
+        const data = await response.json();
+        if (requestId !== cepLookupRequestId) return;
+        if (data.erro) {
+            setAddressLookupMessage(form, 'CEP não encontrado. Você pode preencher o endereço manualmente.', 'error');
+            return;
+        }
+
+        const fields = {
+            customerStreet: data.logradouro,
+            customerNeighborhood: data.bairro,
+            customerCity: data.localidade,
+            customerState: data.uf,
+        };
+        Object.entries(fields).forEach(([name, value]) => {
+            const field = form.elements.namedItem(name);
+            if (!field || !value || (field.value.trim() && field.dataset.cepAutofilled !== 'true')) return;
+            field.value = value;
+            field.dataset.cepAutofilled = 'true';
+        });
+        setAddressLookupMessage(form, 'Endereço preenchido. Confira e ajuste se necessário.', 'success');
+    } catch (error) {
+        if (requestId !== cepLookupRequestId) return;
+        setAddressLookupMessage(form, 'Não foi possível consultar o CEP. Você pode preencher o endereço manualmente.', 'error');
+    }
 }
 
 function isValidPhone(value) {
@@ -478,7 +564,7 @@ function renderOrderQueryResult(orderData) {
         codeValue.textContent = `Pedido ${orderData.code || 'Não informado'}`;
     }
     if (phoneValue) {
-        phoneValue.textContent = orderData.phone || 'Não informado';
+        phoneValue.textContent = orderData.phone ? formatPhone(orderData.phone) : 'Não informado';
     }
     const statusBadge = document.querySelector('.order-query-status');
     if (statusBadge) {
@@ -748,6 +834,39 @@ if (adminOrderList) {
     });
 }
 
+document.querySelectorAll('[data-phone-mask]').forEach((field) => {
+    field.addEventListener('input', () => {
+        const cursorPosition = field.selectionStart;
+        const previousLength = field.value.length;
+        field.value = formatPhone(field.value);
+        const lengthDifference = field.value.length - previousLength;
+        const nextCursorPosition = Math.max(0, (cursorPosition || field.value.length) + lengthDifference);
+        field.setSelectionRange(nextCursorPosition, nextCursorPosition);
+    });
+});
+
+if (checkoutForm) {
+    const cepField = checkoutForm.elements.namedItem('customerCep');
+    if (cepField) {
+        cepField.addEventListener('input', () => {
+            cepField.value = formatCep(cepField.value);
+            setAddressLookupMessage(checkoutForm, '');
+            if (cepField.value.replace(/\D/g, '').length === 8) {
+                lookupAddressByCep(checkoutForm);
+            }
+        });
+        cepField.addEventListener('blur', () => lookupAddressByCep(checkoutForm));
+    }
+
+    checkoutForm.querySelectorAll('[name^="customer"]').forEach((field) => {
+        if (field.name !== 'customerCep') {
+            field.addEventListener('input', () => {
+                field.dataset.cepAutofilled = 'false';
+            });
+        }
+    });
+}
+
 document.querySelector('.admin-order-details-close')?.addEventListener('click', () => {
     if (adminOrderDetails) adminOrderDetails.hidden = true;
 });
@@ -760,8 +879,8 @@ if (checkoutForm) {
         const formData = new FormData(checkoutForm);
         const customer = String(formData.get('customerName') || '').trim();
         const email = String(formData.get('customerEmail') || '').trim();
-        const address = String(formData.get('customerAddress') || '').trim();
-        const phone = String(formData.get('customerPhone') || '').trim();
+        const address = composeAddress(formData);
+        const phone = formatPhone(formData.get('customerPhone'));
         const notes = String(formData.get('customerNotes') || '').trim();
 
         if (!customer) {
@@ -776,11 +895,6 @@ if (checkoutForm) {
 
         if (!isValidEmail(email)) {
             markFieldInvalid('customerEmail', 'E-mail inválido.');
-            return;
-        }
-
-        if (!address) {
-            markFieldInvalid('customerAddress', 'Informe seu endereço.');
             return;
         }
 
@@ -826,7 +940,7 @@ if (checkoutForm) {
             '', `Total: ${money.format(total)}`,
             `Nome: ${customer}`,
             `E-mail: ${email}`,
-            `Endereço: ${address}`,
+            address && `Endereço: ${address}`,
             `Telefone: ${phone}`,
             notes && `Observações: ${notes}`,
         ].filter(Boolean).join('\n');
