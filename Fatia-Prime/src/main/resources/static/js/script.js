@@ -1,10 +1,56 @@
 const WHATSAPP_NUMBER = '5561993637373';
+const CART_STORAGE_KEY = 'fatia-prime-cart';
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const cart = [];
 const panel = document.querySelector('.cart-panel');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
+
+function sanitizeCart(items) {
+    if (!Array.isArray(items)) return [];
+
+    return items.reduce((accumulator, item) => {
+        if (!item || typeof item !== 'object') return accumulator;
+
+        const name = typeof item.name === 'string' ? item.name.trim() : '';
+        const price = Number(item.price);
+        const quantity = Number(item.quantity);
+
+        if (!name || !Number.isFinite(price) || price <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
+            return accumulator;
+        }
+
+        const existing = accumulator.find((entry) => entry.name === name);
+        if (existing) {
+            existing.quantity += Math.trunc(quantity);
+            return accumulator;
+        }
+
+        accumulator.push({ name, price, quantity: Math.trunc(quantity) });
+        return accumulator;
+    }, []);
+}
+
+function loadCart() {
+    try {
+        const savedCart = localStorage.getItem(CART_STORAGE_KEY);
+        if (!savedCart) return [];
+        return sanitizeCart(JSON.parse(savedCart));
+    } catch (error) {
+        console.warn('Carrinho inválido no localStorage. Iniciando vazio.', error);
+        return [];
+    }
+}
+
+function saveCart() {
+    try {
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(window.cart));
+    } catch (error) {
+        console.warn('Não foi possível salvar o carrinho no localStorage.', error);
+    }
+}
+
+window.cart = loadCart();
 
 function openCart() {
     panel.classList.add('is-open');
@@ -19,15 +65,15 @@ function closeCart() {
 }
 
 function cartTotal() {
-    return cart.reduce((total, item) => total + item.price * item.quantity, 0);
+    return window.cart.reduce((total, item) => total + item.price * item.quantity, 0);
 }
 
 function updateCart() {
-    const count = cart.reduce((total, item) => total + item.quantity, 0);
+    const count = window.cart.reduce((total, item) => total + item.quantity, 0);
     document.querySelectorAll('.cart-count').forEach((element) => (element.textContent = count));
     totalElement.textContent = money.format(cartTotal());
-    itemsElement.innerHTML = cart.length
-        ? cart.map((item, index) => `
+    itemsElement.innerHTML = window.cart.length
+        ? window.cart.map((item, index) => `
             <div class="cart-item">
                 <div><strong>${item.name}</strong><small>${money.format(item.price)} cada</small></div>
                 <div class="cart-item-controls">
@@ -37,15 +83,30 @@ function updateCart() {
                 </div>
             </div>`).join('')
         : '<p class="cart-empty">Seu carrinho está vazio.</p>';
+    saveCart();
 }
 
 function addProduct(element) {
     const product = { name: element.dataset.product, price: Number(element.dataset.price) };
-    const existing = cart.find((item) => item.name === product.name);
+    const existing = window.cart.find((item) => item.name === product.name);
     if (existing) existing.quantity += 1;
-    else cart.push({ ...product, quantity: 1 });
+    else window.cart.push({ ...product, quantity: 1 });
     updateCart();
     openCart();
+}
+
+function applyCategoryFilter(category) {
+    const menuItems = document.querySelectorAll('.menu-item');
+    menuItems.forEach((item) => {
+        const matches = category === 'all' || item.dataset.category === category;
+        item.style.display = matches ? '' : 'none';
+    });
+
+    document.querySelectorAll('.menu-filter-button').forEach((button) => {
+        const isActive = button.dataset.filter === category;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+    });
 }
 
 document.querySelectorAll('.btn-card').forEach((button) => {
@@ -54,6 +115,10 @@ document.querySelectorAll('.btn-card').forEach((button) => {
 document.querySelectorAll('.btn-menu-add').forEach((button) => {
     button.addEventListener('click', () => addProduct(button));
 });
+document.querySelectorAll('.menu-filter-button').forEach((button) => {
+    button.addEventListener('click', () => applyCategoryFilter(button.dataset.filter));
+});
+
 document.querySelector('[data-open-cart]').addEventListener('click', openCart);
 document.querySelector('.cart-close').addEventListener('click', closeCart);
 backdrop.addEventListener('click', closeCart);
@@ -62,18 +127,21 @@ itemsElement.addEventListener('click', (event) => {
     const button = event.target.closest('[data-change]');
     if (!button) return;
     const index = Number(button.dataset.change);
-    cart[index].quantity += Number(button.dataset.step);
-    if (cart[index].quantity === 0) cart.splice(index, 1);
+    const item = window.cart[index];
+    if (!item) return;
+
+    item.quantity += Number(button.dataset.step);
+    if (item.quantity <= 0) window.cart.splice(index, 1);
     updateCart();
 });
 
 document.querySelector('.checkout-button').addEventListener('click', () => {
-    if (!cart.length) return alert('Adicione ao menos uma pizza ao pedido.');
+    if (!window.cart.length) return alert('Adicione ao menos uma pizza ao pedido.');
     const customer = document.querySelector('#customer-name').value.trim();
     const notes = document.querySelector('#order-notes').value.trim();
     const message = [
         'Olá! Quero fazer este pedido:',
-        ...cart.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(item.price * item.quantity)}`),
+        ...window.cart.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(item.price * item.quantity)}`),
         '', `Total: ${money.format(cartTotal())}`,
         customer && `Nome: ${customer}`,
         notes && `Observações: ${notes}`,
@@ -88,4 +156,5 @@ document.querySelector('.js-about-whatsapp').addEventListener('click', () => {
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Olá! Quero saber mais sobre a Fatia Prime.')}`, '_blank', 'noopener,noreferrer');
 });
 
+applyCategoryFilter('all');
 updateCart();

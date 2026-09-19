@@ -579,6 +579,34 @@ button {
     margin: auto;
 }
 
+.menu-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    max-width: 900px;
+    margin: 0 auto 28px;
+}
+
+.menu-filter-button {
+    border: 1px solid #f5c400;
+    background: transparent;
+    color: #f5c400;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    transition: 0.25s ease;
+}
+
+.menu-filter-button.is-active,
+.menu-filter-button:hover {
+    background: #f5c400;
+    color: #090909;
+}
+
 .menu-item {
     display: flex;
 
