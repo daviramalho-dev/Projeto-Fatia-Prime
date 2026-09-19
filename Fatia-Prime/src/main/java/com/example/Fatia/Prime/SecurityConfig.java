@@ -29,7 +29,7 @@ public class SecurityConfig {
         return username -> repository.findByEmailIgnoreCase(username.trim())
             .map(usuario -> User.withUsername(usuario.getEmail())
                 .password(usuario.getSenhaHash())
-                .roles("ADMIN")
+                .roles(usuario.getPerfil().name())
                 .build())
             .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado"));
     }

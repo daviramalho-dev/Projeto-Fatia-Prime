@@ -58,9 +58,50 @@ class SecurityIntegrationTests {
     }
 
     @Test
+    void regularUserCannotAccessAdministrativeOrders() throws Exception {
+        Usuario usuario = usuarioRepository.saveAndFlush(new Usuario(
+            "Usuário Comum",
+            "user@fatiaprime.test",
+            passwordEncoder.encode(PASSWORD),
+            Perfil.USER
+        ));
+
+        var session = mockMvc.perform(post("/api/auth/login")
+                .with(csrf())
+                .param("email", usuario.getEmail())
+                .param("senha", PASSWORD))
+            .andExpect(status().isNoContent())
+            .andReturn()
+            .getRequest()
+            .getSession();
+
+        mockMvc.perform(get("/api/pedidos")
+                .session((org.springframework.mock.web.MockHttpSession) session))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
     void publicProductEndpointRemainsAccessibleAnonymously() throws Exception {
         mockMvc.perform(get("/api/produtos"))
             .andExpect(status().isOk());
+    }
+
+    @Test
+    void publicRegistrationCreatesRegularUser() throws Exception {
+        mockMvc.perform(post("/api/usuarios")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "nome": "Novo Usuário",
+                      "email": "novo@fatiaprime.test",
+                      "senha": "senha-123"
+                    }
+                    """))
+            .andExpect(status().isCreated());
+
+        Usuario usuario = usuarioRepository.findByEmailIgnoreCase("novo@fatiaprime.test").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(Perfil.USER, usuario.getPerfil());
     }
 
     @Test
@@ -120,7 +161,8 @@ class SecurityIntegrationTests {
         usuarioRepository.saveAndFlush(new Usuario(
             "Administrador de Teste",
             EMAIL,
-            passwordEncoder.encode(PASSWORD)
+            passwordEncoder.encode(PASSWORD),
+            Perfil.ADMIN
         ));
     }
 }
