@@ -1,3 +1,5 @@
+No backend, o projeto utiliza Spring Boot com Spring Data JPA e PostgreSQL para persistência e API REST simples.
+- PostgreSQL
 # Projeto-Fatia-Prime
 
 ## Descrição
@@ -43,7 +45,14 @@ O projeto já inclui o Gradle Wrapper, então não é necessário instalar o Gra
 
 3. Execute a aplicação:
 
+  Antes, configure as variáveis de conexão do PostgreSQL:
+
+  DB_URL=jdbc:postgresql://localhost:5432/fatiaprime
+  DB_USERNAME=postgres
+  DB_PASSWORD=sua-senha
+
    ./gradlew bootRun
+- `Fatia-Prime/src/main/resources/application.properties` — configuração da aplicação e do banco PostgreSQL
 
 4. Acesse a aplicação no navegador em:
 
@@ -116,8 +125,15 @@ O projeto usa H2 em memória, configurado em:
 - driver H2
 - usuário: `sa`
 - senha: vazia
+O projeto usa PostgreSQL, configurado pelas variáveis de ambiente:
+
+- `DB_URL` — padrão: `jdbc:postgresql://localhost:5432/fatiaprime`
+- `DB_USERNAME` — padrão: `postgres`
+- `DB_PASSWORD` — sem valor padrão; deve ser configurada no ambiente
+- driver: `org.postgresql.Driver`
 
 A JPA está configurada com `ddl-auto=update`, o que permite que o Hibernate crie ou atualize as tabelas automaticamente durante a execução local.
+- O PostgreSQL é o banco principal da aplicação.
 
 ## Frontend
 
