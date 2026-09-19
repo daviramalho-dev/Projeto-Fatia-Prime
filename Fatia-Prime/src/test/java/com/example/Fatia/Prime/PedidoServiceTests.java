@@ -64,6 +64,26 @@ class PedidoServiceTests {
     }
 
     @Test
+    void criaPedidoPublicoSemUsuarioEPersisteDadosDoCliente() {
+        Pedido pedido = pedidoService.criar(new PedidoRequest(
+            null,
+            "Cliente Público",
+            "publico@fatiaprime.test",
+            "(61) 99999-1111",
+            "Rua Principal, 10",
+            "Sem cebola",
+            List.of(new ItemPedidoRequest(produto.getId(), 2))
+        ));
+
+        assertEquals(null, pedido.getUsuario());
+        assertEquals("Cliente Público", pedido.getClienteNome());
+        assertEquals("publico@fatiaprime.test", pedido.getClienteEmail());
+        assertEquals("(61) 99999-1111", pedido.getClienteTelefone());
+        assertEquals("Rua Principal, 10", pedido.getEndereco());
+        assertEquals(new BigDecimal("25.00"), pedido.getValorTotal());
+    }
+
+    @Test
     void rejeitaPedidoSemItens() {
         PedidoRequest request = new PedidoRequest(usuario.getId(), null, List.of());
 
