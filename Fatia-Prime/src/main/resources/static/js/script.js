@@ -49,6 +49,7 @@ const publicHeader = document.querySelector('.public-header');
 const publicFooter = document.querySelector('footer');
 const publicOrderTracking = document.querySelector('.order-tracking');
 const publicWhatsapp = document.querySelector('.whatsapp-float');
+const publicMenuFilters = document.querySelector('.menu-filters');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
@@ -58,6 +59,10 @@ let editingProductId = null;
 let selectedAdminOrderId = null;
 let adminOrders = [];
 let adminOrdersRequestId = 0;
+let publicCatalogState = 'loading';
+let publicProducts = [];
+let publicCategories = [];
+let selectedPublicCategory = 'all';
 
 function setInterfaceMode(mode) {
     const isPublic = mode === 'public';
@@ -262,6 +267,7 @@ function sanitizeCart(items) {
         const name = typeof item.name === 'string' ? item.name.trim() : '';
         const price = Number(item.price);
         const quantity = Number(item.quantity);
+        const productIdValue = item.productId ?? item.id ?? null;
 
         if (!name || !Number.isFinite(price) || price <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
             return accumulator;
@@ -273,7 +279,7 @@ function sanitizeCart(items) {
             return accumulator;
         }
 
-        accumulator.push({ name, price, quantity: Math.trunc(quantity) });
+        accumulator.push({ name, price, quantity: Math.trunc(quantity), productId: productIdValue });
         return accumulator;
     }, []);
 }
@@ -388,27 +394,100 @@ function getProductCategoryLabel(category) {
     return { classicas: 'Clássicas', carnes: 'Carnes', frango: 'Frango', queijos: 'Queijos' }[category] || category;
 }
 
+function renderCategoryFilters() {
+    if (!publicMenuFilters) return;
+    publicMenuFilters.innerHTML = [
+        '<button class="menu-filter-button is-active" type="button" data-filter="all" aria-pressed="true">Todos</button>',
+        ...publicCategories.map((category) => `
+            <button class="menu-filter-button" type="button" data-filter="${escapeHtml(category.id)}" aria-pressed="false">
+                ${escapeHtml(category.name)}
+            </button>`),
+    ].join('');
+}
+
 function renderPublicCatalog() {
     const pizzaGrid = document.querySelector('.pizza-grid');
     const menuList = document.querySelector('.menu-list');
-    const products = readProductCatalog().filter((product) => product.active);
-    if (pizzaGrid) {
-        pizzaGrid.innerHTML = products.filter((product) => product.featured).map((product) => `
-            <article class="pizza-card" data-product="${escapeHtml(product.name)}" data-price="${product.price}">
-                <div class="pizza-image">
-                    ${product.image ? `<img class="pizza-zoom-menor" src="${escapeHtml(product.image)}" alt="Pizza ${escapeHtml(product.name)}">` : '<div class="pizza-image-placeholder" aria-hidden="true">FP</div>'}
-                    ${product.badge ? `<span class="badge">${escapeHtml(product.badge)}</span>` : ''}
-                </div>
-                <div class="pizza-info"><div><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div><strong>${money.format(product.price)}</strong></div>
-                <button class="btn-card" type="button">ADICIONAR</button>
-            </article>`).join('');
+
+    if (pizzaGrid) pizzaGrid.innerHTML = '';
+    if (!menuList) return;
+
+    if (publicCatalogState === 'loading') {
+        menuList.innerHTML = '<div class="catalog-message">Carregando cardápio...</div>';
+        return;
     }
-    if (menuList) {
-        menuList.innerHTML = products.filter((product) => !product.featured).map((product) => `
-            <div class="menu-item" data-category="${escapeHtml(product.category)}">
-                <div class="menu-text"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div>
-                <div class="menu-actions"><strong>${money.format(product.price)}</strong><button class="btn-menu-add" type="button" data-product="${escapeHtml(product.name)}" data-price="${product.price}">ADICIONAR</button></div>
-            </div>`).join('');
+    if (publicCatalogState === 'error') {
+        menuList.innerHTML = '<div class="catalog-message">Não foi possível carregar o cardápio. Tente novamente.</div>';
+        return;
+    }
+    if (!publicProducts.length) {
+        menuList.innerHTML = '<div class="catalog-message">Nenhum produto disponível no momento.</div>';
+        return;
+    }
+
+    menuList.innerHTML = publicProducts.map((product) => `
+        <div class="menu-item" data-category-id="${escapeHtml(product.categoryId)}">
+            ${product.image ? `<img class="menu-product-image" src="${escapeHtml(product.image)}" alt="Pizza ${escapeHtml(product.name)}">` : ''}
+            <div class="menu-text">
+                <h3>${escapeHtml(product.name)}</h3>
+                <p>${escapeHtml(product.description)}</p>
+            </div>
+            <div class="menu-actions">
+                <strong>${money.format(product.price)}</strong>
+                <button class="btn-menu-add" type="button" data-product-id="${escapeHtml(product.id)}" data-product="${escapeHtml(product.name)}" data-price="${product.price}">ADICIONAR</button>
+            </div>
+        </div>`).join('');
+    applyCategoryFilter(selectedPublicCategory);
+}
+
+function normalizeApiProduct(product, categories) {
+    if (!product || typeof product !== 'object' || product.ativo === false) return null;
+    const price = Number(product.preco);
+    if (!product.id || !product.nome || !Number.isFinite(price) || price <= 0) return null;
+
+    const category = categories.find((item) => String(item.id) === String(product.categoriaId));
+    return {
+        id: product.id,
+        name: String(product.nome).trim(),
+        description: String(product.descricao || '').trim(),
+        categoryId: product.categoriaId == null ? '' : String(product.categoriaId),
+        categoryName: category?.nome || String(product.categoriaNome || '').trim(),
+        price,
+        image: String(product.imagem || '').trim(),
+    };
+}
+
+async function fetchPublicCatalogResource(url) {
+    const response = await fetch(url, { credentials: 'same-origin' });
+    if (!response.ok) throw new Error('catalog-api');
+    const data = await response.json();
+    if (!Array.isArray(data)) throw new Error('catalog-response');
+    return data;
+}
+
+async function loadPublicCatalog() {
+    publicCatalogState = 'loading';
+    renderPublicCatalog();
+    try {
+        const [products, categories] = await Promise.all([
+            fetchPublicCatalogResource('/api/produtos'),
+            fetchPublicCatalogResource('/api/categorias'),
+        ]);
+        publicCategories = categories
+            .filter((category) => category && category.id != null && category.nome)
+            .map((category) => ({ id: category.id, name: String(category.nome).trim() }));
+        publicProducts = products
+            .map((product) => normalizeApiProduct(product, publicCategories))
+            .filter(Boolean);
+        publicCatalogState = 'ready';
+        renderCategoryFilters();
+        renderPublicCatalog();
+    } catch (error) {
+        publicProducts = [];
+        publicCategories = [];
+        publicCatalogState = 'error';
+        renderCategoryFilters();
+        renderPublicCatalog();
     }
 }
 
@@ -1196,7 +1275,11 @@ function updateCart() {
 }
 
 function addProduct(element) {
-    const product = { name: element.dataset.product, price: Number(element.dataset.price) };
+    const product = {
+        productId: element.dataset.productId || null,
+        name: element.dataset.product,
+        price: Number(element.dataset.price),
+    };
     const existing = window.cart.find((item) => item.name === product.name);
     if (existing) existing.quantity += 1;
     else window.cart.push({ ...product, quantity: 1 });
@@ -1205,9 +1288,10 @@ function addProduct(element) {
 }
 
 function applyCategoryFilter(category) {
+    selectedPublicCategory = category;
     const menuItems = document.querySelectorAll('.menu-item');
     menuItems.forEach((item) => {
-        const matches = category === 'all' || item.dataset.category === category;
+        const matches = category === 'all' || item.dataset.categoryId === category;
         item.style.display = matches ? '' : 'none';
     });
 
@@ -1219,9 +1303,11 @@ function applyCategoryFilter(category) {
 }
 
 renderPublicCatalog();
+loadPublicCatalog();
 
-document.querySelectorAll('.menu-filter-button').forEach((button) => {
-    button.addEventListener('click', () => applyCategoryFilter(button.dataset.filter));
+publicMenuFilters?.addEventListener('click', (event) => {
+    const button = event.target.closest('.menu-filter-button');
+    if (button) applyCategoryFilter(button.dataset.filter);
 });
 
 document.querySelector('.pizza-grid')?.addEventListener('click', (event) => {
