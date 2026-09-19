@@ -886,7 +886,7 @@ footer p {
 
 .cart-panel.is-open { transform: translateX(0); }
 
-.cart-header, .cart-total {
+.cart-header, .cart-total, .checkout-total {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -894,7 +894,7 @@ footer p {
 
 .cart-header { padding-bottom: 20px; border-bottom: 1px solid #303030; }
 .cart-header h2 { font-family: "Bebas Neue", sans-serif; font-size: 36px; letter-spacing: 1px; }
-.cart-close { border: 0; background: transparent; color: #fff; font-size: 32px; line-height: 1; }
+.cart-close, .checkout-close { border: 0; background: transparent; color: #fff; font-size: 32px; line-height: 1; }
 .cart-items { flex: 1; overflow-y: auto; padding: 15px 0; }
 .cart-empty { margin-top: 30px; color: #999; font-size: 14px; text-align: center; }
 .cart-item { display: flex; justify-content: space-between; gap: 12px; padding: 15px 0; border-bottom: 1px solid #292929; font-size: 13px; }
@@ -903,10 +903,137 @@ footer p {
 .cart-item-controls button { width: 25px; height: 25px; border: 1px solid #555; background: transparent; color: #fff; font-size: 17px; }
 .cart-footer { padding-top: 18px; border-top: 1px solid #303030; }
 .cart-total { margin-bottom: 17px; font-size: 15px; }
-.cart-total strong { color: #f5c400; font-size: 20px; }
+.cart-total strong, .checkout-total strong { color: #f5c400; font-size: 20px; }
 .cart-footer label { display: block; margin: 12px 0; color: #ddd; font-size: 12px; font-weight: 600; }
 .cart-footer input, .cart-footer textarea { width: 100%; margin-top: 6px; padding: 10px; border: 1px solid #444; background: #0c0c0c; color: #fff; font: inherit; resize: vertical; }
 .checkout-button { width: 100%; border: 0; margin-top: 5px; }
+
+.checkout-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 1101;
+    display: flex;
+    flex-direction: column;
+    width: min(520px, 100%);
+    height: 100vh;
+    padding: 25px;
+    background: #111111;
+    box-shadow: -8px 0 30px rgba(0, 0, 0, .58);
+    transform: translateX(110%);
+    transition: transform .3s ease;
+    overflow-y: auto;
+}
+
+.checkout-panel.is-open { transform: translateX(0); }
+
+.checkout-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #303030;
+}
+
+.checkout-header h2 {
+    font-family: "Bebas Neue", sans-serif;
+    font-size: 34px;
+    letter-spacing: 1px;
+}
+
+.checkout-summary {
+    padding: 20px 0;
+    border-bottom: 1px solid #222;
+}
+
+.checkout-summary h3 {
+    font-size: 14px;
+    text-transform: uppercase;
+    color: #f5c400;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+}
+
+.checkout-items {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.checkout-items li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: #f3f3f3;
+}
+
+.checkout-items small {
+    display: block;
+    color: #999;
+    margin-top: 4px;
+}
+
+.checkout-total {
+    margin-top: 12px;
+    padding-top: 14px;
+    border-top: 1px solid #2a2a2a;
+    font-size: 15px;
+}
+
+#checkout-form {
+    margin-top: 18px;
+}
+
+.checkout-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.checkout-form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: #ddd;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.field-full {
+    grid-column: 1 / -1;
+}
+
+.checkout-form-grid input,
+.checkout-form-grid textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #444;
+    background: #0c0c0c;
+    color: #fff;
+    font: inherit;
+    resize: vertical;
+}
+
+.checkout-message {
+    min-height: 22px;
+    margin: 16px 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ff8a80;
+}
+
+.checkout-message.success {
+    color: #6de59b;
+}
+
+.checkout-submit {
+    width: 100%;
+    border: 0;
+}
 
 /* =========================
    RESPONSIVO

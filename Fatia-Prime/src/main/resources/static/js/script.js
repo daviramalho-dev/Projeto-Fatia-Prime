@@ -2,6 +2,11 @@ const WHATSAPP_NUMBER = '5561993637373';
 const CART_STORAGE_KEY = 'fatia-prime-cart';
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const panel = document.querySelector('.cart-panel');
+const checkoutPanel = document.querySelector('.checkout-panel');
+const checkoutForm = document.querySelector('#checkout-form');
+const checkoutMessage = document.querySelector('.checkout-message');
+const checkoutItemsElement = document.querySelector('.checkout-items');
+const checkoutTotalElement = document.querySelector('.checkout-total strong');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
@@ -64,6 +69,49 @@ function closeCart() {
     panel.setAttribute('aria-hidden', 'true');
 }
 
+function closeCheckout() {
+    if (!checkoutPanel) return;
+    checkoutPanel.classList.remove('is-open');
+    checkoutPanel.setAttribute('aria-hidden', 'true');
+    if (checkoutMessage) {
+        checkoutMessage.textContent = '';
+        checkoutMessage.classList.remove('success');
+    }
+}
+
+function renderCheckoutSummary() {
+    if (!checkoutItemsElement || !checkoutTotalElement) return;
+
+    checkoutItemsElement.innerHTML = window.cart.length
+        ? window.cart.map((item) => `
+            <li>
+                <div>
+                    <strong>${item.name}</strong>
+                    <small>${item.quantity}x ${money.format(item.price)} cada</small>
+                </div>
+                <strong>${money.format(item.price * item.quantity)}</strong>
+            </li>`).join('')
+        : '<li><span>Seu carrinho está vazio.</span></li>';
+
+    checkoutTotalElement.textContent = money.format(cartTotal());
+}
+
+function openCheckout() {
+    if (!window.cart.length) {
+        alert('Adicione ao menos uma pizza ao pedido.');
+        return;
+    }
+
+    if (!checkoutPanel) return;
+
+    renderCheckoutSummary();
+    checkoutPanel.classList.add('is-open');
+    backdrop.classList.add('is-open');
+    checkoutPanel.setAttribute('aria-hidden', 'false');
+    panel.classList.remove('is-open');
+    panel.setAttribute('aria-hidden', 'true');
+}
+
 function cartTotal() {
     return window.cart.reduce((total, item) => total + item.price * item.quantity, 0);
 }
@@ -83,6 +131,9 @@ function updateCart() {
                 </div>
             </div>`).join('')
         : '<p class="cart-empty">Seu carrinho está vazio.</p>';
+    if (checkoutPanel && checkoutPanel.classList.contains('is-open')) {
+        renderCheckoutSummary();
+    }
     saveCart();
 }
 
@@ -121,7 +172,11 @@ document.querySelectorAll('.menu-filter-button').forEach((button) => {
 
 document.querySelector('[data-open-cart]').addEventListener('click', openCart);
 document.querySelector('.cart-close').addEventListener('click', closeCart);
-backdrop.addEventListener('click', closeCart);
+document.querySelector('.checkout-close').addEventListener('click', closeCheckout);
+backdrop.addEventListener('click', () => {
+    closeCart();
+    closeCheckout();
+});
 
 itemsElement.addEventListener('click', (event) => {
     const button = event.target.closest('[data-change]');
@@ -136,18 +191,60 @@ itemsElement.addEventListener('click', (event) => {
 });
 
 document.querySelector('.checkout-button').addEventListener('click', () => {
-    if (!window.cart.length) return alert('Adicione ao menos uma pizza ao pedido.');
-    const customer = document.querySelector('#customer-name').value.trim();
-    const notes = document.querySelector('#order-notes').value.trim();
-    const message = [
-        'Olá! Quero fazer este pedido:',
-        ...window.cart.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(item.price * item.quantity)}`),
-        '', `Total: ${money.format(cartTotal())}`,
-        customer && `Nome: ${customer}`,
-        notes && `Observações: ${notes}`,
-    ].filter(Boolean).join('\n');
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    openCheckout();
 });
+
+if (checkoutForm) {
+    checkoutForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const formData = new FormData(checkoutForm);
+        const customer = String(formData.get('customerName') || '').trim();
+        const email = String(formData.get('customerEmail') || '').trim();
+        const address = String(formData.get('customerAddress') || '').trim();
+        const phone = String(formData.get('customerPhone') || '').trim();
+        const notes = String(formData.get('customerNotes') || '').trim();
+
+        const requiredFields = { customer, email, address, phone };
+        const invalidField = Object.entries(requiredFields).find(([, value]) => !value);
+
+        if (invalidField) {
+            if (checkoutMessage) {
+                checkoutMessage.textContent = 'Preencha todos os campos obrigatórios antes de finalizar o pedido.';
+                checkoutMessage.classList.remove('success');
+            }
+            return;
+        }
+
+        const emailIsValid = /\S+@\S+\.\S+/.test(email);
+        const phoneIsValid = phone.replace(/\D/g, '').length >= 10;
+
+        if (!emailIsValid || !phoneIsValid) {
+            if (checkoutMessage) {
+                checkoutMessage.textContent = 'Informe um e-mail e telefone válidos.';
+                checkoutMessage.classList.remove('success');
+            }
+            return;
+        }
+
+        const message = [
+            'Olá! Quero fazer este pedido:',
+            ...window.cart.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(item.price * item.quantity)}`),
+            '', `Total: ${money.format(cartTotal())}`,
+            `Nome: ${customer}`,
+            `E-mail: ${email}`,
+            `Endereço: ${address}`,
+            `Telefone: ${phone}`,
+            notes && `Observações: ${notes}`,
+        ].filter(Boolean).join('\n');
+
+        if (checkoutMessage) {
+            checkoutMessage.textContent = 'Pedido preparado para envio.';
+            checkoutMessage.classList.add('success');
+        }
+
+        window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    });
+}
 
 document.querySelector('.js-scroll-to-about').addEventListener('click', () => {
     document.querySelector('#sobre').scrollIntoView({ behavior: 'smooth' });

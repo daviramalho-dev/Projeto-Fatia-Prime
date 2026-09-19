@@ -456,9 +456,50 @@
             <div class="cart-total"><span>Total</span><strong>R$ 0,00</strong></div>
             <label>Seu nome<input id="customer-name" type="text" autocomplete="name" placeholder="Como podemos chamar você?"></label>
             <label>Observações<textarea id="order-notes" rows="3" placeholder="Ex.: sem cebola"></textarea></label>
-            <button class="btn-primary checkout-button" type="button">FINALIZAR NO WHATSAPP</button>
+            <button class="btn-primary checkout-button" type="button">IR PARA CHECKOUT</button>
         </div>
     </aside>
+
+    <aside class="checkout-panel" aria-label="Checkout do pedido" aria-hidden="true">
+        <div class="checkout-header">
+            <h2>CHECKOUT</h2>
+            <button class="checkout-close" type="button" aria-label="Fechar checkout">×</button>
+        </div>
+
+        <div class="checkout-summary">
+            <h3>Resumo do pedido</h3>
+            <ul class="checkout-items"></ul>
+            <div class="checkout-total"><span>Total</span><strong>R$ 0,00</strong></div>
+        </div>
+
+        <form id="checkout-form" novalidate>
+            <div class="checkout-form-grid">
+                <label>
+                    Nome completo*
+                    <input name="customerName" type="text" autocomplete="name" placeholder="Seu nome" required>
+                </label>
+                <label>
+                    E-mail*
+                    <input name="customerEmail" type="email" autocomplete="email" placeholder="seu@email.com" required>
+                </label>
+                <label class="field-full">
+                    Endereço*
+                    <input name="customerAddress" type="text" autocomplete="street-address" placeholder="Rua, número, bairro" required>
+                </label>
+                <label>
+                    Telefone*
+                    <input name="customerPhone" type="tel" autocomplete="tel" placeholder="(00) 00000-0000" required>
+                </label>
+                <label>
+                    Entrega / Observações
+                    <textarea name="customerNotes" rows="3" placeholder="Ex.: sem cebola, entregar perto da garagem"></textarea>
+                </label>
+            </div>
+            <div class="checkout-message" aria-live="polite"></div>
+            <button class="btn-primary checkout-submit" type="submit">FINALIZAR PEDIDO</button>
+        </form>
+    </aside>
+
     <div class="cart-backdrop" aria-hidden="true"></div>
 
 
