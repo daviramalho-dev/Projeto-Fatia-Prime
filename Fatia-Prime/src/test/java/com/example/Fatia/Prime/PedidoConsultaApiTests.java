@@ -86,6 +86,29 @@ class PedidoConsultaApiTests {
     }
 
     @Test
+    void consultaPorTelefoneFuncionaParaPedidoPublicoSemUsuario() throws Exception {
+        Categoria categoria = categoriaRepository.findAll().get(0);
+        Produto produto = produtoRepository.saveAndFlush(
+            new Produto("Pizza Pública", "Produto público", new BigDecimal("19.90"), null, categoria)
+        );
+        Pedido pedidoPublico = pedidoService.criar(new PedidoRequest(
+            null,
+            "Cliente Público",
+            "publico-consulta@fatiaprime.test",
+            "(11) 98888-7777",
+            "Rua da Consulta, 20",
+            null,
+            java.util.List.of(new ItemPedidoRequest(produto.getId(), 1))
+        ));
+
+        mockMvc.perform(get("/api/pedidos/consulta").param("telefone", "11988887777"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].codigo").value(pedidoPublico.getCodigo()))
+            .andExpect(jsonPath("$[0].nomeCliente").value("Cliente Público"))
+            .andExpect(jsonPath("$[0].telefone").value("(11) 98888-7777"));
+    }
+
+    @Test
     void codigoInexistenteRetorna404() throws Exception {
         mockMvc.perform(get("/api/pedidos/consulta").param("codigo", "FP-INEXISTENTE"))
             .andExpect(status().isNotFound());

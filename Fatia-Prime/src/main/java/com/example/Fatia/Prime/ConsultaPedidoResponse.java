@@ -27,9 +27,9 @@ public record ConsultaPedidoResponse(
             pedido.getDataCriacao(),
             pedido.getValorTotal(),
             pedido.getObservacoes(),
-            usuario != null ? usuario.getNome() : null,
-            usuario != null ? usuario.getEmail() : null,
-            usuario != null ? usuario.getTelefone() : null,
+            usuario != null ? usuario.getNome() : pedido.getClienteNome(),
+            usuario != null ? usuario.getEmail() : pedido.getClienteEmail(),
+            usuario != null ? usuario.getTelefone() : pedido.getClienteTelefone(),
             pedido.getItens().stream().map(ConsultaItemPedidoResponse::de).toList()
         );
     }

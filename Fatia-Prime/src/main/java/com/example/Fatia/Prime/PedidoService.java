@@ -30,18 +30,25 @@ public class PedidoService {
 
     @Transactional
     public Pedido criar(PedidoRequest request) {
-        if (request == null || request.usuarioId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O usuário é obrigatório");
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dados do pedido são obrigatórios");
         }
         if (request.itens() == null || request.itens().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O pedido deve conter pelo menos um item");
         }
 
-        Usuario usuario = usuarioRepository.findById(request.usuarioId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
-
         Pedido pedido = new Pedido();
-        pedido.setUsuario(usuario);
+        if (request.usuarioId() != null) {
+            Usuario usuario = usuarioRepository.findById(request.usuarioId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+            pedido.setUsuario(usuario);
+        } else {
+            validarClientePublico(request);
+            pedido.setClienteNome(request.clienteNome().trim());
+            pedido.setClienteEmail(request.clienteEmail().trim());
+            pedido.setClienteTelefone(request.clienteTelefone().trim());
+            pedido.setEndereco(normalizarOpcional(request.endereco()));
+        }
         pedido.setCodigo(gerarCodigoUnico());
         pedido.setStatus(STATUS_INICIAL);
         pedido.setObservacoes(request.observacoes());
@@ -94,6 +101,23 @@ public class PedidoService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido não encontrado");
         }
         return pedidos.stream().map(ConsultaPedidoResponse::de).toList();
+    }
+
+    private void validarClientePublico(PedidoRequest request) {
+        if (request.clienteNome() == null || request.clienteNome().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O nome do cliente é obrigatório");
+        }
+        if (request.clienteEmail() == null || request.clienteEmail().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O e-mail do cliente é obrigatório");
+        }
+        if (request.clienteTelefone() == null || request.clienteTelefone().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O telefone do cliente é obrigatório");
+        }
+    }
+
+    private String normalizarOpcional(String valor) {
+        String normalizado = valor == null ? null : valor.trim();
+        return normalizado == null || normalizado.isBlank() ? null : normalizado;
     }
 
     private String gerarCodigoUnico() {
