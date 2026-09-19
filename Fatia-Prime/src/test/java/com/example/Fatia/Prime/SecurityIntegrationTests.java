@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -43,10 +44,12 @@ class SecurityIntegrationTests {
 
     @Test
     void passwordEncoderUsesBcryptAndDoesNotStorePlainText() {
+        org.junit.jupiter.api.Assertions.assertInstanceOf(BCryptPasswordEncoder.class, passwordEncoder);
+
         String encoded = passwordEncoder.encode(PASSWORD);
 
         org.junit.jupiter.api.Assertions.assertNotEquals(PASSWORD, encoded);
-        org.junit.jupiter.api.Assertions.assertTrue(encoded.startsWith("$2"));
+        org.junit.jupiter.api.Assertions.assertTrue(encoded.matches("\\$2[aby]\\$\\d{2}\\$[./A-Za-z0-9]{53}"));
         org.junit.jupiter.api.Assertions.assertTrue(passwordEncoder.matches(PASSWORD, encoded));
         org.junit.jupiter.api.Assertions.assertFalse(passwordEncoder.matches("senha-incorreta", encoded));
     }
@@ -102,6 +105,9 @@ class SecurityIntegrationTests {
 
         Usuario usuario = usuarioRepository.findByEmailIgnoreCase("novo@fatiaprime.test").orElseThrow();
         org.junit.jupiter.api.Assertions.assertEquals(Perfil.USER, usuario.getPerfil());
+        org.junit.jupiter.api.Assertions.assertNotEquals("senha-123", usuario.getSenhaHash());
+        org.junit.jupiter.api.Assertions.assertTrue(usuario.getSenhaHash().matches("\\$2[aby]\\$\\d{2}\\$[./A-Za-z0-9]{53}"));
+        org.junit.jupiter.api.Assertions.assertTrue(passwordEncoder.matches("senha-123", usuario.getSenhaHash()));
     }
 
     @Test
