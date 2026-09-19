@@ -82,8 +82,8 @@ class PedidoApiTests {
             .andExpect(jsonPath("$.itens[0].precoUnitario").value(24.90));
     }
 
-            @Test
-            void criaPedidoPublicoSemUsuarioIdEPersisteCliente() throws Exception {
+    @Test
+    void criaPedidoPublicoSemUsuarioIdEPersisteCliente() throws Exception {
             mockMvc.perform(post("/api/pedidos")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -103,7 +103,35 @@ class PedidoApiTests {
                 .andExpect(jsonPath("$.clienteTelefone").value("(61) 99999-1111"))
                 .andExpect(jsonPath("$.endereco").value("Rua Principal, 10"))
                 .andExpect(jsonPath("$.valorTotal").value(49.80));
-            }
+        }
+
+        @Test
+        void ignoraCamposControladosEnviadosPeloCliente() throws Exception {
+                mockMvc.perform(post("/api/pedidos")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                        {
+                                            "clienteNome": "Cliente Público",
+                                            "clienteEmail": "publico@fatiaprime.test",
+                                            "clienteTelefone": "(61) 99999-1111",
+                                            "itens": [{
+                                                "produtoId": %d,
+                                                "quantidade": 2,
+                                                "precoUnitario": 0.01,
+                                                "subtotal": 0.02
+                                            }],
+                                            "codigo": "FP-FORJADO",
+                                            "status": "Pedido concluído",
+                                            "valorTotal": 0.01
+                                        }
+                                        """.formatted(produto.getId())))
+                        .andExpect(status().isCreated())
+                        .andExpect(jsonPath("$.codigo").value(org.hamcrest.Matchers.not("FP-FORJADO")))
+                        .andExpect(jsonPath("$.status").value("Pedido recebido"))
+                        .andExpect(jsonPath("$.valorTotal").value(49.80))
+                        .andExpect(jsonPath("$.itens[0].precoUnitario").value(24.90));
+        }
 
     @Test
     void usuarioNaoAutenticadoNaoPodeConsultarPedidos() throws Exception {
