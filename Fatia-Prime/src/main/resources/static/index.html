@@ -453,9 +453,65 @@
                 <p class="admin-login-note">
                     A validação do acesso será conectada à autenticação segura do servidor.
                 </p>
+
+                <a class="admin-panel-link" href="#painel-pedidos">IR PARA PAINEL DE PEDIDOS</a>
             </div>
 
             <a class="admin-back-link" href="#cardapio">← Voltar ao cardápio</a>
+        </section>
+
+        <!-- PAINEL DE PEDIDOS -->
+        <section class="admin-orders" id="painel-pedidos">
+            <div class="admin-orders-heading">
+                <div>
+                    <span>ÁREA ADMINISTRATIVA</span>
+                    <h2>PAINEL DE <strong>PEDIDOS.</strong></h2>
+                    <p>Visualização local dos pedidos registrados neste navegador.</p>
+                </div>
+                <a class="admin-back-link" href="#acesso-admin">← Voltar ao acesso administrativo</a>
+            </div>
+
+            <div class="admin-orders-panel">
+                <div class="admin-orders-toolbar">
+                    <label>
+                        Pesquisar pedidos
+                        <input id="admin-order-search" type="search" placeholder="Código, telefone ou nome" autocomplete="off">
+                    </label>
+                    <label>
+                        Status
+                        <select id="admin-order-status">
+                            <option value="all">Todos os status</option>
+                            <option value="Pedido recebido">Pedido recebido</option>
+                            <option value="Pedido em andamento">Pedido em andamento</option>
+                            <option value="Pedido concluído">Pedido concluído</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="admin-orders-message" aria-live="polite"></div>
+                <div class="admin-order-list" aria-live="polite"></div>
+                <div class="admin-orders-empty" hidden>
+                    <strong>Nenhum pedido disponível</strong>
+                    <span>Os pedidos realizados neste navegador aparecerão aqui.</span>
+                </div>
+
+                <div class="admin-order-details" hidden>
+                    <div class="admin-order-details-header">
+                        <div>
+                            <span>DETALHES DO PEDIDO</span>
+                            <h3 class="admin-order-details-code"></h3>
+                        </div>
+                        <button class="admin-order-details-close" type="button" aria-label="Fechar detalhes">×</button>
+                    </div>
+                    <div class="admin-order-details-status"></div>
+                    <div class="admin-order-customer"></div>
+                    <div class="admin-order-products">
+                        <h4>Produtos</h4>
+                        <ul class="admin-order-product-list"></ul>
+                        <div class="admin-order-total"><span>Total</span><strong></strong></div>
+                    </div>
+                </div>
+            </div>
         </section>
 
 

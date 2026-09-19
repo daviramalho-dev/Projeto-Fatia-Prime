@@ -21,6 +21,12 @@ const orderQueryCode = document.querySelector('#order-query-code');
 const orderQueryPhone = document.querySelector('#order-query-phone');
 const adminLoginForm = document.querySelector('#admin-login-form');
 const adminLoginMessage = document.querySelector('.admin-login-message');
+const adminOrderSearch = document.querySelector('#admin-order-search');
+const adminOrderStatus = document.querySelector('#admin-order-status');
+const adminOrderList = document.querySelector('.admin-order-list');
+const adminOrdersMessage = document.querySelector('.admin-orders-message');
+const adminOrdersEmpty = document.querySelector('.admin-orders-empty');
+const adminOrderDetails = document.querySelector('.admin-order-details');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
@@ -162,6 +168,135 @@ function getOrderStatus(code, phone) {
     }
     const states = ['Pedido recebido', 'Pedido em andamento', 'Pedido concluído'];
     return states[hash % states.length];
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function getOrderStatusClass(status) {
+    return getOrderQueryStatusLabel(status);
+}
+
+function formatOrderDate(value) {
+    const date = new Date(value);
+    if (!value || Number.isNaN(date.getTime())) return 'Data não disponível';
+    return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function getAdminOrders() {
+    return readOrderHistory()
+        .filter((order) => order && typeof order === 'object' && order.code)
+        .map((order) => ({
+            ...order,
+            status: order.status || getOrderStatus(order.code, order.phone),
+        }))
+        .sort((first, second) => {
+            const firstDate = new Date(first.createdAt).getTime() || 0;
+            const secondDate = new Date(second.createdAt).getTime() || 0;
+            return secondDate - firstDate;
+        });
+}
+
+function renderAdminOrderDetails(order) {
+    if (!adminOrderDetails) return;
+
+    const detailsCode = adminOrderDetails.querySelector('.admin-order-details-code');
+    const detailsStatus = adminOrderDetails.querySelector('.admin-order-details-status');
+    const customerElement = adminOrderDetails.querySelector('.admin-order-customer');
+    const productList = adminOrderDetails.querySelector('.admin-order-product-list');
+    const totalElement = adminOrderDetails.querySelector('.admin-order-total strong');
+    const customerFields = [
+        ['Nome', order.customer],
+        ['Telefone', order.phone],
+        ['E-mail', order.email],
+        ['Endereço', order.address],
+        ['Observações', order.notes],
+    ].filter(([, value]) => value);
+
+    if (detailsCode) detailsCode.textContent = `Pedido ${order.code}`;
+    if (detailsStatus) {
+        detailsStatus.innerHTML = `<span class="admin-order-status ${getOrderStatusClass(order.status)}">${escapeHtml(order.status)}</span><span>${escapeHtml(formatOrderDate(order.createdAt))}</span>`;
+    }
+    if (customerElement) {
+        customerElement.innerHTML = customerFields.length
+            ? customerFields.map(([label, value]) => `<div><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span></div>`).join('')
+            : '<p>Dados do cliente não informados.</p>';
+    }
+
+    const items = Array.isArray(order.items) ? order.items : [];
+    if (productList) {
+        productList.innerHTML = items.length
+            ? items.map((item) => `
+                <li>
+                    <div><strong>${escapeHtml(item.name)}</strong><small>${Number(item.quantity)}x ${money.format(Number(item.price))} cada</small></div>
+                    <strong>${money.format(Number(item.price) * Number(item.quantity))}</strong>
+                </li>`).join('')
+            : '<li><span>Itens não informados.</span></li>';
+    }
+    if (totalElement) totalElement.textContent = money.format(Number(order.total) || 0);
+    adminOrderDetails.hidden = false;
+    adminOrderDetails.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderAdminOrders() {
+    if (!adminOrderList || !adminOrdersEmpty) return;
+
+    const search = String(adminOrderSearch?.value || '').trim().toLowerCase();
+    const normalizedSearchPhone = normalizePhone(search);
+    const selectedStatus = adminOrderStatus?.value || 'all';
+    const filteredOrders = getAdminOrders().filter((order) => {
+        const searchableText = [order.code, order.customer, order.phone].filter(Boolean).join(' ').toLowerCase();
+        const matchesText = !search
+            || searchableText.includes(search)
+            || (normalizedSearchPhone && normalizePhone(order.phone).includes(normalizedSearchPhone));
+        const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus;
+        return matchesText && matchesStatus;
+    });
+
+    adminOrderList.innerHTML = filteredOrders.map((order) => {
+        const itemCount = Array.isArray(order.items)
+            ? order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+            : 0;
+        return `
+            <article class="admin-order-card">
+                <div class="admin-order-card-main">
+                    <div class="admin-order-card-title">
+                        <strong>${escapeHtml(order.code)}</strong>
+                        <span class="admin-order-status ${getOrderStatusClass(order.status)}">${escapeHtml(order.status)}</span>
+                    </div>
+                    <div class="admin-order-card-meta">
+                        <span>${escapeHtml(order.customer || 'Cliente não informado')}</span>
+                        <span>${escapeHtml(order.phone || 'Telefone não informado')}</span>
+                        <span>${itemCount} ${itemCount === 1 ? 'item' : 'itens'}</span>
+                        <span>${escapeHtml(formatOrderDate(order.createdAt))}</span>
+                    </div>
+                </div>
+                <div class="admin-order-card-side">
+                    <strong>${money.format(Number(order.total) || 0)}</strong>
+                    <button class="btn-secondary admin-order-details-button" type="button" data-order-code="${escapeHtml(order.code)}">VER DETALHES</button>
+                </div>
+            </article>`;
+    }).join('');
+
+    const noOrders = getAdminOrders().length === 0;
+    adminOrdersEmpty.hidden = !noOrders && filteredOrders.length > 0;
+    if (!noOrders && filteredOrders.length === 0) {
+        adminOrdersEmpty.hidden = false;
+        adminOrdersEmpty.querySelector('strong').textContent = 'Nenhum pedido encontrado';
+        adminOrdersEmpty.querySelector('span').textContent = 'Ajuste a pesquisa ou o filtro de status.';
+    } else if (adminOrdersEmpty) {
+        adminOrdersEmpty.querySelector('strong').textContent = 'Nenhum pedido disponível';
+        adminOrdersEmpty.querySelector('span').textContent = 'Os pedidos realizados neste navegador aparecerão aqui.';
+    }
+    if (adminOrdersMessage) {
+        adminOrdersMessage.textContent = filteredOrders.length ? `${filteredOrders.length} ${filteredOrders.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}.` : '';
+    }
 }
 
 function renderConfirmation(orderData) {
@@ -599,6 +734,23 @@ if (adminLoginForm) {
         });
     }
 }
+
+if (adminOrderList) {
+    renderAdminOrders();
+
+    adminOrderSearch?.addEventListener('input', renderAdminOrders);
+    adminOrderStatus?.addEventListener('change', renderAdminOrders);
+    adminOrderList.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-order-code]');
+        if (!button) return;
+        const order = getAdminOrders().find((item) => item.code === button.dataset.orderCode);
+        if (order) renderAdminOrderDetails(order);
+    });
+}
+
+document.querySelector('.admin-order-details-close')?.addEventListener('click', () => {
+    if (adminOrderDetails) adminOrderDetails.hidden = true;
+});
 
 if (checkoutForm) {
     checkoutForm.addEventListener('submit', (event) => {
