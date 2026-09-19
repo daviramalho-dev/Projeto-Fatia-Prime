@@ -15,6 +15,7 @@ const checkoutTotalElement = document.querySelector('.checkout-total strong');
 const confirmationPanel = document.querySelector('.confirmation-panel');
 const confirmationSummaryElement = document.querySelector('.confirmation-items');
 const confirmationCodeElement = document.querySelector('.confirmation-code');
+const confirmationStatusElement = document.querySelector('.confirmation-status');
 const confirmationCustomerElement = document.querySelector('.confirmation-customer');
 const confirmationTotalElement = document.querySelector('.confirmation-total strong');
 const orderQueryForm = document.querySelector('#order-query-form');
@@ -530,12 +531,6 @@ function closeConfirmation() {
     }
 }
 
-function generateOrderCode() {
-    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
-    return `FP-${datePart}-${randomPart}`;
-}
-
 function saveRecentOrder(orderData) {
     const normalizedOrder = {
         ...orderData,
@@ -930,6 +925,9 @@ function renderConfirmation(orderData) {
     if (!data) return;
 
     confirmationCodeElement.textContent = `Pedido ${data.code}`;
+    if (confirmationStatusElement) {
+        confirmationStatusElement.textContent = `Status: ${data.status || 'Pedido recebido'}`;
+    }
     confirmationSummaryElement.innerHTML = data.items.map((item) => `
         <li>
             <div>
@@ -1271,6 +1269,81 @@ function cartItemsAreValid() {
             && Number(item.price) >= 0
             && Number.isFinite(Number(item.quantity))
             && Number(item.quantity) > 0);
+}
+
+function cartItemsHaveProductIds() {
+    return Array.isArray(window.cart)
+        && window.cart.length > 0
+        && window.cart.every((item) => Number.isInteger(Number(item.productId)) && Number(item.productId) > 0);
+}
+
+function normalizeCreatedOrder(order, customer, email, phone, address, notes) {
+    if (!order || typeof order !== 'object' || !order.codigo || !Array.isArray(order.itens)) {
+        throw new Error('A resposta da criação do pedido está indisponível. Tente novamente.');
+    }
+
+    const total = Number(order.valorTotal);
+    if (!Number.isFinite(total)) {
+        throw new Error('A resposta da criação do pedido está indisponível. Tente novamente.');
+    }
+
+    const items = order.itens.map((item) => {
+        if (!item || typeof item !== 'object') {
+            throw new Error('A resposta da criação do pedido está indisponível. Tente novamente.');
+        }
+        const price = Number(item.precoUnitario);
+        const quantity = Number(item.quantidade);
+        if (!Number.isFinite(price) || !Number.isFinite(quantity)) {
+            throw new Error('A resposta da criação do pedido está indisponível. Tente novamente.');
+        }
+        return {
+            name: String(item.nomeProduto || 'Produto não informado'),
+            price,
+            quantity,
+            subtotal: price * quantity,
+        };
+    });
+
+    return {
+        id: order.id,
+        code: order.codigo,
+        status: order.status,
+        createdAt: order.dataCriacao,
+        customer: order.clienteNome || customer,
+        email: order.clienteEmail || email,
+        phone: order.clienteTelefone || phone,
+        address: order.endereco || address,
+        notes: order.observacoes || notes,
+        items,
+        total,
+    };
+}
+
+async function createOrderViaApi(payload) {
+    const csrfToken = await getCsrfToken();
+    const response = await fetch('/api/pedidos', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-XSRF-TOKEN': csrfToken,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    let data = null;
+    try {
+        data = await response.json();
+    } catch (error) {
+        throw new Error(response.ok
+            ? 'A resposta da criação do pedido está indisponível. Tente novamente.'
+            : 'Não foi possível criar o pedido. Tente novamente.');
+    }
+
+    if (!response.ok) {
+        throw new Error(data?.message || 'Não foi possível criar o pedido. Tente novamente.');
+    }
+    return data;
 }
 
 function cartTotal() {
@@ -1689,7 +1762,7 @@ document.querySelector('.admin-order-details-close')?.addEventListener('click', 
 });
 
 if (checkoutForm) {
-    checkoutForm.addEventListener('submit', (event) => {
+    checkoutForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         clearCheckoutValidation();
 
@@ -1730,42 +1803,58 @@ if (checkoutForm) {
             return;
         }
 
-        const total = cartTotal();
-        if (!Number.isFinite(total) || total < 0) {
-            showCheckoutMessage('Total do pedido inválido.', false);
+        if (!cartItemsHaveProductIds()) {
+            showCheckoutMessage('Atualize o cardápio antes de finalizar: há item sem identificador válido.', false);
             return;
         }
 
-        const orderData = {
-            code: generateOrderCode(),
-            customer,
-            email,
-            address,
-            phone,
-            notes,
-            items: window.cart.map((item) => ({
-                name: item.name,
-                price: Number(item.price),
-                quantity: Number(item.quantity),
+        const payload = {
+            clienteNome: customer,
+            clienteEmail: email,
+            clienteTelefone: phone,
+            endereco: address,
+            observacoes: notes,
+            itens: window.cart.map((item) => ({
+                produtoId: Number(item.productId),
+                quantidade: Math.trunc(Number(item.quantity)),
             })),
-            total,
         };
 
-        const message = [
-            'Olá! Quero fazer este pedido:',
-            ...orderData.items.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(item.price * item.quantity)}`),
-            '', `Total: ${money.format(total)}`,
-            `Nome: ${customer}`,
-            `E-mail: ${email}`,
-            address && `Endereço: ${address}`,
-            `Telefone: ${phone}`,
-            notes && `Observações: ${notes}`,
-        ].filter(Boolean).join('\n');
+        const submitButton = checkoutForm.querySelector('.checkout-submit');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'ENVIANDO...';
+        }
+        showCheckoutMessage('Criando seu pedido...', true);
 
-        saveRecentOrder(orderData);
-        showCheckoutMessage('Pedido preparado para envio.', true);
-        window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-        openConfirmation(orderData);
+        try {
+            const apiOrder = await createOrderViaApi(payload);
+            const orderData = normalizeCreatedOrder(apiOrder, customer, email, phone, address, notes);
+            const message = [
+                'Olá! Meu pedido foi criado:',
+                `Código: ${orderData.code}`,
+                `Status: ${orderData.status}`,
+                ...orderData.items.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(item.subtotal)}`),
+                '', `Total: ${money.format(orderData.total)}`,
+                `Nome: ${orderData.customer}`,
+                `E-mail: ${orderData.email}`,
+                orderData.address && `Endereço: ${orderData.address}`,
+                `Telefone: ${orderData.phone}`,
+                orderData.notes && `Observações: ${orderData.notes}`,
+            ].filter(Boolean).join('\n');
+
+            saveRecentOrder(orderData);
+            showCheckoutMessage('Pedido criado com sucesso.', true);
+            openConfirmation(orderData);
+            window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+        } catch (error) {
+            showCheckoutMessage(error.message || 'Não foi possível criar o pedido. Tente novamente.', false);
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = 'FINALIZAR PEDIDO';
+            }
+        }
     });
 }
 
