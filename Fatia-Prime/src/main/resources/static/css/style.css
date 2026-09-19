@@ -719,6 +719,190 @@ button {
 
 
 /* =========================
+   ACESSO ADMINISTRATIVO
+========================= */
+
+.admin-access {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+    align-items: center;
+    gap: 80px;
+    padding: 110px 10% 90px;
+    background: #101010;
+    border-top: 1px solid #202020;
+}
+
+.admin-access-intro > span {
+    color: #f5c400;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 4px;
+}
+
+.admin-access-intro h2 {
+    max-width: 520px;
+    margin: 16px 0 22px;
+    font-family: "Bebas Neue", sans-serif;
+    font-size: clamp(54px, 6vw, 82px);
+    line-height: 0.9;
+}
+
+.admin-access-intro h2 strong {
+    color: #f5c400;
+}
+
+.admin-access-intro p {
+    max-width: 500px;
+    color: #999;
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+.admin-login-panel {
+    padding: 28px;
+    background: #151515;
+    border: 1px solid #2b2b2b;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, .22);
+}
+
+.admin-login-heading {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #2d2d2d;
+}
+
+.admin-login-mark {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    flex: 0 0 42px;
+    background: #f5c400;
+    color: #090909;
+    font-family: "Bebas Neue", sans-serif;
+    font-size: 20px;
+    letter-spacing: 1px;
+}
+
+.admin-login-heading h3 {
+    font-size: 17px;
+}
+
+.admin-login-heading p {
+    margin-top: 5px;
+    color: #888;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+#admin-login-form {
+    margin-top: 22px;
+}
+
+#admin-login-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+    color: #ddd;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+#admin-login-form input {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid #444;
+    outline: 0;
+    background: #0c0c0c;
+    color: #fff;
+    font: inherit;
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+#admin-login-form input:focus {
+    border-color: #f5c400;
+    box-shadow: 0 0 0 1px rgba(245, 196, 0, .4);
+}
+
+#admin-login-form input.is-invalid {
+    border-color: #ff8a80;
+    box-shadow: 0 0 0 1px rgba(255, 138, 128, .55);
+}
+
+.admin-password-field {
+    position: relative;
+    display: flex;
+}
+
+.admin-password-field input {
+    padding-right: 82px;
+}
+
+.admin-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    border: 0;
+    background: transparent;
+    color: #f5c400;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+}
+
+.admin-password-toggle:hover,
+.admin-password-toggle:focus-visible {
+    color: #fff;
+}
+
+.admin-login-message {
+    min-height: 22px;
+    margin: 3px 0 10px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.admin-login-message.error {
+    color: #ff8a80;
+}
+
+.admin-login-message.success {
+    color: #6de59b;
+}
+
+.admin-login-submit {
+    width: 100%;
+    border: 0;
+}
+
+.admin-login-note {
+    margin-top: 16px;
+    color: #666;
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.admin-back-link {
+    grid-column: 1 / -1;
+    justify-self: center;
+    color: #999;
+    font-size: 11px;
+    font-weight: 700;
+    transition: color .2s ease;
+}
+
+.admin-back-link:hover {
+    color: #f5c400;
+}
+
+
+/* =========================
    FOOTER
 ========================= */
 
@@ -1435,6 +1619,17 @@ footer p {
         padding: 60px 8%;
     }
 
+    .admin-access {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        padding: 90px 8% 70px;
+    }
+
+    .admin-login-panel {
+        width: min(100%, 520px);
+        justify-self: center;
+    }
+
 }
 
 
@@ -1532,6 +1727,18 @@ footer p {
 
     .sobre-content h2 {
         font-size: 52px;
+    }
+
+    .admin-access {
+        padding: 75px 7% 60px;
+    }
+
+    .admin-access-intro h2 {
+        font-size: 56px;
+    }
+
+    .admin-login-panel {
+        padding: 22px 18px;
     }
 
 }

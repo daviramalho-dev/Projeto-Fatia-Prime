@@ -27,6 +27,7 @@
             <a href="#inicio">Início</a>
             <a href="#cardapio">Cardápio</a>
             <a href="#sobre">Sobre nós</a>
+            <a href="#acesso-admin">Acesso admin</a>
         </nav>
 
         <button class="btn-pedido" type="button" data-open-cart>
@@ -410,6 +411,53 @@
 
         </section>
 
+        <!-- ACESSO ADMINISTRATIVO -->
+        <section class="admin-access" id="acesso-admin">
+
+            <div class="admin-access-intro">
+                <span>ÁREA RESTRITA</span>
+                <h2>ACESSO <strong>ADMINISTRATIVO.</strong></h2>
+                <p>
+                    Entre para acessar os recursos administrativos da Fatia Prime.
+                    Este acesso é exclusivo para administradores do sistema.
+                </p>
+            </div>
+
+            <div class="admin-login-panel">
+                <div class="admin-login-heading">
+                    <span class="admin-login-mark" aria-hidden="true">FP</span>
+                    <div>
+                        <h3>Entrar na administração</h3>
+                        <p>Use seu e-mail e palavra-passe cadastrados.</p>
+                    </div>
+                </div>
+
+                <form id="admin-login-form" novalidate>
+                    <label>
+                        E-mail
+                        <input name="adminEmail" type="email" autocomplete="username" placeholder="admin@fatiaprime.com" required>
+                    </label>
+
+                    <label>
+                        Palavra-passe
+                        <span class="admin-password-field">
+                            <input name="adminPassword" type="password" autocomplete="current-password" placeholder="Digite sua palavra-passe" required>
+                            <button class="admin-password-toggle" type="button" aria-label="Mostrar palavra-passe" aria-pressed="false">Mostrar</button>
+                        </span>
+                    </label>
+
+                    <div class="admin-login-message" aria-live="polite"></div>
+                    <button class="btn-primary admin-login-submit" type="submit">ENTRAR</button>
+                </form>
+
+                <p class="admin-login-note">
+                    A validação do acesso será conectada à autenticação segura do servidor.
+                </p>
+            </div>
+
+            <a class="admin-back-link" href="#cardapio">← Voltar ao cardápio</a>
+        </section>
+
 
     </main>
 
@@ -484,6 +532,7 @@
             <a href="#inicio">Início</a>
             <a href="#cardapio">Cardápio</a>
             <a href="#sobre">Sobre nós</a>
+            <a href="#acesso-admin">Acesso admin</a>
             <a href="#consultar-pedido">Consultar pedido</a>
 
         </div>
