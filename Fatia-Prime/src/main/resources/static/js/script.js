@@ -96,9 +96,85 @@ function renderCheckoutSummary() {
     checkoutTotalElement.textContent = money.format(cartTotal());
 }
 
+function normalizePhone(value) {
+    return String(value || '').replace(/\D/g, '');
+}
+
+function isValidPhone(value) {
+    const digits = normalizePhone(value);
+    return digits.length === 10 || digits.length === 11;
+}
+
+function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function cartItemsAreValid() {
+    return Array.isArray(window.cart)
+        && window.cart.length > 0
+        && window.cart.every((item) => item
+            && typeof item === 'object'
+            && typeof item.name === 'string'
+            && item.name.trim()
+            && Number.isFinite(Number(item.price))
+            && Number(item.price) >= 0
+            && Number.isFinite(Number(item.quantity))
+            && Number(item.quantity) > 0);
+}
+
+function cartTotal() {
+    if (!Array.isArray(window.cart) || !cartItemsAreValid()) {
+        return 0;
+    }
+
+    return window.cart.reduce((total, item) => total + Number(item.price) * Number(item.quantity), 0);
+}
+
+function showCheckoutMessage(message, isSuccess = false) {
+    if (!checkoutMessage) return;
+    checkoutMessage.textContent = message;
+    checkoutMessage.classList.toggle('success', isSuccess);
+    checkoutMessage.classList.toggle('error', !isSuccess);
+}
+
+function clearCheckoutValidation() {
+    if (!checkoutForm) return;
+
+    checkoutForm.querySelectorAll('.is-invalid').forEach((field) => field.classList.remove('is-invalid'));
+    checkoutForm.querySelectorAll('[aria-invalid="true"]').forEach((field) => field.setAttribute('aria-invalid', 'false'));
+}
+
+function markFieldInvalid(fieldName, message) {
+    if (!checkoutForm) return;
+
+    const field = checkoutForm.elements.namedItem(fieldName);
+    if (!field) return;
+
+    field.classList.add('is-invalid');
+    field.setAttribute('aria-invalid', 'true');
+    showCheckoutMessage(message, false);
+    field.focus();
+}
+
 function openCheckout() {
-    if (!window.cart.length) {
-        alert('Adicione ao menos uma pizza ao pedido.');
+    if (!Array.isArray(window.cart) || !window.cart.length || !cartItemsAreValid()) {
+        const message = !Array.isArray(window.cart) || !window.cart.length ? 'Carrinho vazio.' : 'Itens do carrinho inválidos.';
+        if (checkoutMessage) {
+            showCheckoutMessage(message, false);
+        } else {
+            alert(message);
+        }
+        return;
+    }
+
+    const total = cartTotal();
+    if (!Number.isFinite(total) || total < 0) {
+        const message = 'Total do pedido inválido.';
+        if (checkoutMessage) {
+            showCheckoutMessage(message, false);
+        } else {
+            alert(message);
+        }
         return;
     }
 
@@ -110,10 +186,6 @@ function openCheckout() {
     checkoutPanel.setAttribute('aria-hidden', 'false');
     panel.classList.remove('is-open');
     panel.setAttribute('aria-hidden', 'true');
-}
-
-function cartTotal() {
-    return window.cart.reduce((total, item) => total + item.price * item.quantity, 0);
 }
 
 function updateCart() {
@@ -197,6 +269,8 @@ document.querySelector('.checkout-button').addEventListener('click', () => {
 if (checkoutForm) {
     checkoutForm.addEventListener('submit', (event) => {
         event.preventDefault();
+        clearCheckoutValidation();
+
         const formData = new FormData(checkoutForm);
         const customer = String(formData.get('customerName') || '').trim();
         const email = String(formData.get('customerEmail') || '').trim();
@@ -204,32 +278,51 @@ if (checkoutForm) {
         const phone = String(formData.get('customerPhone') || '').trim();
         const notes = String(formData.get('customerNotes') || '').trim();
 
-        const requiredFields = { customer, email, address, phone };
-        const invalidField = Object.entries(requiredFields).find(([, value]) => !value);
-
-        if (invalidField) {
-            if (checkoutMessage) {
-                checkoutMessage.textContent = 'Preencha todos os campos obrigatórios antes de finalizar o pedido.';
-                checkoutMessage.classList.remove('success');
-            }
+        if (!customer) {
+            markFieldInvalid('customerName', 'Informe seu nome.');
             return;
         }
 
-        const emailIsValid = /\S+@\S+\.\S+/.test(email);
-        const phoneIsValid = phone.replace(/\D/g, '').length >= 10;
+        if (!email) {
+            markFieldInvalid('customerEmail', 'Informe seu e-mail.');
+            return;
+        }
 
-        if (!emailIsValid || !phoneIsValid) {
-            if (checkoutMessage) {
-                checkoutMessage.textContent = 'Informe um e-mail e telefone válidos.';
-                checkoutMessage.classList.remove('success');
-            }
+        if (!isValidEmail(email)) {
+            markFieldInvalid('customerEmail', 'E-mail inválido.');
+            return;
+        }
+
+        if (!address) {
+            markFieldInvalid('customerAddress', 'Informe seu endereço.');
+            return;
+        }
+
+        if (!phone) {
+            markFieldInvalid('customerPhone', 'Informe seu telefone.');
+            return;
+        }
+
+        if (!isValidPhone(phone)) {
+            markFieldInvalid('customerPhone', 'Telefone inválido.');
+            return;
+        }
+
+        if (!Array.isArray(window.cart) || !window.cart.length || !cartItemsAreValid()) {
+            showCheckoutMessage('Carrinho vazio.', false);
+            return;
+        }
+
+        const total = cartTotal();
+        if (!Number.isFinite(total) || total < 0) {
+            showCheckoutMessage('Total do pedido inválido.', false);
             return;
         }
 
         const message = [
             'Olá! Quero fazer este pedido:',
-            ...window.cart.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(item.price * item.quantity)}`),
-            '', `Total: ${money.format(cartTotal())}`,
+            ...window.cart.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(Number(item.price) * Number(item.quantity))}`),
+            '', `Total: ${money.format(total)}`,
             `Nome: ${customer}`,
             `E-mail: ${email}`,
             `Endereço: ${address}`,
@@ -237,11 +330,7 @@ if (checkoutForm) {
             notes && `Observações: ${notes}`,
         ].filter(Boolean).join('\n');
 
-        if (checkoutMessage) {
-            checkoutMessage.textContent = 'Pedido preparado para envio.';
-            checkoutMessage.classList.add('success');
-        }
-
+        showCheckoutMessage('Pedido preparado para envio.', true);
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     });
 }
