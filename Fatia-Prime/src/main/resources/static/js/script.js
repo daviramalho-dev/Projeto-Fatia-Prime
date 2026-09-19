@@ -55,7 +55,9 @@ const totalElement = document.querySelector('.cart-total strong');
 let cepLookupRequestId = 0;
 let lastRequestedCep = '';
 let editingProductId = null;
-let selectedAdminOrderCode = null;
+let selectedAdminOrderId = null;
+let adminOrders = [];
+let adminOrdersRequestId = 0;
 
 function setInterfaceMode(mode) {
     const isPublic = mode === 'public';
@@ -97,6 +99,7 @@ function openAdminWorkspace() {
     setInterfaceMode('admin-workspace');
     window.location.hash = 'painel-pedidos';
     adminOrdersSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    loadAdminOrders();
 }
 
 function readCookie(name) {
@@ -144,6 +147,110 @@ async function logoutAdmin() {
         headers: { 'X-XSRF-TOKEN': csrfToken },
     });
     if (!response.ok) throw new Error('logout');
+}
+
+function showAdminApiError(message) {
+    if (adminOrdersMessage) {
+        adminOrdersMessage.textContent = message;
+        adminOrdersMessage.className = 'admin-orders-message error';
+    }
+}
+
+function handleAdminApiAuthorization(status) {
+    if (status !== 401 && status !== 403) return false;
+    adminOrders = [];
+    setInterfaceMode('admin-login');
+    showAdminLoginMessage(
+        status === 401
+            ? 'Sua sessão expirou. Entre novamente para acessar os pedidos.'
+            : 'Seu acesso não está autorizado para consultar os pedidos.'
+    );
+    return true;
+}
+
+async function readAdminApiError(response, fallback) {
+    try {
+        const data = await response.json();
+        return data.message || data.detail || fallback;
+    } catch (error) {
+        return fallback;
+    }
+}
+
+function normalizeAdminOrder(order) {
+    return {
+        id: order.id,
+        code: order.codigo,
+        status: order.status,
+        createdAt: order.dataCriacao,
+        customer: order.nomeCliente,
+        phone: order.telefone,
+        email: order.email,
+        address: order.endereco,
+        notes: order.observacoes,
+        items: Array.isArray(order.itens)
+            ? order.itens.map((item) => ({
+                id: item.id,
+                productId: item.produtoId,
+                name: item.nomeProduto,
+                quantity: item.quantidade,
+                price: item.precoUnitario,
+                subtotal: item.subtotal,
+            }))
+            : [],
+        total: order.total,
+    };
+}
+
+function getAdminOrderFilters() {
+    const search = String(adminOrderSearch?.value || '').trim();
+    const params = new URLSearchParams();
+    const normalizedSearch = normalizePhone(search);
+
+    if (search.toUpperCase().startsWith('FP-')) {
+        params.set('codigo', search);
+    } else if (normalizedSearch.length >= 8 && normalizedSearch.length === search.replace(/\D/g, '').length) {
+        params.set('telefone', search);
+    } else if (search) {
+        params.set('nome', search);
+    }
+
+    const status = adminOrderStatus?.value || 'all';
+    if (status !== 'all') params.set('status', status);
+    return params;
+}
+
+async function loadAdminOrders() {
+    if (!adminOrderList) return;
+    const requestId = ++adminOrdersRequestId;
+    if (adminOrdersMessage) {
+        adminOrdersMessage.textContent = 'Carregando pedidos...';
+        adminOrdersMessage.className = 'admin-orders-message';
+    }
+    adminOrdersEmpty.hidden = true;
+
+    try {
+        const query = getAdminOrderFilters().toString();
+        const response = await fetch(`/api/admin/pedidos${query ? `?${query}` : ''}`, {
+            credentials: 'same-origin',
+        });
+        if (handleAdminApiAuthorization(response.status)) return;
+        if (!response.ok) {
+            throw new Error(await readAdminApiError(response, 'Não foi possível carregar os pedidos.'));
+        }
+        const data = await response.json();
+        if (requestId !== adminOrdersRequestId) return;
+        adminOrders = Array.isArray(data) ? data.map(normalizeAdminOrder) : [];
+        renderAdminOrders();
+    } catch (error) {
+        if (requestId !== adminOrdersRequestId) return;
+        adminOrders = [];
+        adminOrderList.innerHTML = '';
+        adminOrdersEmpty.hidden = false;
+        adminOrdersEmpty.querySelector('strong').textContent = 'Não foi possível carregar os pedidos';
+        adminOrdersEmpty.querySelector('span').textContent = error.message || 'Tente novamente.';
+        showAdminApiError(error.message || 'Não foi possível carregar os pedidos.');
+    }
 }
 
 function sanitizeCart(items) {
@@ -417,40 +524,6 @@ function formatOrderDate(value) {
     return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-function getAdminOrders() {
-    return readOrderHistory()
-        .filter((order) => order && typeof order === 'object' && order.code)
-        .map((order) => ({
-            ...order,
-            status: order.status || getOrderStatus(order.code, order.phone),
-        }))
-        .sort((first, second) => {
-            const firstDate = new Date(first.createdAt).getTime() || 0;
-            const secondDate = new Date(second.createdAt).getTime() || 0;
-            return secondDate - firstDate;
-        });
-}
-
-function persistOrderStatus(orderCode, status) {
-    if (!ORDER_STATUSES.includes(status)) return false;
-    const orders = readOrderHistory();
-    const orderIndex = orders.findIndex((order) => order.code === orderCode);
-    if (orderIndex < 0) return false;
-
-    orders[orderIndex] = { ...orders[orderIndex], status };
-    try {
-        localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify(orders));
-        const lastOrder = JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) || 'null');
-        if (lastOrder?.code === orderCode) {
-            localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify({ ...lastOrder, status }));
-        }
-        return true;
-    } catch (error) {
-        console.warn('Não foi possível atualizar o status do pedido.', error);
-        return false;
-    }
-}
-
 function showAdminStatusMessage(message, type = 'error') {
     if (!adminStatusMessage) return;
     adminStatusMessage.textContent = message;
@@ -591,7 +664,7 @@ function submitAdminProduct(event) {
 function renderAdminOrderDetails(order) {
     if (!adminOrderDetails) return;
 
-    selectedAdminOrderCode = order.code;
+    selectedAdminOrderId = order.id;
 
     const detailsCode = adminOrderDetails.querySelector('.admin-order-details-code');
     const detailsStatus = adminOrderDetails.querySelector('.admin-order-details-status');
@@ -599,12 +672,12 @@ function renderAdminOrderDetails(order) {
     const productList = adminOrderDetails.querySelector('.admin-order-product-list');
     const totalElement = adminOrderDetails.querySelector('.admin-order-total strong');
     const customerFields = [
-        ['Nome', order.customer],
-        ['Telefone', order.phone ? formatPhone(order.phone) : ''],
-        ['E-mail', order.email],
-        ['Endereço', order.address],
-        ['Observações', order.notes],
-    ].filter(([, value]) => value);
+        ['Nome', order.customer || 'Não informado'],
+        ['Telefone', order.phone ? formatPhone(order.phone) : 'Não informado'],
+        ['E-mail', order.email || 'Não informado'],
+        ['Endereço', order.address || 'Não informado'],
+        ['Observações', order.notes || 'Não informado'],
+    ];
 
     if (detailsCode) detailsCode.textContent = `Pedido ${order.code}`;
     if (detailsStatus) {
@@ -623,8 +696,8 @@ function renderAdminOrderDetails(order) {
         productList.innerHTML = items.length
             ? items.map((item) => `
                 <li>
-                    <div><strong>${escapeHtml(item.name)}</strong><small>${Number(item.quantity)}x ${money.format(Number(item.price))} cada</small></div>
-                    <strong>${money.format(Number(item.price) * Number(item.quantity))}</strong>
+                    <div><strong>${escapeHtml(item.name || 'Produto não informado')}</strong><small>${Number(item.quantity)}x ${money.format(Number(item.price))} cada</small></div>
+                    <strong>${money.format(Number(item.subtotal) || Number(item.price) * Number(item.quantity))}</strong>
                 </li>`).join('')
             : '<li><span>Itens não informados.</span></li>';
     }
@@ -636,19 +709,7 @@ function renderAdminOrderDetails(order) {
 function renderAdminOrders() {
     if (!adminOrderList || !adminOrdersEmpty) return;
 
-    const search = String(adminOrderSearch?.value || '').trim().toLowerCase();
-    const normalizedSearchPhone = normalizePhone(search);
-    const selectedStatus = adminOrderStatus?.value || 'all';
-    const filteredOrders = getAdminOrders().filter((order) => {
-        const searchableText = [order.code, order.customer, order.phone].filter(Boolean).join(' ').toLowerCase();
-        const matchesText = !search
-            || searchableText.includes(search)
-            || (normalizedSearchPhone && normalizePhone(order.phone).includes(normalizedSearchPhone));
-        const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus;
-        return matchesText && matchesStatus;
-    });
-
-    adminOrderList.innerHTML = filteredOrders.map((order) => {
+    adminOrderList.innerHTML = adminOrders.map((order) => {
         const itemCount = Array.isArray(order.items)
             ? order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
             : 0;
@@ -668,23 +729,20 @@ function renderAdminOrders() {
                 </div>
                 <div class="admin-order-card-side">
                     <strong>${money.format(Number(order.total) || 0)}</strong>
-                    <button class="btn-secondary admin-order-details-button" type="button" data-order-code="${escapeHtml(order.code)}">VER DETALHES</button>
+                    <button class="btn-secondary admin-order-details-button" type="button" data-order-id="${escapeHtml(order.id)}">VER DETALHES</button>
                 </div>
             </article>`;
     }).join('');
 
-    const noOrders = getAdminOrders().length === 0;
-    adminOrdersEmpty.hidden = !noOrders && filteredOrders.length > 0;
-    if (!noOrders && filteredOrders.length === 0) {
-        adminOrdersEmpty.hidden = false;
-        adminOrdersEmpty.querySelector('strong').textContent = 'Nenhum pedido encontrado';
-        adminOrdersEmpty.querySelector('span').textContent = 'Ajuste a pesquisa ou o filtro de status.';
-    } else if (adminOrdersEmpty) {
+    const noOrders = adminOrders.length === 0;
+    adminOrdersEmpty.hidden = !noOrders;
+    if (noOrders) {
         adminOrdersEmpty.querySelector('strong').textContent = 'Nenhum pedido disponível';
-        adminOrdersEmpty.querySelector('span').textContent = 'Os pedidos realizados neste navegador aparecerão aqui.';
+        adminOrdersEmpty.querySelector('span').textContent = 'Os pedidos disponíveis no sistema aparecerão aqui.';
     }
     if (adminOrdersMessage) {
-        adminOrdersMessage.textContent = filteredOrders.length ? `${filteredOrders.length} ${filteredOrders.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}.` : '';
+        adminOrdersMessage.textContent = noOrders ? '' : `${adminOrders.length} ${adminOrders.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}.`;
+        adminOrdersMessage.className = 'admin-orders-message';
     }
 }
 
@@ -1269,32 +1327,60 @@ adminLogout?.addEventListener('click', async () => {
 });
 
 if (adminOrderList) {
-    renderAdminOrders();
-
-    adminOrderSearch?.addEventListener('input', renderAdminOrders);
-    adminOrderStatus?.addEventListener('change', renderAdminOrders);
-    adminOrderList.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-order-code]');
+    adminOrderSearch?.addEventListener('input', loadAdminOrders);
+    adminOrderStatus?.addEventListener('change', loadAdminOrders);
+    adminOrderList.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-order-id]');
         if (!button) return;
-        const order = getAdminOrders().find((item) => item.code === button.dataset.orderCode);
-        if (order) renderAdminOrderDetails(order);
+        selectedAdminOrderId = Number(button.dataset.orderId);
+        adminOrderDetails.hidden = false;
+        showAdminStatusMessage('Carregando detalhes...', 'success');
+        try {
+            const response = await fetch(`/api/admin/pedidos/${selectedAdminOrderId}`, { credentials: 'same-origin' });
+            if (handleAdminApiAuthorization(response.status)) return;
+            if (!response.ok) {
+                throw new Error(await readAdminApiError(response, 'Não foi possível carregar os detalhes.'));
+            }
+            renderAdminOrderDetails(normalizeAdminOrder(await response.json()));
+        } catch (error) {
+            showAdminStatusMessage(error.message || 'Não foi possível carregar os detalhes.');
+        }
     });
 }
 
-adminStatusSave?.addEventListener('click', () => {
+adminStatusSave?.addEventListener('click', async () => {
     const status = adminOrderStatusEditor?.value;
-    if (!selectedAdminOrderCode || !ORDER_STATUSES.includes(status)) {
+    if (!selectedAdminOrderId || !ORDER_STATUSES.includes(status)) {
         showAdminStatusMessage('Selecione um pedido e um status válido.');
         return;
     }
-    if (!persistOrderStatus(selectedAdminOrderCode, status)) {
-        showAdminStatusMessage('Não foi possível atualizar o status do pedido.');
-        return;
+    adminStatusSave.disabled = true;
+    showAdminStatusMessage('Atualizando status...', 'success');
+    try {
+        const csrfToken = await getCsrfToken();
+        const response = await fetch(`/api/admin/pedidos/${selectedAdminOrderId}/status`, {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-XSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify({ status }),
+        });
+        if (handleAdminApiAuthorization(response.status)) return;
+        if (!response.ok) {
+            throw new Error(await readAdminApiError(response, 'Não foi possível atualizar o status do pedido.'));
+        }
+        const updatedOrder = normalizeAdminOrder(await response.json());
+        adminOrders = adminOrders.map((order) => order.id === updatedOrder.id ? updatedOrder : order);
+        renderAdminOrderDetails(updatedOrder);
+        renderAdminOrders();
+        showAdminStatusMessage('Status do pedido atualizado com sucesso.', 'success');
+    } catch (error) {
+        showAdminStatusMessage(error.message || 'Não foi possível atualizar o status do pedido.');
+    } finally {
+        adminStatusSave.disabled = false;
     }
-    const updatedOrder = getAdminOrders().find((order) => order.code === selectedAdminOrderCode);
-    if (updatedOrder) renderAdminOrderDetails(updatedOrder);
-    renderAdminOrders();
-    showAdminStatusMessage('Status do pedido atualizado com sucesso.', 'success');
 });
 
 if (adminCatalogList) {
@@ -1349,7 +1435,7 @@ if (checkoutForm) {
 
 document.querySelector('.admin-order-details-close')?.addEventListener('click', () => {
     if (adminOrderDetails) adminOrderDetails.hidden = true;
-    selectedAdminOrderCode = null;
+    selectedAdminOrderId = null;
 });
 
 if (checkoutForm) {
