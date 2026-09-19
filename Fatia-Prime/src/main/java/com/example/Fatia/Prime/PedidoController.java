@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -49,6 +50,8 @@ public class PedidoController {
 
         Pedido pedido = new Pedido();
         pedido.setUsuario(usuario);
+        pedido.setCodigo("FP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
+        pedido.setStatus("Pedido recebido");
         pedido.setObservacoes(request.observacoes());
 
         List<ItemPedido> itens = new ArrayList<>();

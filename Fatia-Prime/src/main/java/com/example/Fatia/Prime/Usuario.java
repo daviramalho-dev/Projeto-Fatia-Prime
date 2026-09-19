@@ -16,6 +16,9 @@ public class Usuario {
     @Column(nullable = false, unique = true, length = 254)
     private String email;
 
+    @Column(length = 20)
+    private String telefone;
+
     @Column(name = "senha_hash", nullable = false)
     private String senhaHash;
 
@@ -39,6 +42,14 @@ public class Usuario {
 
     public String getEmail() {
         return email;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public void setTelefone(String telefone) {
+        this.telefone = telefone;
     }
 
     public String getSenhaHash() {
