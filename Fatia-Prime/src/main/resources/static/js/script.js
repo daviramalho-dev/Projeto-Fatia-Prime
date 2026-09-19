@@ -419,7 +419,16 @@ function renderPublicCatalog() {
     const pizzaGrid = document.querySelector('.pizza-grid');
     const menuList = document.querySelector('.menu-list');
 
-    if (pizzaGrid) pizzaGrid.innerHTML = '';
+    if (pizzaGrid) {
+        pizzaGrid.innerHTML = publicProducts.slice(0, 3).map((product) => `
+            <article class="pizza-card" data-product="${escapeHtml(product.name)}" data-product-id="${escapeHtml(product.id)}" data-price="${product.price}">
+                <div class="pizza-image">
+                    ${product.image ? `<img class="pizza-zoom-menor" src="${escapeHtml(product.image)}" alt="Pizza ${escapeHtml(product.name)}">` : '<div class="pizza-image-placeholder" aria-hidden="true">FP</div>'}
+                </div>
+                <div class="pizza-info"><div><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div><strong>${money.format(product.price)}</strong></div>
+                <button class="btn-card" type="button" data-product-id="${escapeHtml(product.id)}">ADICIONAR</button>
+            </article>`).join('');
+    }
     if (!menuList) return;
 
     if (publicCatalogState === 'loading') {

@@ -1,12 +1,10 @@
-No backend, o projeto utiliza Spring Boot com Spring Data JPA e PostgreSQL para persistência e API REST simples.
-- PostgreSQL
 # Projeto-Fatia-Prime
 
 ## Descrição
 
 O Projeto-Fatia-Prime é uma aplicação web para uma pizzaria, com foco em apresentação do cardápio, interação do cliente e estrutura inicial de backend para gerenciamento de usuários e pedidos.
 
-A interface oferece uma landing page com apresentação da marca, lista de pizzas, carrinho de compras e integração com WhatsApp para envio do pedido. No backend, o projeto utiliza Spring Boot com Spring Data JPA e H2 para persistência e API REST simples.
+A interface oferece uma landing page com apresentação da marca, lista de pizzas, carrinho de compras e integração com WhatsApp para envio do pedido. No backend, o projeto utiliza Spring Boot com Spring Data JPA e PostgreSQL para persistência e API REST simples.
 
 ## Tecnologias utilizadas
 
@@ -16,7 +14,7 @@ A interface oferece uma landing page com apresentação da marca, lista de pizza
 - Spring Data JPA
 - Spring Validation
 - Spring Security Crypto
-- H2 Database
+- PostgreSQL
 - HTML5
 - CSS3
 - JavaScript
@@ -52,7 +50,6 @@ O projeto já inclui o Gradle Wrapper, então não é necessário instalar o Gra
   DB_PASSWORD=sua-senha
 
    ./gradlew bootRun
-- `Fatia-Prime/src/main/resources/application.properties` — configuração da aplicação e do banco PostgreSQL
 
 4. Acesse a aplicação no navegador em:
 
@@ -73,7 +70,7 @@ Esse comando compila o projeto, inicia o contexto Spring Boot e executa os teste
 - `Fatia-Prime/src/main/resources/static` — HTML, CSS e JavaScript do frontend
 - `Fatia-Prime/src/test/java` — testes automatizados
 - `Fatia-Prime/build.gradle` — configuração do Gradle e dependências
-- `Fatia-Prime/src/main/resources/application.properties` — configuração da aplicação e do banco H2
+- `Fatia-Prime/src/main/resources/application.properties` — configuração da aplicação e do banco PostgreSQL
 
 ## API atual
 
@@ -115,16 +112,20 @@ Os endpoints REST atualmente disponíveis no projeto são:
   Retorna um pedido específico por ID.
 
 - `POST /api/pedidos`  
-  Cria um pedido a partir do usuário e dos itens informados.
+  Cria um pedido público com os dados do cliente e itens informados. `usuarioId` é opcional para compatibilidade com pedidos legados.
+
+### Administração
+
+- `GET /api/admin/pedidos` — lista pedidos com filtros por código, telefone, nome e status.
+- `GET /api/admin/pedidos/{id}` — detalha um pedido.
+- `PATCH /api/admin/pedidos/{id}/status` — atualiza o status respeitando as transições permitidas.
+- `GET /api/admin/produtos` — lista produtos, inclusive inativos.
+- `POST /api/admin/produtos` — cria produto.
+- `PUT /api/admin/produtos/{id}` — edita produto.
+- `PATCH /api/admin/produtos/{id}/status` — ativa ou desativa produto.
 
 ## Banco de dados
 
-O projeto usa H2 em memória, configurado em:
-
-- `spring.datasource.url=jdbc:h2:mem:fatiaprime`
-- driver H2
-- usuário: `sa`
-- senha: vazia
 O projeto usa PostgreSQL, configurado pelas variáveis de ambiente:
 
 - `DB_URL` — padrão: `jdbc:postgresql://localhost:5432/fatiaprime`
@@ -132,8 +133,9 @@ O projeto usa PostgreSQL, configurado pelas variáveis de ambiente:
 - `DB_PASSWORD` — sem valor padrão; deve ser configurada no ambiente
 - driver: `org.postgresql.Driver`
 
-A JPA está configurada com `ddl-auto=update`, o que permite que o Hibernate crie ou atualize as tabelas automaticamente durante a execução local.
-- O PostgreSQL é o banco principal da aplicação.
+A JPA está configurada com `ddl-auto=update`, o que permite que o Hibernate crie ou atualize as tabelas automaticamente durante a execução local. O PostgreSQL é o banco principal da aplicação.
+
+Para uma demonstração, o banco precisa conter categorias, produtos ativos e uma conta `ADMIN` previamente provisionados. O projeto não cria automaticamente o primeiro administrador nem dados de catálogo.
 
 ## Frontend
 
@@ -151,12 +153,12 @@ Ela inclui apresentação da marca, catálogo, carrinho e integração com Whats
 2. Navega pelo cardápio.
 3. Adiciona produtos ao carrinho.
 4. Ajusta quantidades e revisa o total.
-5. Finaliza o pedido pelo WhatsApp.
-6. O backend também disponibiliza cadastro e consulta de usuários por API REST.
+5. Finaliza o pedido pela API; após a criação bem-sucedida, o WhatsApp pode ser aberto com os dados retornados pelo backend.
+6. O backend disponibiliza cadastro de usuários, consulta pública de pedidos e painel administrativo protegido.
 
 ## Observações
 
 - A aplicação foi desenvolvida principalmente como projeto acadêmico.
-- O banco H2 é usado para ambiente local e de desenvolvimento.
+- O banco PostgreSQL é necessário para a execução normal da aplicação.
 - O projeto continua com a arquitetura simples atual: controllers + repositories + entidades.
 - Não há autenticação ou pagamento implementados nesta etapa.
