@@ -63,6 +63,10 @@ let publicCatalogState = 'loading';
 let publicProducts = [];
 let publicCategories = [];
 let selectedPublicCategory = 'all';
+let adminProducts = [];
+let adminCategories = [];
+let adminCatalogState = 'idle';
+let adminCatalogRequestId = 0;
 
 function setInterfaceMode(mode) {
     const isPublic = mode === 'public';
@@ -105,6 +109,7 @@ function openAdminWorkspace() {
     window.location.hash = 'painel-pedidos';
     adminOrdersSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     loadAdminOrders();
+    loadAdminProducts();
 }
 
 function readCookie(name) {
@@ -609,17 +614,52 @@ function showAdminStatusMessage(message, type = 'error') {
     adminStatusMessage.className = `admin-status-message ${type}`.trim();
 }
 
+function normalizeAdminProduct(product) {
+    if (!product || typeof product !== 'object' || product.id == null || !product.nome) return null;
+    const price = Number(product.preco);
+    if (!Number.isFinite(price)) return null;
+    return {
+        id: product.id,
+        name: String(product.nome).trim(),
+        description: String(product.descricao || '').trim(),
+        categoryId: product.categoriaId == null ? '' : String(product.categoriaId),
+        categoryName: String(product.categoriaNome || '').trim(),
+        price,
+        image: String(product.imagem || '').trim(),
+        active: product.ativo !== false,
+    };
+}
+
+function renderAdminCategories() {
+    const categoryField = adminProductForm?.elements.namedItem('productCategory');
+    if (!categoryField) return;
+    const selected = categoryField.value;
+    categoryField.innerHTML = '<option value="">Selecione uma categoria</option>'
+        + adminCategories.map((category) => `
+            <option value="${escapeHtml(category.id)}">${escapeHtml(category.name)}</option>`).join('');
+    categoryField.value = selected;
+}
+
 function renderAdminProducts() {
     if (!adminCatalogList || !adminCatalogEmpty) return;
-    const products = readProductCatalog();
-    adminCatalogList.innerHTML = products.map((product) => `
+    if (adminCatalogState === 'loading') {
+        adminCatalogList.innerHTML = '<p>Carregando catálogo...</p>';
+        adminCatalogEmpty.hidden = true;
+        return;
+    }
+    if (adminCatalogState === 'error') {
+        adminCatalogList.innerHTML = '<p>Não foi possível carregar o catálogo.</p>';
+        adminCatalogEmpty.hidden = true;
+        return;
+    }
+    adminCatalogList.innerHTML = adminProducts.map((product) => `
         <article class="admin-product-card ${product.active ? '' : 'is-inactive'}">
             <div class="admin-product-card-info">
                 <div class="admin-product-card-title">
                     <strong>${escapeHtml(product.name)}</strong>
                     <span class="admin-product-state ${product.active ? 'is-active' : 'is-inactive'}">${product.active ? 'Ativa' : 'Desativada'}</span>
                 </div>
-                <span>${escapeHtml(getProductCategoryLabel(product.category))} · ${money.format(product.price)}</span>
+                <span>${escapeHtml(product.categoryName || 'Sem categoria')} · ${money.format(product.price)}</span>
                 <small>${escapeHtml(product.description || 'Sem descrição')}</small>
             </div>
             <div class="admin-product-card-actions">
@@ -627,7 +667,61 @@ function renderAdminProducts() {
                 <button class="${product.active ? 'btn-danger' : 'btn-secondary'}" type="button" data-toggle-product="${escapeHtml(product.id)}">${product.active ? 'DESATIVAR' : 'REATIVAR'}</button>
             </div>
         </article>`).join('');
-    adminCatalogEmpty.hidden = products.length > 0;
+    adminCatalogEmpty.hidden = adminProducts.length > 0;
+}
+
+async function loadAdminProducts() {
+    if (!adminCatalogList) return;
+    const requestId = ++adminCatalogRequestId;
+    adminCatalogState = 'loading';
+    renderAdminProducts();
+    try {
+        const productsResponse = await fetch('/api/admin/produtos', { credentials: 'same-origin' });
+        if (handleAdminApiAuthorization(productsResponse.status)) return;
+        if (!productsResponse.ok) throw new Error(await readAdminApiError(productsResponse, 'Não foi possível carregar o catálogo.'));
+        const [products, categories] = await Promise.all([
+            productsResponse.json(),
+            fetchPublicCatalogResource('/api/categorias'),
+        ]);
+        if (!Array.isArray(products)) throw new Error('catalog-response');
+        if (requestId !== adminCatalogRequestId) return;
+        const normalizedProducts = products.map(normalizeAdminProduct);
+        if (normalizedProducts.some((product) => !product)) throw new Error('catalog-response');
+        adminProducts = normalizedProducts;
+        adminCategories = categories
+            .filter((category) => category && category.id != null && category.nome)
+            .map((category) => ({ id: category.id, name: String(category.nome).trim() }));
+        adminCatalogState = 'ready';
+        renderAdminCategories();
+        renderAdminProducts();
+    } catch (error) {
+        if (requestId !== adminCatalogRequestId) return;
+        adminProducts = [];
+        adminCatalogState = 'error';
+        renderAdminProducts();
+        showAdminProductMessage('Não foi possível carregar o catálogo. Verifique sua sessão e tente novamente.');
+    }
+}
+
+async function sendAdminProductRequest(url, method, body) {
+    const csrfToken = await getCsrfToken();
+    const response = await fetch(url, {
+        method,
+        credentials: 'same-origin',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-XSRF-TOKEN': csrfToken,
+        },
+        body: JSON.stringify(body),
+    });
+    if (handleAdminApiAuthorization(response.status)) {
+        throw new Error('Sessão expirada ou acesso não autorizado.');
+    }
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(data?.message || 'Não foi possível salvar a pizza.');
+    const product = normalizeAdminProduct(data);
+    if (!product) throw new Error('A resposta da API está indisponível.');
+    return product;
 }
 
 function showAdminProductMessage(message, type = 'error') {
@@ -651,7 +745,7 @@ function editAdminProduct(product) {
     editingProductId = product.id;
     adminProductForm.elements.namedItem('productName').value = product.name;
     adminProductForm.elements.namedItem('productDescription').value = product.description;
-    adminProductForm.elements.namedItem('productCategory').value = product.category;
+    adminProductForm.elements.namedItem('productCategory').value = product.categoryId;
     adminProductForm.elements.namedItem('productPrice').value = product.price;
     adminProductForm.elements.namedItem('productImage').value = product.image;
     if (adminProductFormTitle) adminProductFormTitle.textContent = 'Editar pizza';
@@ -661,29 +755,31 @@ function editAdminProduct(product) {
     adminProductForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function toggleAdminProduct(productIdValue) {
-    const products = readProductCatalog();
-    const product = products.find((item) => item.id === productIdValue);
+async function toggleAdminProduct(productIdValue) {
+    const product = adminProducts.find((item) => String(item.id) === String(productIdValue));
     if (!product) return;
     if (product.active && !window.confirm(`Deseja realmente desativar a pizza "${product.name}"?`)) return;
-    product.active = !product.active;
-    if (!saveProductCatalog(products)) {
-        showAdminProductMessage('Não foi possível atualizar a disponibilidade da pizza.');
-        return;
+    try {
+        const updatedProduct = await sendAdminProductRequest(
+            `/api/admin/produtos/${encodeURIComponent(product.id)}/status`,
+            'PATCH',
+            { status: product.active ? 'inativo' : 'ativo' }
+        );
+        adminProducts = adminProducts.map((item) => item.id === updatedProduct.id ? updatedProduct : item);
+        renderAdminProducts();
+        showAdminProductMessage(updatedProduct.active ? 'Pizza reativada com sucesso.' : 'Pizza desativada com sucesso.', 'success');
+    } catch (error) {
+        showAdminProductMessage(error.message || 'Não foi possível atualizar a disponibilidade da pizza.');
     }
-    renderPublicCatalog();
-    renderAdminProducts();
-    applyCategoryFilter('all');
-    showAdminProductMessage(product.active ? 'Pizza reativada com sucesso.' : 'Pizza desativada com sucesso.', 'success');
 }
 
-function submitAdminProduct(event) {
+async function submitAdminProduct(event) {
     event.preventDefault();
     if (!adminProductForm) return;
     const formData = new FormData(adminProductForm);
     const name = String(formData.get('productName') || '').trim();
     const description = String(formData.get('productDescription') || '').trim();
-    const category = String(formData.get('productCategory') || '').trim();
+    const categoryId = String(formData.get('productCategory') || '').trim();
     const price = Number(formData.get('productPrice'));
     const image = String(formData.get('productImage') || '').trim();
 
@@ -692,7 +788,7 @@ function submitAdminProduct(event) {
         adminProductForm.elements.namedItem('productName').focus();
         return;
     }
-    if (!PRODUCT_CATEGORIES.includes(category)) {
+    if (!categoryId || !adminCategories.some((category) => String(category.id) === categoryId)) {
         showAdminProductMessage('Selecione uma categoria válida.');
         adminProductForm.elements.namedItem('productCategory').focus();
         return;
@@ -703,41 +799,41 @@ function submitAdminProduct(event) {
         return;
     }
 
-    const products = readProductCatalog();
-    if (editingProductId) {
-        const product = products.find((item) => item.id === editingProductId);
-        if (!product) {
-            showAdminProductMessage('A pizza selecionada não foi encontrada.');
-            return;
-        }
-        const duplicate = products.find((item) => item.id !== editingProductId && item.name.toLowerCase() === name.toLowerCase());
-        if (duplicate) {
-            showAdminProductMessage('Já existe outra pizza com este nome.');
-            return;
-        }
-        Object.assign(product, { name, description, category, price, image });
-        showAdminProductMessage('Pizza atualizada com sucesso.', 'success');
-    } else {
-        if (products.some((item) => item.name.toLowerCase() === name.toLowerCase())) {
-            showAdminProductMessage('Já existe uma pizza com este nome.');
-            return;
-        }
-        products.push(normalizeProduct({ id: productId(name), name, description, category, price, image, active: true }));
-        showAdminProductMessage('Pizza cadastrada com sucesso.', 'success');
-    }
+    const payload = {
+        nome: name,
+        descricao: description,
+        preco: price,
+        imagem: image,
+        categoriaId: Number(categoryId),
+        ativo: editingProductId
+            ? adminProducts.find((product) => String(product.id) === String(editingProductId))?.active ?? true
+            : true,
+    };
 
-    if (!saveProductCatalog(products)) {
-        showAdminProductMessage('Não foi possível salvar a pizza.');
-        return;
+    const submitButton = adminProductForm.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
+    try {
+        const url = editingProductId
+            ? `/api/admin/produtos/${encodeURIComponent(editingProductId)}`
+            : '/api/admin/produtos';
+        const savedProduct = await sendAdminProductRequest(url, editingProductId ? 'PUT' : 'POST', payload);
+        if (editingProductId) {
+            adminProducts = adminProducts.map((product) => product.id === savedProduct.id ? savedProduct : product);
+        } else {
+            adminProducts = [...adminProducts, savedProduct];
+        }
+        renderAdminProducts();
+        showAdminProductMessage(editingProductId ? 'Pizza atualizada com sucesso.' : 'Pizza cadastrada com sucesso.', 'success');
+        adminProductForm.reset();
+        editingProductId = null;
+        if (adminProductFormTitle) adminProductFormTitle.textContent = 'Adicionar ao cardápio';
+        if (adminProductFormLabel) adminProductFormLabel.textContent = 'NOVA PIZZA';
+        if (adminProductCancel) adminProductCancel.hidden = true;
+    } catch (error) {
+        showAdminProductMessage(error.message || 'Não foi possível salvar a pizza.');
+    } finally {
+        if (submitButton) submitButton.disabled = false;
     }
-    renderPublicCatalog();
-    renderAdminProducts();
-    applyCategoryFilter('all');
-    adminProductForm.reset();
-    editingProductId = null;
-    if (adminProductFormTitle) adminProductFormTitle.textContent = 'Adicionar ao cardápio';
-    if (adminProductFormLabel) adminProductFormLabel.textContent = 'NOVA PIZZA';
-    if (adminProductCancel) adminProductCancel.hidden = true;
 }
 
 function renderAdminOrderDetails(order) {
@@ -1542,9 +1638,8 @@ if (adminCatalogList) {
     adminCatalogList.addEventListener('click', (event) => {
         const editButton = event.target.closest('[data-edit-product]');
         const toggleButton = event.target.closest('[data-toggle-product]');
-        const products = readProductCatalog();
         if (editButton) {
-            editAdminProduct(products.find((product) => product.id === editButton.dataset.editProduct));
+            editAdminProduct(adminProducts.find((product) => String(product.id) === editButton.dataset.editProduct));
         }
         if (toggleButton) {
             toggleAdminProduct(toggleButton.dataset.toggleProduct);
