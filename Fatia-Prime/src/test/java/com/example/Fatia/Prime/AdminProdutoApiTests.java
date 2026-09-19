@@ -63,7 +63,8 @@ class AdminProdutoApiTests {
         usuarioRepository.saveAndFlush(new Usuario(
             "Administrador de Produtos",
             "admin-produtos@fatiaprime.test",
-            passwordEncoder.encode("senha-123")
+            passwordEncoder.encode("senha-123"),
+            Perfil.ADMIN
         ));
 
         carnes = categoriaRepository.saveAndFlush(new Categoria("Carnes"));
