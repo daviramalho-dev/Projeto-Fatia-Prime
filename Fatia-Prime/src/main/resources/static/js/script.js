@@ -1,5 +1,6 @@
 const WHATSAPP_NUMBER = '5561993637373';
 const CART_STORAGE_KEY = 'fatia-prime-cart';
+const ORDER_STORAGE_KEY = 'fatia-prime-last-order';
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const panel = document.querySelector('.cart-panel');
 const checkoutPanel = document.querySelector('.checkout-panel');
@@ -7,6 +8,11 @@ const checkoutForm = document.querySelector('#checkout-form');
 const checkoutMessage = document.querySelector('.checkout-message');
 const checkoutItemsElement = document.querySelector('.checkout-items');
 const checkoutTotalElement = document.querySelector('.checkout-total strong');
+const confirmationPanel = document.querySelector('.confirmation-panel');
+const confirmationSummaryElement = document.querySelector('.confirmation-items');
+const confirmationCodeElement = document.querySelector('.confirmation-code');
+const confirmationCustomerElement = document.querySelector('.confirmation-customer');
+const confirmationTotalElement = document.querySelector('.confirmation-total strong');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
@@ -58,12 +64,14 @@ function saveCart() {
 window.cart = loadCart();
 
 function openCart() {
+    if (!panel || !backdrop) return;
     panel.classList.add('is-open');
     backdrop.classList.add('is-open');
     panel.setAttribute('aria-hidden', 'false');
 }
 
 function closeCart() {
+    if (!panel || !backdrop) return;
     panel.classList.remove('is-open');
     backdrop.classList.remove('is-open');
     panel.setAttribute('aria-hidden', 'true');
@@ -76,6 +84,74 @@ function closeCheckout() {
     if (checkoutMessage) {
         checkoutMessage.textContent = '';
         checkoutMessage.classList.remove('success');
+        checkoutMessage.classList.remove('error');
+    }
+}
+
+function closeConfirmation() {
+    if (!confirmationPanel) return;
+    confirmationPanel.classList.remove('is-open');
+    confirmationPanel.setAttribute('aria-hidden', 'true');
+    if (backdrop) {
+        backdrop.classList.remove('is-open');
+    }
+}
+
+function generateOrderCode() {
+    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
+    return `FP-${datePart}-${randomPart}`;
+}
+
+function saveRecentOrder(orderData) {
+    try {
+        localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(orderData));
+    } catch (error) {
+        console.warn('Não foi possível salvar o último pedido no localStorage.', error);
+    }
+}
+
+function renderConfirmation(orderData) {
+    if (!confirmationPanel || !confirmationSummaryElement || !confirmationCodeElement || !confirmationTotalElement || !confirmationCustomerElement) {
+        return;
+    }
+
+    const data = orderData || JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) || 'null');
+    if (!data) return;
+
+    confirmationCodeElement.textContent = `Pedido ${data.code}`;
+    confirmationSummaryElement.innerHTML = data.items.map((item) => `
+        <li>
+            <div>
+                <strong>${item.name}</strong>
+                <small>${item.quantity}x • ${money.format(Number(item.price))} cada</small>
+            </div>
+            <strong>${money.format(Number(item.price) * Number(item.quantity))}</strong>
+        </li>`).join('');
+    confirmationTotalElement.textContent = money.format(Number(data.total));
+
+    const customerInfo = [
+        data.customer ? `Nome: ${data.customer}` : null,
+        data.phone ? `Telefone: ${data.phone}` : null,
+        data.address ? `Endereço: ${data.address}` : null,
+    ].filter(Boolean).join(' • ');
+
+    confirmationCustomerElement.innerHTML = customerInfo
+        ? `<strong>Dados do cliente</strong><span>${customerInfo}</span>`
+        : '<strong>Dados do cliente</strong><span>Não informado.</span>';
+}
+
+function openConfirmation(orderData) {
+    if (!confirmationPanel) return;
+    renderConfirmation(orderData);
+    confirmationPanel.classList.add('is-open');
+    confirmationPanel.setAttribute('aria-hidden', 'false');
+    if (backdrop) {
+        backdrop.classList.add('is-open');
+    }
+    if (checkoutPanel) {
+        checkoutPanel.classList.remove('is-open');
+        checkoutPanel.setAttribute('aria-hidden', 'true');
     }
 }
 
@@ -182,10 +258,14 @@ function openCheckout() {
 
     renderCheckoutSummary();
     checkoutPanel.classList.add('is-open');
-    backdrop.classList.add('is-open');
+    if (backdrop) {
+        backdrop.classList.add('is-open');
+    }
     checkoutPanel.setAttribute('aria-hidden', 'false');
-    panel.classList.remove('is-open');
-    panel.setAttribute('aria-hidden', 'true');
+    if (panel) {
+        panel.classList.remove('is-open');
+        panel.setAttribute('aria-hidden', 'true');
+    }
 }
 
 function updateCart() {
@@ -248,6 +328,7 @@ document.querySelector('.checkout-close').addEventListener('click', closeCheckou
 backdrop.addEventListener('click', () => {
     closeCart();
     closeCheckout();
+    closeConfirmation();
 });
 
 itemsElement.addEventListener('click', (event) => {
@@ -319,9 +400,24 @@ if (checkoutForm) {
             return;
         }
 
+        const orderData = {
+            code: generateOrderCode(),
+            customer,
+            email,
+            address,
+            phone,
+            notes,
+            items: window.cart.map((item) => ({
+                name: item.name,
+                price: Number(item.price),
+                quantity: Number(item.quantity),
+            })),
+            total,
+        };
+
         const message = [
             'Olá! Quero fazer este pedido:',
-            ...window.cart.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(Number(item.price) * Number(item.quantity))}`),
+            ...orderData.items.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(item.price * item.quantity)}`),
             '', `Total: ${money.format(total)}`,
             `Nome: ${customer}`,
             `E-mail: ${email}`,
@@ -330,10 +426,23 @@ if (checkoutForm) {
             notes && `Observações: ${notes}`,
         ].filter(Boolean).join('\n');
 
+        saveRecentOrder(orderData);
         showCheckoutMessage('Pedido preparado para envio.', true);
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+        openConfirmation(orderData);
     });
 }
+
+document.querySelector('.confirmation-close').addEventListener('click', closeConfirmation);
+document.querySelector('.confirmation-continue').addEventListener('click', () => {
+    closeConfirmation();
+    window.cart = [];
+    updateCart();
+    closeCheckout();
+    if (checkoutForm) {
+        checkoutForm.reset();
+    }
+});
 
 document.querySelector('.js-scroll-to-about').addEventListener('click', () => {
     document.querySelector('#sobre').scrollIntoView({ behavior: 'smooth' });
