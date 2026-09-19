@@ -1086,6 +1086,10 @@ button {
     font-size: 11px;
 }
 
+.admin-orders-message.error {
+    color: #e57373;
+}
+
 .admin-order-list {
     display: flex;
     flex-direction: column;
