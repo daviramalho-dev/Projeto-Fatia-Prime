@@ -16,7 +16,7 @@
 <body>
 
     <!-- HEADER -->
-    <header class="header">
+    <header class="header public-header">
 
         <div class="logo">
             <span class="logo-fatia">FATIA</span>
@@ -27,13 +27,24 @@
             <a href="#inicio">Início</a>
             <a href="#cardapio">Cardápio</a>
             <a href="#sobre">Sobre nós</a>
-            <a href="#acesso-admin">Acesso admin</a>
+            <a class="js-open-admin" href="#acesso-admin">Acesso admin</a>
         </nav>
 
         <button class="btn-pedido" type="button" data-open-cart>
             Fazer pedido <span class="cart-count">0</span>
         </button>
 
+    </header>
+
+    <header class="admin-header" aria-label="Navegação administrativa" hidden>
+        <a class="admin-header-brand" href="#painel-pedidos">
+            <span>FATIA</span><strong>PRIME</strong><small>ADMIN</small>
+        </a>
+        <nav class="admin-nav">
+            <a href="#painel-pedidos">Pedidos</a>
+            <a href="#gestao-cardapio">Cardápio</a>
+        </nav>
+        <button class="admin-logout" type="button">SAIR</button>
     </header>
 
 
@@ -476,7 +487,7 @@
         </section>
 
         <!-- ACESSO ADMINISTRATIVO -->
-        <section class="admin-access" id="acesso-admin">
+        <section class="admin-access" id="acesso-admin" hidden>
 
             <div class="admin-access-intro">
                 <span>ÁREA RESTRITA</span>
@@ -518,22 +529,20 @@
                     A validação do acesso será conectada à autenticação segura do servidor.
                 </p>
 
-                <a class="admin-panel-link" href="#painel-pedidos">IR PARA PAINEL DE PEDIDOS</a>
-                <a class="admin-panel-link" href="#gestao-cardapio">IR PARA GESTÃO DO CARDÁPIO</a>
             </div>
 
-            <a class="admin-back-link" href="#cardapio">← Voltar ao cardápio</a>
+            <a class="admin-back-link js-exit-admin" href="#cardapio">← Voltar ao cardápio</a>
         </section>
 
         <!-- PAINEL DE PEDIDOS -->
-        <section class="admin-orders" id="painel-pedidos">
+        <section class="admin-orders" id="painel-pedidos" hidden>
             <div class="admin-orders-heading">
                 <div>
                     <span>ÁREA ADMINISTRATIVA</span>
                     <h2>PAINEL DE <strong>PEDIDOS.</strong></h2>
                     <p>Visualização local dos pedidos registrados neste navegador.</p>
                 </div>
-                <a class="admin-back-link" href="#acesso-admin">← Voltar ao acesso administrativo</a>
+                <a class="admin-back-link" href="#painel-pedidos">← Voltar ao painel</a>
             </div>
 
             <div class="admin-orders-panel">
@@ -592,7 +601,7 @@
         </section>
 
         <!-- GESTÃO DO CARDÁPIO -->
-        <section class="admin-catalog" id="gestao-cardapio">
+        <section class="admin-catalog" id="gestao-cardapio" hidden>
             <div class="admin-orders-heading">
                 <div>
                     <span>ÁREA ADMINISTRATIVA</span>
@@ -731,9 +740,8 @@
             <a href="#inicio">Início</a>
             <a href="#cardapio">Cardápio</a>
             <a href="#sobre">Sobre nós</a>
-            <a href="#acesso-admin">Acesso admin</a>
+            <a class="js-open-admin" href="#acesso-admin">Acesso admin</a>
             <a href="#consultar-pedido">Consultar pedido</a>
-            <a href="#gestao-cardapio">Gestão do cardápio</a>
 
         </div>
 
