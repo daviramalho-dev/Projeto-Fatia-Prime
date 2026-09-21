@@ -15,7 +15,6 @@ const checkoutTotalElement = document.querySelector('.checkout-total strong');
 const confirmationPanel = document.querySelector('.confirmation-panel');
 const confirmationSummaryElement = document.querySelector('.confirmation-items');
 const confirmationCodeElement = document.querySelector('.confirmation-code');
-const confirmationStatusElement = document.querySelector('.confirmation-status');
 const confirmationCustomerElement = document.querySelector('.confirmation-customer');
 const confirmationTotalElement = document.querySelector('.confirmation-total strong');
 const orderQueryForm = document.querySelector('#order-query-form');
@@ -60,13 +59,10 @@ let editingProductId = null;
 let selectedAdminOrderId = null;
 let adminOrders = [];
 let adminOrdersRequestId = 0;
-let publicCatalogState = 'loading';
 let publicProducts = [];
 let publicCategories = [];
-let selectedPublicCategory = 'all';
 let adminProducts = [];
 let adminCategories = [];
-let adminCatalogState = 'idle';
 let adminCatalogRequestId = 0;
 
 function setInterfaceMode(mode) {
@@ -251,11 +247,7 @@ async function loadAdminOrders() {
         }
         const data = await response.json();
         if (requestId !== adminOrdersRequestId) return;
-        if (!Array.isArray(data)) throw new Error('A resposta da API de pedidos está indisponível.');
-        adminOrders = data.map(normalizeAdminOrder);
-        if (adminOrders.some((order) => !order.id || !order.code || !Array.isArray(order.items))) {
-            throw new Error('A resposta da API de pedidos está indisponível.');
-        }
+        adminOrders = Array.isArray(data) ? data.map(normalizeAdminOrder) : [];
         renderAdminOrders();
     } catch (error) {
         if (requestId !== adminOrdersRequestId) return;
@@ -277,7 +269,6 @@ function sanitizeCart(items) {
         const name = typeof item.name === 'string' ? item.name.trim() : '';
         const price = Number(item.price);
         const quantity = Number(item.quantity);
-        const productIdValue = item.productId ?? item.id ?? null;
 
         if (!name || !Number.isFinite(price) || price <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
             return accumulator;
@@ -289,7 +280,12 @@ function sanitizeCart(items) {
             return accumulator;
         }
 
-        accumulator.push({ name, price, quantity: Math.trunc(quantity), productId: productIdValue });
+        accumulator.push({
+            name,
+            price,
+            quantity: Math.trunc(quantity),
+            productId: item.productId ?? item.id ?? null,
+        });
         return accumulator;
     }, []);
 }
@@ -404,109 +400,85 @@ function getProductCategoryLabel(category) {
     return { classicas: 'Clássicas', carnes: 'Carnes', frango: 'Frango', queijos: 'Queijos' }[category] || category;
 }
 
-function renderCategoryFilters() {
-    if (!publicMenuFilters) return;
+function normalizeApiProduct(product, categories) {
+    if (!product || typeof product !== 'object' || product.ativo === false) return null;
+    const price = Number(product.preco);
+    if (!Number.isInteger(Number(product.id)) || !product.nome || !Number.isFinite(price) || price <= 0) return null;
+    const category = categories.find((item) => String(item.id) === String(product.categoriaId));
+    return {
+        id: Number(product.id),
+        name: String(product.nome).trim(),
+        description: String(product.descricao || '').trim(),
+        categoryId: product.categoriaId == null ? '' : String(product.categoriaId),
+        categoryName: category?.name || String(product.categoriaNome || '').trim(),
+        price,
+        image: String(product.imagem || '').trim(),
+        active: product.ativo !== false,
+    };
+}
+
+async function fetchApiJson(url, options = {}) {
+    const response = await fetch(url, { credentials: 'same-origin', ...options });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(data?.message || 'Não foi possível comunicar com a API.');
+    return data;
+}
+
+async function loadPublicCatalog() {
+    try {
+        const [products, categories] = await Promise.all([
+            fetchApiJson('/api/produtos'),
+            fetchApiJson('/api/categorias'),
+        ]);
+        if (!Array.isArray(products) || !Array.isArray(categories)) throw new Error('Resposta inválida do catálogo.');
+        publicCategories = categories
+            .filter((category) => category && category.id != null && category.nome)
+            .map((category) => ({ id: category.id, name: String(category.nome).trim() }));
+        publicProducts = products.map((product) => normalizeApiProduct(product, publicCategories)).filter(Boolean);
+        renderCategoryFilters(publicCategories, 'public');
+        renderPublicCatalog();
+    } catch (error) {
+        publicProducts = [];
+        publicCategories = [];
+        renderCategoryFilters([], 'public');
+        renderPublicCatalog();
+        showCatalogMessage(error.message || 'Não foi possível carregar o cardápio.');
+    }
+}
+
+function renderCategoryFilters(categories, mode) {
+    if (!publicMenuFilters || mode !== 'public') return;
     publicMenuFilters.innerHTML = [
         '<button class="menu-filter-button is-active" type="button" data-filter="all" aria-pressed="true">Todos</button>',
-        ...publicCategories.map((category) => `
-            <button class="menu-filter-button" type="button" data-filter="${escapeHtml(category.id)}" aria-pressed="false">
-                ${escapeHtml(category.name)}
-            </button>`),
+        ...categories.map((category) => `<button class="menu-filter-button" type="button" data-filter="${escapeHtml(category.id)}" aria-pressed="false">${escapeHtml(category.name)}</button>`),
     ].join('');
+}
+
+function showCatalogMessage(message) {
+    const menuList = document.querySelector('.menu-list');
+    if (menuList && !publicProducts.length) menuList.innerHTML = `<div class="catalog-message">${escapeHtml(message)}</div>`;
 }
 
 function renderPublicCatalog() {
     const pizzaGrid = document.querySelector('.pizza-grid');
     const menuList = document.querySelector('.menu-list');
-
+    const products = publicProducts.filter((product) => product.active);
     if (pizzaGrid) {
-        pizzaGrid.innerHTML = publicProducts.slice(0, 3).map((product) => `
-            <article class="pizza-card" data-product="${escapeHtml(product.name)}" data-product-id="${escapeHtml(product.id)}" data-price="${product.price}">
+        pizzaGrid.innerHTML = products.slice(0, 3).map((product) => `
+            <article class="pizza-card" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">
                 <div class="pizza-image">
                     ${product.image ? `<img class="pizza-zoom-menor" src="${escapeHtml(product.image)}" alt="Pizza ${escapeHtml(product.name)}">` : '<div class="pizza-image-placeholder" aria-hidden="true">FP</div>'}
                 </div>
                 <div class="pizza-info"><div><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div><strong>${money.format(product.price)}</strong></div>
-                <button class="btn-card" type="button" data-product-id="${escapeHtml(product.id)}">ADICIONAR</button>
+                <button class="btn-card" type="button" data-product-id="${product.id}">ADICIONAR</button>
             </article>`).join('');
     }
-    if (!menuList) return;
-
-    if (publicCatalogState === 'loading') {
-        menuList.innerHTML = '<div class="catalog-message">Carregando cardápio...</div>';
-        return;
-    }
-    if (publicCatalogState === 'error') {
-        menuList.innerHTML = '<div class="catalog-message">Não foi possível carregar o cardápio. Tente novamente.</div>';
-        return;
-    }
-    if (!publicProducts.length) {
-        menuList.innerHTML = '<div class="catalog-message">Nenhum produto disponível no momento.</div>';
-        return;
-    }
-
-    menuList.innerHTML = publicProducts.map((product) => `
-        <div class="menu-item" data-category-id="${escapeHtml(product.categoryId)}">
-            ${product.image ? `<img class="menu-product-image" src="${escapeHtml(product.image)}" alt="Pizza ${escapeHtml(product.name)}">` : ''}
-            <div class="menu-text">
-                <h3>${escapeHtml(product.name)}</h3>
-                <p>${escapeHtml(product.description)}</p>
-            </div>
-            <div class="menu-actions">
-                <strong>${money.format(product.price)}</strong>
-                <button class="btn-menu-add" type="button" data-product-id="${escapeHtml(product.id)}" data-product="${escapeHtml(product.name)}" data-price="${product.price}">ADICIONAR</button>
-            </div>
-        </div>`).join('');
-    applyCategoryFilter(selectedPublicCategory);
-}
-
-function normalizeApiProduct(product, categories) {
-    if (!product || typeof product !== 'object' || product.ativo === false) return null;
-    const price = Number(product.preco);
-    if (!product.id || !product.nome || !Number.isFinite(price) || price <= 0) return null;
-
-    const category = categories.find((item) => String(item.id) === String(product.categoriaId));
-    return {
-        id: product.id,
-        name: String(product.nome).trim(),
-        description: String(product.descricao || '').trim(),
-        categoryId: product.categoriaId == null ? '' : String(product.categoriaId),
-        categoryName: category?.nome || String(product.categoriaNome || '').trim(),
-        price,
-        image: String(product.imagem || '').trim(),
-    };
-}
-
-async function fetchPublicCatalogResource(url) {
-    const response = await fetch(url, { credentials: 'same-origin' });
-    if (!response.ok) throw new Error('catalog-api');
-    const data = await response.json();
-    if (!Array.isArray(data)) throw new Error('catalog-response');
-    return data;
-}
-
-async function loadPublicCatalog() {
-    publicCatalogState = 'loading';
-    renderPublicCatalog();
-    try {
-        const [products, categories] = await Promise.all([
-            fetchPublicCatalogResource('/api/produtos'),
-            fetchPublicCatalogResource('/api/categorias'),
-        ]);
-        publicCategories = categories
-            .filter((category) => category && category.id != null && category.nome)
-            .map((category) => ({ id: category.id, name: String(category.nome).trim() }));
-        publicProducts = products
-            .map((product) => normalizeApiProduct(product, publicCategories))
-            .filter(Boolean);
-        publicCatalogState = 'ready';
-        renderCategoryFilters();
-        renderPublicCatalog();
-    } catch (error) {
-        publicProducts = [];
-        publicCategories = [];
-        publicCatalogState = 'error';
-        renderCategoryFilters();
-        renderPublicCatalog();
+    if (menuList) {
+        menuList.innerHTML = products.slice(3).map((product) => `
+            <div class="menu-item" data-category="${escapeHtml(product.categoryId)}">
+                <div class="menu-text"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div>
+                <div class="menu-actions"><strong>${money.format(product.price)}</strong><button class="btn-menu-add" type="button" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">ADICIONAR</button></div>
+            </div>`).join('');
     }
 }
 
@@ -542,6 +514,12 @@ function closeConfirmation() {
     if (backdrop) {
         backdrop.classList.remove('is-open');
     }
+}
+
+function generateOrderCode() {
+    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
+    return `FP-${datePart}-${randomPart}`;
 }
 
 function saveRecentOrder(orderData) {
@@ -622,44 +600,14 @@ function showAdminStatusMessage(message, type = 'error') {
     adminStatusMessage.className = `admin-status-message ${type}`.trim();
 }
 
-function normalizeAdminProduct(product) {
-    if (!product || typeof product !== 'object' || product.id == null || !product.nome) return null;
-    const price = Number(product.preco);
-    if (!Number.isFinite(price)) return null;
-    return {
-        id: product.id,
-        name: String(product.nome).trim(),
-        description: String(product.descricao || '').trim(),
-        categoryId: product.categoriaId == null ? '' : String(product.categoriaId),
-        categoryName: String(product.categoriaNome || '').trim(),
-        price,
-        image: String(product.imagem || '').trim(),
-        active: product.ativo !== false,
-    };
-}
-
-function renderAdminCategories() {
-    const categoryField = adminProductForm?.elements.namedItem('productCategory');
-    if (!categoryField) return;
-    const selected = categoryField.value;
-    categoryField.innerHTML = '<option value="">Selecione uma categoria</option>'
-        + adminCategories.map((category) => `
-            <option value="${escapeHtml(category.id)}">${escapeHtml(category.name)}</option>`).join('');
-    categoryField.value = selected;
+function normalizeAdminProduct(product, categories) {
+    const normalized = normalizeApiProduct(product, categories);
+    if (!normalized || product.id == null || !product.nome) return null;
+    return { ...normalized, active: product.ativo !== false };
 }
 
 function renderAdminProducts() {
     if (!adminCatalogList || !adminCatalogEmpty) return;
-    if (adminCatalogState === 'loading') {
-        adminCatalogList.innerHTML = '<p>Carregando catálogo...</p>';
-        adminCatalogEmpty.hidden = true;
-        return;
-    }
-    if (adminCatalogState === 'error') {
-        adminCatalogList.innerHTML = '<p>Não foi possível carregar o catálogo.</p>';
-        adminCatalogEmpty.hidden = true;
-        return;
-    }
     adminCatalogList.innerHTML = adminProducts.map((product) => `
         <article class="admin-product-card ${product.active ? '' : 'is-inactive'}">
             <div class="admin-product-card-info">
@@ -681,55 +629,29 @@ function renderAdminProducts() {
 async function loadAdminProducts() {
     if (!adminCatalogList) return;
     const requestId = ++adminCatalogRequestId;
-    adminCatalogState = 'loading';
-    renderAdminProducts();
     try {
-        const productsResponse = await fetch('/api/admin/produtos', { credentials: 'same-origin' });
-        if (handleAdminApiAuthorization(productsResponse.status)) return;
-        if (!productsResponse.ok) throw new Error(await readAdminApiError(productsResponse, 'Não foi possível carregar o catálogo.'));
         const [products, categories] = await Promise.all([
-            productsResponse.json(),
-            fetchPublicCatalogResource('/api/categorias'),
+            fetchApiJson('/api/admin/produtos'),
+            fetchApiJson('/api/categorias'),
         ]);
-        if (!Array.isArray(products)) throw new Error('catalog-response');
-        if (requestId !== adminCatalogRequestId) return;
-        const normalizedProducts = products.map(normalizeAdminProduct);
-        if (normalizedProducts.some((product) => !product)) throw new Error('catalog-response');
-        adminProducts = normalizedProducts;
+        if (!Array.isArray(products) || !Array.isArray(categories)) throw new Error('Resposta inválida do catálogo.');
         adminCategories = categories
             .filter((category) => category && category.id != null && category.nome)
             .map((category) => ({ id: category.id, name: String(category.nome).trim() }));
-        adminCatalogState = 'ready';
-        renderAdminCategories();
+        adminProducts = products.map((product) => normalizeAdminProduct(product, adminCategories)).filter(Boolean);
+        if (requestId !== adminCatalogRequestId) return;
+        const categoryField = adminProductForm?.elements.namedItem('productCategory');
+        if (categoryField) {
+            categoryField.innerHTML = '<option value="">Selecione uma categoria</option>'
+                + adminCategories.map((category) => `<option value="${escapeHtml(category.id)}">${escapeHtml(category.name)}</option>`).join('');
+        }
         renderAdminProducts();
     } catch (error) {
         if (requestId !== adminCatalogRequestId) return;
         adminProducts = [];
-        adminCatalogState = 'error';
         renderAdminProducts();
-        showAdminProductMessage('Não foi possível carregar o catálogo. Verifique sua sessão e tente novamente.');
+        showAdminProductMessage(error.message || 'Não foi possível carregar o catálogo.');
     }
-}
-
-async function sendAdminProductRequest(url, method, body) {
-    const csrfToken = await getCsrfToken();
-    const response = await fetch(url, {
-        method,
-        credentials: 'same-origin',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': csrfToken,
-        },
-        body: JSON.stringify(body),
-    });
-    if (handleAdminApiAuthorization(response.status)) {
-        throw new Error('Sessão expirada ou acesso não autorizado.');
-    }
-    const data = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(data?.message || 'Não foi possível salvar a pizza.');
-    const product = normalizeAdminProduct(data);
-    if (!product) throw new Error('A resposta da API está indisponível.');
-    return product;
 }
 
 function showAdminProductMessage(message, type = 'error') {
@@ -768,14 +690,17 @@ async function toggleAdminProduct(productIdValue) {
     if (!product) return;
     if (product.active && !window.confirm(`Deseja realmente desativar a pizza "${product.name}"?`)) return;
     try {
-        const updatedProduct = await sendAdminProductRequest(
-            `/api/admin/produtos/${encodeURIComponent(product.id)}/status`,
-            'PATCH',
-            { status: product.active ? 'inativo' : 'ativo' }
-        );
-        adminProducts = adminProducts.map((item) => item.id === updatedProduct.id ? updatedProduct : item);
+        const csrfToken = await getCsrfToken();
+        const updated = await fetchApiJson(`/api/admin/produtos/${encodeURIComponent(product.id)}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken },
+            body: JSON.stringify({ status: product.active ? 'inativo' : 'ativo' }),
+        });
+        const normalized = normalizeAdminProduct(updated, adminCategories);
+        adminProducts = adminProducts.map((item) => item.id === normalized.id ? normalized : item);
         renderAdminProducts();
-        showAdminProductMessage(updatedProduct.active ? 'Pizza reativada com sucesso.' : 'Pizza desativada com sucesso.', 'success');
+        await loadPublicCatalog();
+        showAdminProductMessage(normalized.active ? 'Pizza reativada com sucesso.' : 'Pizza desativada com sucesso.', 'success');
     } catch (error) {
         showAdminProductMessage(error.message || 'Não foi possível atualizar a disponibilidade da pizza.');
     }
@@ -807,6 +732,10 @@ async function submitAdminProduct(event) {
         return;
     }
 
+    if (editingProductId && !adminProducts.some((product) => String(product.id) === String(editingProductId))) {
+        showAdminProductMessage('A pizza selecionada não foi encontrada.');
+        return;
+    }
     const payload = {
         nome: name,
         descricao: description,
@@ -814,23 +743,26 @@ async function submitAdminProduct(event) {
         imagem: image,
         categoriaId: Number(categoryId),
         ativo: editingProductId
-            ? adminProducts.find((product) => String(product.id) === String(editingProductId))?.active ?? true
+            ? adminProducts.find((product) => String(product.id) === String(editingProductId)).active
             : true,
     };
-
-    const submitButton = adminProductForm.querySelector('button[type="submit"]');
-    if (submitButton) submitButton.disabled = true;
+    const url = editingProductId
+        ? `/api/admin/produtos/${encodeURIComponent(editingProductId)}`
+        : '/api/admin/produtos';
+    const method = editingProductId ? 'PUT' : 'POST';
     try {
-        const url = editingProductId
-            ? `/api/admin/produtos/${encodeURIComponent(editingProductId)}`
-            : '/api/admin/produtos';
-        const savedProduct = await sendAdminProductRequest(url, editingProductId ? 'PUT' : 'POST', payload);
-        if (editingProductId) {
-            adminProducts = adminProducts.map((product) => product.id === savedProduct.id ? savedProduct : product);
-        } else {
-            adminProducts = [...adminProducts, savedProduct];
-        }
+        const csrfToken = await getCsrfToken();
+        const saved = await fetchApiJson(url, {
+            method,
+            headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken },
+            body: JSON.stringify(payload),
+        });
+        const normalized = normalizeAdminProduct(saved, adminCategories);
+        adminProducts = editingProductId
+            ? adminProducts.map((product) => product.id === normalized.id ? normalized : product)
+            : [...adminProducts, normalized];
         renderAdminProducts();
+        await loadPublicCatalog();
         showAdminProductMessage(editingProductId ? 'Pizza atualizada com sucesso.' : 'Pizza cadastrada com sucesso.', 'success');
         adminProductForm.reset();
         editingProductId = null;
@@ -839,8 +771,6 @@ async function submitAdminProduct(event) {
         if (adminProductCancel) adminProductCancel.hidden = true;
     } catch (error) {
         showAdminProductMessage(error.message || 'Não foi possível salvar a pizza.');
-    } finally {
-        if (submitButton) submitButton.disabled = false;
     }
 }
 
@@ -934,13 +864,10 @@ function renderConfirmation(orderData) {
         return;
     }
 
-    const data = orderData;
+    const data = orderData || JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) || 'null');
     if (!data) return;
 
     confirmationCodeElement.textContent = `Pedido ${data.code}`;
-    if (confirmationStatusElement) {
-        confirmationStatusElement.textContent = `Status: ${data.status || 'Pedido recebido'}`;
-    }
     confirmationSummaryElement.innerHTML = data.items.map((item) => `
         <li>
             <div>
@@ -1149,42 +1076,56 @@ function getOrderQueryStatusLabel(status) {
     return mapping[status] || 'status-received';
 }
 
-function normalizePublicOrder(order) {
-    if (!order || typeof order !== 'object' || !order.codigo || !Array.isArray(order.itens)) {
-        return null;
+function findOrderByCodeOrPhone(code, phone) {
+    const normalizedCode = String(code || '').trim().toUpperCase();
+    const normalizedPhone = String(phone || '').replace(/\D/g, '');
+    const candidates = [...readOrderHistory()];
+    const lastOrder = localStorage.getItem(ORDER_STORAGE_KEY);
+    if (lastOrder) {
+        try {
+            const parsed = JSON.parse(lastOrder);
+            if (!candidates.some((item) => item.code === parsed.code)) {
+                candidates.push(parsed);
+            }
+        } catch (error) {
+            console.warn('Não foi possível carregar o último pedido para consulta.', error);
+        }
     }
 
-    const total = Number(order.valorTotal);
-    if (!Number.isFinite(total)) return null;
+    return candidates.find((order) => {
+        const orderCode = String(order.code || '').trim().toUpperCase();
+        const orderPhone = String(order.phone || '').replace(/\D/g, '');
+        const matchesCode = !normalizedCode || orderCode === normalizedCode;
+        const matchesPhone = !normalizedPhone || orderPhone === normalizedPhone;
+        return matchesCode && matchesPhone;
+    }) || null;
+}
 
+function normalizePublicOrder(order) {
+    if (!order || typeof order !== 'object' || !order.codigo || !Array.isArray(order.itens)) return null;
     const items = order.itens.map((item) => {
-        if (!item || typeof item !== 'object') return null;
         const price = Number(item.precoUnitario);
-        const subtotal = Number(item.subtotal);
         const quantity = Number(item.quantidade);
-        if (!Number.isFinite(price) || !Number.isFinite(subtotal) || !Number.isFinite(quantity)) {
-            return null;
-        }
+        if (!item || !Number.isFinite(price) || !Number.isFinite(quantity) || quantity <= 0) return null;
         return {
             name: String(item.nomeProduto || 'Produto não informado'),
-            quantity,
             price,
-            subtotal,
+            quantity,
+            subtotal: price * quantity,
         };
     });
-
     if (items.some((item) => !item)) return null;
-
     return {
         code: String(order.codigo),
-        status: String(order.status || 'Status não informado'),
+        status: String(order.status || 'Pedido recebido'),
         createdAt: order.dataCriacao,
-        total,
+        customer: order.clienteNome || '',
+        email: order.clienteEmail || '',
+        phone: order.clienteTelefone || '',
+        address: order.endereco || '',
         notes: order.observacoes || '',
-        customer: order.nomeCliente || '',
-        email: order.emailCliente || '',
-        phone: order.telefone || '',
         items,
+        total: Number(order.valorTotal),
     };
 }
 
@@ -1192,33 +1133,10 @@ async function queryOrdersByApi(code, phone) {
     const params = new URLSearchParams();
     if (code) params.set('codigo', code);
     else params.set('telefone', normalizePhone(phone));
-
-    const response = await fetch(`/api/pedidos/consulta?${params.toString()}`, {
-        credentials: 'same-origin',
-    });
-
-    let data = null;
-    try {
-        data = await response.json();
-    } catch (error) {
-        if (!response.ok) {
-            throw new Error('Não foi possível consultar o pedido. Tente novamente.');
-        }
-    }
-
-    if (!response.ok) {
-        if (response.status === 404) return [];
-        throw new Error(data?.message || 'Não foi possível consultar o pedido. Tente novamente.');
-    }
-
-    if (!Array.isArray(data)) {
-        throw new Error('A resposta da consulta está indisponível. Tente novamente.');
-    }
-
+    const data = await fetchApiJson(`/api/pedidos/consulta?${params.toString()}`);
+    if (!Array.isArray(data)) throw new Error('A resposta da consulta está indisponível.');
     const orders = data.map(normalizePublicOrder);
-    if (orders.some((order) => !order)) {
-        throw new Error('A resposta da consulta está indisponível. Tente novamente.');
-    }
+    if (orders.some((order) => !order)) throw new Error('A resposta da consulta está indisponível.');
     return orders;
 }
 
@@ -1261,7 +1179,7 @@ function renderOrderQueryResult(orderData) {
                         <strong>${item.name}</strong>
                         <small>${Number(item.quantity)}x • ${money.format(Number(item.price))}</small>
                     </div>
-                    <strong>${money.format(Number(item.subtotal))}</strong>
+                    <strong>${money.format(Number(item.price) * Number(item.quantity))}</strong>
                 </li>`).join('')
             : '<li><span>Não há itens neste pedido.</span></li>';
     }
@@ -1290,73 +1208,13 @@ function cartItemsHaveProductIds() {
         && window.cart.every((item) => Number.isInteger(Number(item.productId)) && Number(item.productId) > 0);
 }
 
-function normalizeCreatedOrder(order, customer, email, phone, address, notes) {
-    if (!order || typeof order !== 'object' || !order.codigo || !Array.isArray(order.itens)) {
-        throw new Error('A resposta da criação do pedido está indisponível. Tente novamente.');
-    }
-
-    const total = Number(order.valorTotal);
-    if (!Number.isFinite(total)) {
-        throw new Error('A resposta da criação do pedido está indisponível. Tente novamente.');
-    }
-
-    const items = order.itens.map((item) => {
-        if (!item || typeof item !== 'object') {
-            throw new Error('A resposta da criação do pedido está indisponível. Tente novamente.');
-        }
-        const price = Number(item.precoUnitario);
-        const quantity = Number(item.quantidade);
-        if (!Number.isFinite(price) || !Number.isFinite(quantity)) {
-            throw new Error('A resposta da criação do pedido está indisponível. Tente novamente.');
-        }
-        return {
-            name: String(item.nomeProduto || 'Produto não informado'),
-            price,
-            quantity,
-            subtotal: price * quantity,
-        };
-    });
-
-    return {
-        id: order.id,
-        code: order.codigo,
-        status: order.status,
-        createdAt: order.dataCriacao,
-        customer: order.clienteNome || customer,
-        email: order.clienteEmail || email,
-        phone: order.clienteTelefone || phone,
-        address: order.endereco || address,
-        notes: order.observacoes || notes,
-        items,
-        total,
-    };
-}
-
 async function createOrderViaApi(payload) {
     const csrfToken = await getCsrfToken();
-    const response = await fetch('/api/pedidos', {
+    return fetchApiJson('/api/pedidos', {
         method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': csrfToken,
-        },
+        headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken },
         body: JSON.stringify(payload),
     });
-
-    let data = null;
-    try {
-        data = await response.json();
-    } catch (error) {
-        throw new Error(response.ok
-            ? 'A resposta da criação do pedido está indisponível. Tente novamente.'
-            : 'Não foi possível criar o pedido. Tente novamente.');
-    }
-
-    if (!response.ok) {
-        throw new Error(data?.message || 'Não foi possível criar o pedido. Tente novamente.');
-    }
-    return data;
 }
 
 function cartTotal() {
@@ -1458,9 +1316,9 @@ function updateCart() {
 
 function addProduct(element) {
     const product = {
-        productId: element.dataset.productId || null,
         name: element.dataset.product,
         price: Number(element.dataset.price),
+        productId: Number(element.dataset.productId),
     };
     const existing = window.cart.find((item) => item.name === product.name);
     if (existing) existing.quantity += 1;
@@ -1470,10 +1328,9 @@ function addProduct(element) {
 }
 
 function applyCategoryFilter(category) {
-    selectedPublicCategory = category;
     const menuItems = document.querySelectorAll('.menu-item');
     menuItems.forEach((item) => {
-        const matches = category === 'all' || item.dataset.categoryId === category;
+        const matches = category === 'all' || item.dataset.category === category;
         item.style.display = matches ? '' : 'none';
     });
 
@@ -1484,7 +1341,6 @@ function applyCategoryFilter(category) {
     });
 }
 
-renderPublicCatalog();
 loadPublicCatalog();
 
 publicMenuFilters?.addEventListener('click', (event) => {
@@ -1532,16 +1388,9 @@ if (orderQueryForm) {
         event.preventDefault();
         const codeValue = String(orderQueryForm.querySelector('#order-query-code')?.value || '').trim();
         const phoneValue = String(orderQueryForm.querySelector('#order-query-phone')?.value || '').trim();
-        const submitButton = orderQueryForm.querySelector('button[type="submit"]');
 
         if (!codeValue && !phoneValue) {
             showOrderQueryMessage('Informe o código de acompanhamento ou o telefone para consultar o pedido.');
-            if (orderQueryResult) orderQueryResult.hidden = true;
-            return;
-        }
-
-        if (codeValue && phoneValue) {
-            showOrderQueryMessage('Informe somente o código ou o telefone para consultar o pedido.');
             if (orderQueryResult) orderQueryResult.hidden = true;
             return;
         }
@@ -1552,33 +1401,19 @@ if (orderQueryForm) {
             return;
         }
 
-        if (submitButton) submitButton.disabled = true;
-        if (orderQueryResult) orderQueryResult.hidden = true;
-        if (orderQueryMessage) {
-            orderQueryMessage.textContent = 'Consultando pedido...';
-            orderQueryMessage.classList.remove('error', 'success');
-        }
-
         try {
             const results = await queryOrdersByApi(codeValue, phoneValue);
-            if (!results.length) {
-                showOrderQueryMessage('Pedido não encontrado. Verifique o código ou telefone informado.');
-                return;
-            }
-
-            if (orderQueryMessage) {
-                orderQueryMessage.textContent = results.length > 1
-                    ? `${results.length} pedidos encontrados. Exibindo o mais recente.`
-                    : 'Pedido encontrado.';
-                orderQueryMessage.classList.remove('error');
-                orderQueryMessage.classList.add('success');
-            }
-
             renderOrderQueryResult(results[0]);
         } catch (error) {
-            showOrderQueryMessage(error.message || 'Não foi possível consultar o pedido. Tente novamente.');
-        } finally {
-            if (submitButton) submitButton.disabled = false;
+            showOrderQueryMessage(error.message || 'Pedido não encontrado. Verifique o código ou telefone informado.');
+            if (orderQueryResult) orderQueryResult.hidden = true;
+            return;
+        }
+
+        if (orderQueryMessage) {
+            orderQueryMessage.textContent = 'Pedido encontrado.';
+            orderQueryMessage.classList.remove('error');
+            orderQueryMessage.classList.add('success');
         }
     });
 }
@@ -1824,7 +1659,7 @@ if (checkoutForm) {
         const payload = {
             clienteNome: customer,
             clienteEmail: email,
-            clienteTelefone: phone,
+            clienteTelefone: normalizePhone(phone),
             endereco: address,
             observacoes: notes,
             itens: window.cart.map((item) => ({
@@ -1832,33 +1667,32 @@ if (checkoutForm) {
                 quantidade: Math.trunc(Number(item.quantity)),
             })),
         };
-
         const submitButton = checkoutForm.querySelector('.checkout-submit');
         if (submitButton) {
             submitButton.disabled = true;
             submitButton.textContent = 'ENVIANDO...';
         }
         showCheckoutMessage('Criando seu pedido...', true);
-
         try {
-            const apiOrder = await createOrderViaApi(payload);
-            const orderData = normalizeCreatedOrder(apiOrder, customer, email, phone, address, notes);
+            const createdOrder = normalizePublicOrder(await createOrderViaApi(payload));
+            if (!createdOrder || !Number.isFinite(createdOrder.total)) {
+                throw new Error('A resposta da criação do pedido está indisponível.');
+            }
             const message = [
                 'Olá! Meu pedido foi criado:',
-                `Código: ${orderData.code}`,
-                `Status: ${orderData.status}`,
-                ...orderData.items.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(item.subtotal)}`),
-                '', `Total: ${money.format(orderData.total)}`,
-                `Nome: ${orderData.customer}`,
-                `E-mail: ${orderData.email}`,
-                orderData.address && `Endereço: ${orderData.address}`,
-                `Telefone: ${orderData.phone}`,
-                orderData.notes && `Observações: ${orderData.notes}`,
+                `Código: ${createdOrder.code}`,
+                `Status: ${createdOrder.status}`,
+                ...createdOrder.items.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(item.subtotal)}`),
+                '', `Total: ${money.format(createdOrder.total)}`,
+                `Nome: ${createdOrder.customer}`,
+                `E-mail: ${createdOrder.email}`,
+                createdOrder.address && `Endereço: ${createdOrder.address}`,
+                `Telefone: ${formatPhone(createdOrder.phone)}`,
+                createdOrder.notes && `Observações: ${createdOrder.notes}`,
             ].filter(Boolean).join('\n');
-
-            saveRecentOrder(orderData);
+            saveRecentOrder(createdOrder);
             showCheckoutMessage('Pedido criado com sucesso.', true);
-            openConfirmation(orderData);
+            openConfirmation(createdOrder);
             window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
         } catch (error) {
             showCheckoutMessage(error.message || 'Não foi possível criar o pedido. Tente novamente.', false);

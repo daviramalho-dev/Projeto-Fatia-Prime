@@ -22,23 +22,14 @@ public class Usuario {
     @Column(name = "senha_hash", nullable = false)
     private String senhaHash;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'USER'")
-    private Perfil perfil = Perfil.USER;
-
     protected Usuario() {
         // A JPA precisa de um construtor sem argumentos.
     }
 
     public Usuario(String nome, String email, String senhaHash) {
-        this(nome, email, senhaHash, Perfil.USER);
-    }
-
-    public Usuario(String nome, String email, String senhaHash, Perfil perfil) {
         this.nome = nome;
         this.email = email;
         this.senhaHash = senhaHash;
-        this.perfil = perfil == null ? Perfil.USER : perfil;
     }
 
     public Long getId() {
@@ -63,9 +54,5 @@ public class Usuario {
 
     public String getSenhaHash() {
         return senhaHash;
-    }
-
-    public Perfil getPerfil() {
-        return perfil;
     }
 }
