@@ -162,6 +162,13 @@ class AdminProdutoApiTests {
                 .content("{\"nome\":\"Pizza válida\",\"preco\":10,\"categoriaId\":999999}"))
             .andExpect(status().isNotFound())
             .andExpect(content().string(containsString("Categoria não encontrada")));
+
+        mockMvc.perform(post("/api/admin/produtos")
+                .session(adminSession()).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"Pizza sem preço\",\"preco\":0,\"categoriaId\":" + carnes.getId() + "}"))
+            .andExpect(status().isBadRequest())
+            .andExpect(content().string(containsString("O preço deve ser maior que zero")));
     }
 
     @Test

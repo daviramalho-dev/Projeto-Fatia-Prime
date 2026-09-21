@@ -871,7 +871,7 @@ function renderConfirmation(orderData) {
     confirmationSummaryElement.innerHTML = data.items.map((item) => `
         <li>
             <div>
-                <strong>${item.name}</strong>
+                    <strong>${escapeHtml(item.name)}</strong>
                 <small>${item.quantity}x • ${money.format(Number(item.price))} cada</small>
             </div>
             <strong>${money.format(Number(item.price) * Number(item.quantity))}</strong>
@@ -885,7 +885,7 @@ function renderConfirmation(orderData) {
     ].filter(Boolean).join(' • ');
 
     confirmationCustomerElement.innerHTML = customerInfo
-        ? `<strong>Dados do cliente</strong><span>${customerInfo}</span>`
+        ? `<strong>Dados do cliente</strong><span>${escapeHtml(customerInfo)}</span>`
         : '<strong>Dados do cliente</strong><span>Não informado.</span>';
 }
 
@@ -910,7 +910,7 @@ function renderCheckoutSummary() {
         ? window.cart.map((item) => `
             <li>
                 <div>
-                    <strong>${item.name}</strong>
+                    <strong>${escapeHtml(item.name)}</strong>
                     <small>${item.quantity}x ${money.format(item.price)} cada</small>
                 </div>
                 <strong>${money.format(item.price * item.quantity)}</strong>
@@ -1176,7 +1176,7 @@ function renderOrderQueryResult(orderData) {
             ? list.map((item) => `
                 <li>
                     <div>
-                        <strong>${item.name}</strong>
+                        <strong>${escapeHtml(item.name)}</strong>
                         <small>${Number(item.quantity)}x • ${money.format(Number(item.price))}</small>
                     </div>
                     <strong>${money.format(Number(item.price) * Number(item.quantity))}</strong>
@@ -1300,7 +1300,7 @@ function updateCart() {
     itemsElement.innerHTML = window.cart.length
         ? window.cart.map((item, index) => `
             <div class="cart-item">
-                <div><strong>${item.name}</strong><small>${money.format(item.price)} cada</small></div>
+                <div><strong>${escapeHtml(item.name)}</strong><small>${money.format(item.price)} cada</small></div>
                 <div class="cart-item-controls">
                     <button type="button" data-change="${index}" data-step="-1" aria-label="Remover uma unidade">−</button>
                     <span>${item.quantity}</span>

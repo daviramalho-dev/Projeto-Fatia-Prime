@@ -1,6 +1,5 @@
 package com.example.Fatia.Prime;
 
-import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -37,9 +36,13 @@ class PedidoPublicoApiTests {
 
     private Produto produto;
 
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
     @BeforeEach
     void prepararDados() {
         pedidoRepository.deleteAll();
+        usuarioRepository.deleteAll();
         produtoRepository.deleteAll();
         categoriaRepository.deleteAll();
 
@@ -101,6 +104,47 @@ class PedidoPublicoApiTests {
         mockMvc.perform(get("/api/pedidos/consulta").param("telefone", "(61) 98888-7777"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].codigo").value(codigo));
+    }
+
+    @Test
+    void rejeitaPedidoPublicoComUsuarioId() throws Exception {
+        Usuario usuario = usuarioRepository.saveAndFlush(new Usuario(
+            "Usuário Existente", "existente@fatiaprime.test", "hash"));
+        String corpo = """
+            {
+              "usuarioId": %d,
+              "clienteNome": "Cliente Público",
+              "clienteEmail": "cliente@fatiaprime.test",
+              "clienteTelefone": "61999998888",
+              "itens": [{"produtoId": %d, "quantidade": 1}]
+            }
+            """.formatted(usuario.getId(), produto.getId());
+
+        mockMvc.perform(post("/api/pedidos")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("Pedidos públicos não podem informar usuário"));
+    }
+
+    @Test
+    void rejeitaPedidoSemItens() throws Exception {
+        String corpo = """
+            {
+              "clienteNome": "Cliente Público",
+              "clienteEmail": "cliente@fatiaprime.test",
+              "clienteTelefone": "61999998888",
+              "itens": []
+            }
+            """;
+
+        mockMvc.perform(post("/api/pedidos")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value("O pedido deve conter pelo menos um item"));
     }
 
     @Test

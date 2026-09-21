@@ -15,16 +15,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class PedidoController {
 
     private final PedidoRepository pedidoRepository;
-    private final UsuarioRepository usuarioRepository;
     private final ProdutoRepository produtoRepository;
 
     public PedidoController(
         PedidoRepository pedidoRepository,
-        UsuarioRepository usuarioRepository,
         ProdutoRepository produtoRepository
     ) {
         this.pedidoRepository = pedidoRepository;
-        this.usuarioRepository = usuarioRepository;
         this.produtoRepository = produtoRepository;
     }
 
@@ -73,16 +70,13 @@ public class PedidoController {
     public PedidoResponse criar(@Valid @RequestBody PedidoRequest request) {
         Pedido pedido = new Pedido();
         if (request.usuarioId() != null) {
-            Usuario usuario = usuarioRepository.findById(request.usuarioId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
-            pedido.setUsuario(usuario);
-        } else {
-            validarClientePublico(request);
-            pedido.setClienteNome(request.clienteNome().trim());
-            pedido.setClienteEmail(request.clienteEmail().trim());
-            pedido.setClienteTelefone(normalizarTelefone(request.clienteTelefone()));
-            pedido.setEndereco(normalizarOpcional(request.endereco()));
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pedidos públicos não podem informar usuário");
         }
+        validarClientePublico(request);
+        pedido.setClienteNome(request.clienteNome().trim());
+        pedido.setClienteEmail(request.clienteEmail().trim());
+        pedido.setClienteTelefone(normalizarTelefone(request.clienteTelefone()));
+        pedido.setEndereco(normalizarOpcional(request.endereco()));
         pedido.setCodigo("FP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
         pedido.setStatus("Pedido recebido");
         pedido.setObservacoes(request.observacoes());
