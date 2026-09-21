@@ -26,9 +26,9 @@ public record PedidoResponse(
         return new PedidoResponse(
             pedido.getId(),
             pedido.getUsuario() != null ? pedido.getUsuario().getId() : null,
-            pedido.getClienteNome(),
-            pedido.getClienteEmail(),
-            pedido.getClienteTelefone(),
+            pedido.getClienteNome() != null ? pedido.getClienteNome() : pedido.getUsuario() != null ? pedido.getUsuario().getNome() : null,
+            pedido.getClienteEmail() != null ? pedido.getClienteEmail() : pedido.getUsuario() != null ? pedido.getUsuario().getEmail() : null,
+            pedido.getClienteTelefone() != null ? pedido.getClienteTelefone() : pedido.getUsuario() != null ? pedido.getUsuario().getTelefone() : null,
             pedido.getEndereco(),
             pedido.getCodigo(),
             pedido.getStatus(),

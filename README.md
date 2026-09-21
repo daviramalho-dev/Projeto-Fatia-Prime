@@ -4,7 +4,7 @@
 
 O Projeto-Fatia-Prime é uma aplicação web para uma pizzaria, com foco em apresentação do cardápio, interação do cliente e estrutura inicial de backend para gerenciamento de usuários e pedidos.
 
-A interface oferece uma landing page com apresentação da marca, lista de pizzas, carrinho de compras e integração com WhatsApp para envio do pedido. No backend, o projeto utiliza Spring Boot com Spring Data JPA e PostgreSQL para persistência e API REST simples.
+A interface oferece uma landing page com apresentação da marca, lista de pizzas, carrinho de compras e integração com WhatsApp para envio do pedido. No backend, o projeto utiliza Spring Boot com Spring Data JPA e H2 para persistência e API REST simples.
 
 ## Tecnologias utilizadas
 
@@ -14,7 +14,7 @@ A interface oferece uma landing page com apresentação da marca, lista de pizza
 - Spring Data JPA
 - Spring Validation
 - Spring Security Crypto
-- PostgreSQL
+- H2 Database
 - HTML5
 - CSS3
 - JavaScript
@@ -43,12 +43,6 @@ O projeto já inclui o Gradle Wrapper, então não é necessário instalar o Gra
 
 3. Execute a aplicação:
 
-  Antes, configure as variáveis de conexão do PostgreSQL:
-
-  DB_URL=jdbc:postgresql://localhost:5432/fatiaprime
-  DB_USERNAME=postgres
-  DB_PASSWORD=sua-senha
-
    ./gradlew bootRun
 
 4. Acesse a aplicação no navegador em:
@@ -70,7 +64,7 @@ Esse comando compila o projeto, inicia o contexto Spring Boot e executa os teste
 - `Fatia-Prime/src/main/resources/static` — HTML, CSS e JavaScript do frontend
 - `Fatia-Prime/src/test/java` — testes automatizados
 - `Fatia-Prime/build.gradle` — configuração do Gradle e dependências
-- `Fatia-Prime/src/main/resources/application.properties` — configuração da aplicação e do banco PostgreSQL
+- `Fatia-Prime/src/main/resources/application.properties` — configuração da aplicação e do banco H2
 
 ## API atual
 
@@ -106,36 +100,28 @@ Os endpoints REST atualmente disponíveis no projeto são:
 ### Pedidos
 
 - `GET /api/pedidos`  
-  Retorna a lista de pedidos cadastrados.
+  Retorna a lista administrativa de pedidos autenticados.
 
 - `GET /api/pedidos/{id}`  
-  Retorna um pedido específico por ID.
+  Retorna um pedido específico por ID para usuários autenticados.
 
 - `POST /api/pedidos`  
-  Cria um pedido público com os dados do cliente e itens informados. `usuarioId` é opcional para compatibilidade com pedidos legados.
+  Cria um pedido público com os dados do cliente e dos itens. O preço e o total são calculados pelo backend.
 
-### Administração
-
-- `GET /api/admin/pedidos` — lista pedidos com filtros por código, telefone, nome e status.
-- `GET /api/admin/pedidos/{id}` — detalha um pedido.
-- `PATCH /api/admin/pedidos/{id}/status` — atualiza o status respeitando as transições permitidas.
-- `GET /api/admin/produtos` — lista produtos, inclusive inativos.
-- `POST /api/admin/produtos` — cria produto.
-- `PUT /api/admin/produtos/{id}` — edita produto.
-- `PATCH /api/admin/produtos/{id}/status` — ativa ou desativa produto.
+- `GET /api/pedidos/consulta?codigo=...` ou `?telefone=...`
+  Consulta publicamente o status e o resumo de um pedido.
 
 ## Banco de dados
 
-O projeto usa PostgreSQL, configurado pelas variáveis de ambiente:
+O projeto usa H2 em memória, configurado em:
 
-- `DB_URL` — padrão: `jdbc:postgresql://localhost:5432/fatiaprime`
-- `DB_USERNAME` — padrão: `postgres`
-- `DB_PASSWORD` — sem valor padrão; deve ser configurada no ambiente
-- driver: `org.postgresql.Driver`
+- `spring.datasource.url=jdbc:h2:mem:fatiaprime`
+- driver H2
+- usuário: `sa`
+- senha: vazia
 
-A JPA está configurada com `ddl-auto=update`, o que permite que o Hibernate crie ou atualize as tabelas automaticamente durante a execução local. O PostgreSQL é o banco principal da aplicação.
-
-Para uma demonstração, o banco precisa conter categorias, produtos ativos e uma conta `ADMIN` previamente provisionados. O projeto não cria automaticamente o primeiro administrador nem dados de catálogo.
+A JPA está configurada com `ddl-auto=update`, o que permite que o Hibernate crie ou atualize as tabelas automaticamente durante a execução local.
+As categorias e alguns produtos iniciais são carregados de `Fatia-Prime/src/main/resources/data.sql`.
 
 ## Frontend
 
@@ -153,12 +139,13 @@ Ela inclui apresentação da marca, catálogo, carrinho e integração com Whats
 2. Navega pelo cardápio.
 3. Adiciona produtos ao carrinho.
 4. Ajusta quantidades e revisa o total.
-5. Finaliza o pedido pela API; após a criação bem-sucedida, o WhatsApp pode ser aberto com os dados retornados pelo backend.
-6. O backend disponibiliza cadastro de usuários, consulta pública de pedidos e painel administrativo protegido.
+5. O checkout cria o pedido pela API e persiste no H2.
+6. A confirmação apresenta o código retornado e oferece o envio dos dados pelo WhatsApp.
+7. O pedido pode ser consultado pelo código ou telefone.
 
 ## Observações
 
 - A aplicação foi desenvolvida principalmente como projeto acadêmico.
-- O banco PostgreSQL é necessário para a execução normal da aplicação.
+- O banco H2 é usado para ambiente local e de desenvolvimento.
 - O projeto continua com a arquitetura simples atual: controllers + repositories + entidades.
 - Não há autenticação ou pagamento implementados nesta etapa.

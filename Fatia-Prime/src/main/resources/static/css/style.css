@@ -696,14 +696,6 @@ button {
     border-bottom: 1px solid #292929;
 }
 
-.menu-product-image {
-    width: 72px;
-    height: 72px;
-    flex: 0 0 72px;
-    object-fit: cover;
-    border-radius: 4px;
-}
-
 .menu-text h3 {
     font-size: 17px;
 
