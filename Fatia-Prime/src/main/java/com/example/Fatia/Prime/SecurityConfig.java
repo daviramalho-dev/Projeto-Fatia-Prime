@@ -43,7 +43,9 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf
                 .csrfTokenRepository(csrfRepository)
-                .csrfTokenRequestHandler(csrfHandler))
+                .csrfTokenRequestHandler(csrfHandler)
+                .ignoringRequestMatchers("/h2-console/**"))
+            .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/",
@@ -55,7 +57,7 @@ public class SecurityConfig {
                     "/api/produtos/**",
                     "/api/categorias/**"
                 ).permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
+                .requestMatchers("/h2-console/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/pedidos").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/pedidos/consulta").permitAll()
                 .requestMatchers("/api/admin/**", "/api/pedidos/**", "/api/usuarios/**").hasRole("ADMIN")

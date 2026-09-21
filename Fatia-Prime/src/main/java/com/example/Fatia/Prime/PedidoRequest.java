@@ -1,7 +1,7 @@
 package com.example.Fatia.Prime;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
 
 public record PedidoRequest(
@@ -11,7 +11,7 @@ public record PedidoRequest(
     String clienteTelefone,
     String endereco,
     String observacoes,
-    @NotNull(message = "O pedido deve conter itens")
+    @NotEmpty(message = "O pedido deve conter pelo menos um item")
     @Valid
     List<ItemPedidoRequest> itens
 ) {

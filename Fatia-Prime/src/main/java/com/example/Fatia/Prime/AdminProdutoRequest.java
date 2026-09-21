@@ -15,7 +15,7 @@ public record AdminProdutoRequest(
     String descricao,
 
     @NotNull(message = "O preço é obrigatório")
-    @DecimalMin(value = "0.0", inclusive = true, message = "O preço não pode ser negativo")
+    @DecimalMin(value = "0.0", inclusive = false, message = "O preço deve ser maior que zero")
     BigDecimal preco,
 
     @Size(max = 500, message = "A imagem deve ter no máximo 500 caracteres")

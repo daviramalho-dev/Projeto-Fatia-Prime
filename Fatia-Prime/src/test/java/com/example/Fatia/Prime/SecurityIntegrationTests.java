@@ -58,6 +58,41 @@ class SecurityIntegrationTests {
     }
 
     @Test
+    void publicUserCannotCreateAdministrativeAccount() throws Exception {
+        mockMvc.perform(post("/api/usuarios")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"Usuário Público\",\"email\":\"publico@fatiaprime.test\",\"senha\":\"senha-123\"}"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void authenticatedAdminCanCreateUser() throws Exception {
+        createUser();
+        var session = mockMvc.perform(post("/api/auth/login")
+                .with(csrf())
+                .param("email", EMAIL)
+                .param("senha", PASSWORD))
+            .andExpect(status().isNoContent())
+            .andReturn()
+            .getRequest()
+            .getSession();
+
+        mockMvc.perform(post("/api/usuarios")
+                .with(csrf())
+                .session((org.springframework.mock.web.MockHttpSession) session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"Usuário Criado\",\"email\":\"criado@fatiaprime.test\",\"senha\":\"senha-123\"}"))
+            .andExpect(status().isCreated());
+    }
+
+    @Test
+    void h2ConsoleIsNotPubliclyAccessible() throws Exception {
+        mockMvc.perform(get("/h2-console"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void publicProductEndpointRemainsAccessibleAnonymously() throws Exception {
         mockMvc.perform(get("/api/produtos"))
             .andExpect(status().isOk());
