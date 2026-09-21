@@ -32,7 +32,8 @@ public class UsuarioController {
         Usuario usuario = new Usuario(
             dados.nome(),
             dados.email(),
-            encoder.encode(dados.senha())
+            encoder.encode(dados.senha()),
+            UsuarioRole.USER
         );
 
         return UsuarioResponse.de(repository.saveAndFlush(usuario));

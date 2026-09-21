@@ -29,7 +29,7 @@ public class SecurityConfig {
         return username -> repository.findByEmailIgnoreCase(username.trim())
             .map(usuario -> User.withUsername(usuario.getEmail())
                 .password(usuario.getSenhaHash())
-                .roles("ADMIN")
+                .roles(usuario.getRole().name())
                 .build())
             .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado"));
     }
@@ -61,7 +61,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/pedidos").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/pedidos/consulta").permitAll()
                 .requestMatchers("/api/admin/**", "/api/pedidos/**", "/api/usuarios/**").hasRole("ADMIN")
-                .anyRequest().permitAll())
+                .anyRequest().denyAll())
             .formLogin(form -> form
                 .loginProcessingUrl("/api/auth/login")
                 .usernameParameter("email")

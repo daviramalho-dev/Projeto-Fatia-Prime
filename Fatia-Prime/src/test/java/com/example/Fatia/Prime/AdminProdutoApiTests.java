@@ -63,7 +63,8 @@ class AdminProdutoApiTests {
         usuarioRepository.saveAndFlush(new Usuario(
             "Administrador de Produtos",
             "admin-produtos@fatiaprime.test",
-            passwordEncoder.encode("senha-123")
+            passwordEncoder.encode("senha-123"),
+            UsuarioRole.ADMIN
         ));
 
         carnes = categoriaRepository.saveAndFlush(new Categoria("Carnes"));
@@ -229,6 +230,15 @@ class AdminProdutoApiTests {
                 .content("{\"status\":\"ativo\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.ativo").value(true));
+    }
+
+    @Test
+    void detalhePublicoNaoRetornaProdutoInativo() throws Exception {
+        produtoInativo.setAtivo(false);
+        produtoRepository.saveAndFlush(produtoInativo);
+
+        mockMvc.perform(get("/api/produtos/{id}", produtoInativo.getId()))
+            .andExpect(status().isNotFound());
     }
 
     @Test

@@ -84,6 +84,11 @@ class SecurityIntegrationTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"nome\":\"Usuário Criado\",\"email\":\"criado@fatiaprime.test\",\"senha\":\"senha-123\"}"))
             .andExpect(status().isCreated());
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+            UsuarioRole.USER,
+            usuarioRepository.findByEmailIgnoreCase("criado@fatiaprime.test").orElseThrow().getRole()
+        );
     }
 
     @Test
@@ -129,6 +134,29 @@ class SecurityIntegrationTests {
     }
 
     @Test
+    void regularUserCannotAccessAdministrativeOrders() throws Exception {
+        usuarioRepository.saveAndFlush(new Usuario(
+            "Usuário Comum",
+            "usuario@fatiaprime.test",
+            passwordEncoder.encode(PASSWORD),
+            UsuarioRole.USER
+        ));
+
+        var session = mockMvc.perform(post("/api/auth/login")
+                .with(csrf())
+                .param("email", "usuario@fatiaprime.test")
+                .param("senha", PASSWORD))
+            .andExpect(status().isNoContent())
+            .andReturn()
+            .getRequest()
+            .getSession();
+
+        mockMvc.perform(get("/api/pedidos")
+                .session((org.springframework.mock.web.MockHttpSession) session))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
     void logoutEndsAdministrativeSession() throws Exception {
         createUser();
 
@@ -155,7 +183,8 @@ class SecurityIntegrationTests {
         usuarioRepository.saveAndFlush(new Usuario(
             "Administrador de Teste",
             EMAIL,
-            passwordEncoder.encode(PASSWORD)
+            passwordEncoder.encode(PASSWORD),
+            UsuarioRole.ADMIN
         ));
     }
 }
