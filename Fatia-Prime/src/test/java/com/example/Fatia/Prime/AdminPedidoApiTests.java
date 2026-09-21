@@ -90,6 +90,35 @@ class AdminPedidoApiTests {
     }
 
     @Test
+    void usuarioComumNaoAcessaPedidosAdministrativos() throws Exception {
+        usuarioRepository.saveAndFlush(new Usuario(
+            "Usuário Comum",
+            "usuario-pedidos@fatiaprime.test",
+            passwordEncoder.encode("senha-123"),
+            UsuarioRole.USER
+        ));
+
+        MockHttpSession session = (MockHttpSession) mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/auth/login")
+                    .with(csrf())
+                    .param("email", "usuario-pedidos@fatiaprime.test")
+                    .param("senha", "senha-123"))
+            .andExpect(status().isNoContent())
+            .andReturn()
+            .getRequest()
+            .getSession();
+
+        mockMvc.perform(get("/api/admin/pedidos").session(session))
+            .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/admin/pedidos/{id}/status", pedido.getId())
+                .session(session)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"Pedido em andamento\"}"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
     void detalhaPedidoExistenteSemExporSenha() throws Exception {
         mockMvc.perform(get("/api/admin/pedidos/{id}", pedido.getId()).session(adminSession()))
             .andExpect(status().isOk())
