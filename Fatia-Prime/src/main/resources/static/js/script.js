@@ -311,91 +311,6 @@ function saveCart() {
 
 window.cart = loadCart();
 
-function productId(name) {
-    return `pizza-${String(name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
-}
-
-function parseProductPrice(value) {
-    const normalized = String(value || '').replace(/[^0-9,.-]/g, '').replace(',', '.');
-    return Number(normalized);
-}
-
-function normalizeProduct(product) {
-    if (!product || typeof product !== 'object') return null;
-    const name = String(product.name || '').trim();
-    const category = String(product.category || '').trim();
-    const price = Number(product.price);
-    if (!name || !PRODUCT_CATEGORIES.includes(category) || !Number.isFinite(price) || price <= 0) return null;
-    return {
-        id: product.id || productId(name),
-        name,
-        description: String(product.description || '').trim(),
-        category,
-        price,
-        image: String(product.image || '').trim(),
-        badge: String(product.badge || '').trim(),
-        featured: Boolean(product.featured),
-        active: product.active !== false,
-    };
-}
-
-function readInitialProducts() {
-    const products = [];
-    document.querySelectorAll('.pizza-card').forEach((card) => {
-        const name = card.dataset.product || card.querySelector('h3')?.textContent.trim();
-        const normalized = normalizeProduct({
-            name,
-            description: card.querySelector('.pizza-info p')?.textContent.trim(),
-            category: name === 'Havaiana de Frango' ? 'frango' : 'carnes',
-            price: card.dataset.price,
-            image: card.querySelector('img')?.getAttribute('src'),
-            badge: card.querySelector('.badge')?.textContent.trim(),
-            featured: true,
-        });
-        if (normalized) products.push(normalized);
-    });
-    document.querySelectorAll('.menu-item').forEach((item) => {
-        const button = item.querySelector('.btn-menu-add');
-        const normalized = normalizeProduct({
-            name: button?.dataset.product || item.querySelector('h3')?.textContent.trim(),
-            description: item.querySelector('.menu-text p')?.textContent.trim(),
-            category: item.dataset.category,
-            price: button?.dataset.price || parseProductPrice(item.querySelector('.menu-actions strong')?.textContent),
-        });
-        if (normalized) products.push(normalized);
-    });
-    return products;
-}
-
-function readProductCatalog() {
-    try {
-        const stored = localStorage.getItem(PRODUCT_STORAGE_KEY);
-        if (stored !== null) {
-            const parsed = JSON.parse(stored);
-            return Array.isArray(parsed) ? parsed.map(normalizeProduct).filter(Boolean) : [];
-        }
-    } catch (error) {
-        console.warn('Catálogo inválido no localStorage. Restaurando o catálogo inicial.', error);
-    }
-    const initialProducts = readInitialProducts();
-    try {
-        localStorage.setItem(PRODUCT_STORAGE_KEY, JSON.stringify(initialProducts));
-    } catch (error) {
-        console.warn('Não foi possível salvar o catálogo inicial.', error);
-    }
-    return initialProducts;
-}
-
-function saveProductCatalog(products) {
-    try {
-        localStorage.setItem(PRODUCT_STORAGE_KEY, JSON.stringify(products.map(normalizeProduct).filter(Boolean)));
-        return true;
-    } catch (error) {
-        console.warn('Não foi possível salvar o catálogo.', error);
-        return false;
-    }
-}
-
 function getProductCategoryLabel(category) {
     return { classicas: 'Clássicas', carnes: 'Carnes', frango: 'Frango', queijos: 'Queijos' }[category] || category;
 }
@@ -463,7 +378,7 @@ function renderPublicCatalog() {
     const pizzaGrid = document.querySelector('.pizza-grid');
     const menuList = document.querySelector('.menu-list');
     const products = publicProducts.filter((product) => product.active);
-    const featuredNames = ['Costela com Catupiry', 'Havaiana de Frango', 'Calabresa Prime'];
+    const featuredNames = ['Calabresa Prime', 'Havaiana de Frango', 'Costela com Catupiry'];
     const featuredProducts = featuredNames
         .map((name) => products.find((product) => product.name === name))
         .filter(Boolean);
@@ -519,12 +434,6 @@ function closeConfirmation() {
     if (backdrop) {
         backdrop.classList.remove('is-open');
     }
-}
-
-function generateOrderCode() {
-    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
-    return `FP-${datePart}-${randomPart}`;
 }
 
 function saveRecentOrder(orderData) {
@@ -1079,31 +988,6 @@ function getOrderQueryStatusLabel(status) {
         'Pedido concluído': 'status-finished',
     };
     return mapping[status] || 'status-received';
-}
-
-function findOrderByCodeOrPhone(code, phone) {
-    const normalizedCode = String(code || '').trim().toUpperCase();
-    const normalizedPhone = String(phone || '').replace(/\D/g, '');
-    const candidates = [...readOrderHistory()];
-    const lastOrder = localStorage.getItem(ORDER_STORAGE_KEY);
-    if (lastOrder) {
-        try {
-            const parsed = JSON.parse(lastOrder);
-            if (!candidates.some((item) => item.code === parsed.code)) {
-                candidates.push(parsed);
-            }
-        } catch (error) {
-            console.warn('Não foi possível carregar o último pedido para consulta.', error);
-        }
-    }
-
-    return candidates.find((order) => {
-        const orderCode = String(order.code || '').trim().toUpperCase();
-        const orderPhone = String(order.phone || '').replace(/\D/g, '');
-        const matchesCode = !normalizedCode || orderCode === normalizedCode;
-        const matchesPhone = !normalizedPhone || orderPhone === normalizedPhone;
-        return matchesCode && matchesPhone;
-    }) || null;
 }
 
 function normalizePublicOrder(order) {
