@@ -463,8 +463,13 @@ function renderPublicCatalog() {
     const pizzaGrid = document.querySelector('.pizza-grid');
     const menuList = document.querySelector('.menu-list');
     const products = publicProducts.filter((product) => product.active);
+    const featuredNames = ['Costela com Catupiry', 'Havaiana de Frango', 'Calabresa Prime'];
+    const featuredProducts = featuredNames
+        .map((name) => products.find((product) => product.name === name))
+        .filter(Boolean);
+    const menuProducts = products.filter((product) => !featuredNames.includes(product.name));
     if (pizzaGrid) {
-        pizzaGrid.innerHTML = products.slice(0, 3).map((product) => `
+        pizzaGrid.innerHTML = featuredProducts.map((product) => `
             <article class="pizza-card" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">
                 <div class="pizza-image">
                     ${product.image ? `<img class="pizza-zoom-menor" src="${escapeHtml(product.image)}" alt="Pizza ${escapeHtml(product.name)}">` : '<div class="pizza-image-placeholder" aria-hidden="true">FP</div>'}
@@ -474,7 +479,7 @@ function renderPublicCatalog() {
             </article>`).join('');
     }
     if (menuList) {
-        menuList.innerHTML = products.slice(3).map((product) => `
+        menuList.innerHTML = menuProducts.map((product) => `
             <div class="menu-item" data-category="${escapeHtml(product.categoryId)}">
                 <div class="menu-text"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div>
                 <div class="menu-actions"><strong>${money.format(product.price)}</strong><button class="btn-menu-add" type="button" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">ADICIONAR</button></div>
