@@ -29,6 +29,10 @@ const adminOrderStatus = document.querySelector('#admin-order-status');
 const adminOrderList = document.querySelector('.admin-order-list');
 const adminOrdersMessage = document.querySelector('.admin-orders-message');
 const adminOrdersEmpty = document.querySelector('.admin-orders-empty');
+const adminSummaryTotal = document.querySelector('#admin-summary-total');
+const adminSummaryReceived = document.querySelector('#admin-summary-received');
+const adminSummaryProgress = document.querySelector('#admin-summary-progress');
+const adminSummaryFinished = document.querySelector('#admin-summary-finished');
 const adminOrderDetails = document.querySelector('.admin-order-details');
 const adminOrderStatusEditor = document.querySelector('#admin-order-status-editor');
 const adminStatusMessage = document.querySelector('.admin-status-message');
@@ -163,9 +167,25 @@ function showAdminApiError(message) {
     }
 }
 
+function renderAdminSummary() {
+    const counts = adminOrders.reduce((summary, order) => {
+        summary.total += 1;
+        if (order.status === ORDER_STATUSES[0]) summary.received += 1;
+        if (order.status === ORDER_STATUSES[1]) summary.progress += 1;
+        if (order.status === ORDER_STATUSES[2]) summary.finished += 1;
+        return summary;
+    }, { total: 0, received: 0, progress: 0, finished: 0 });
+
+    if (adminSummaryTotal) adminSummaryTotal.textContent = counts.total;
+    if (adminSummaryReceived) adminSummaryReceived.textContent = counts.received;
+    if (adminSummaryProgress) adminSummaryProgress.textContent = counts.progress;
+    if (adminSummaryFinished) adminSummaryFinished.textContent = counts.finished;
+}
+
 function handleAdminApiAuthorization(status) {
     if (status !== 401 && status !== 403) return false;
     adminOrders = [];
+    renderAdminSummary();
     setInterfaceMode('admin-login');
     showAdminLoginMessage(
         status === 401
@@ -248,10 +268,12 @@ async function loadAdminOrders() {
         const data = await response.json();
         if (requestId !== adminOrdersRequestId) return;
         adminOrders = Array.isArray(data) ? data.map(normalizeAdminOrder) : [];
+        renderAdminSummary();
         renderAdminOrders();
     } catch (error) {
         if (requestId !== adminOrdersRequestId) return;
         adminOrders = [];
+        renderAdminSummary();
         adminOrderList.innerHTML = '';
         adminOrdersEmpty.hidden = false;
         adminOrdersEmpty.querySelector('strong').textContent = 'Não foi possível carregar os pedidos';
@@ -1434,6 +1456,7 @@ adminStatusSave?.addEventListener('click', async () => {
         }
         const updatedOrder = normalizeAdminOrder(await response.json());
         adminOrders = adminOrders.map((order) => order.id === updatedOrder.id ? updatedOrder : order);
+        renderAdminSummary();
         renderAdminOrderDetails(updatedOrder);
         renderAdminOrders();
         showAdminStatusMessage('Status do pedido atualizado com sucesso.', 'success');

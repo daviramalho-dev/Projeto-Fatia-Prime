@@ -41,6 +41,7 @@
             <span>FATIA</span><strong>PRIME</strong><small>ADMIN</small>
         </a>
         <nav class="admin-nav">
+            <a href="#admin-resumo">Resumo</a>
             <a href="#painel-pedidos">Pedidos</a>
             <a href="#gestao-cardapio">Cardápio</a>
         </nav>
@@ -546,6 +547,25 @@
             </div>
 
             <div class="admin-orders-panel">
+                <div class="admin-summary" id="admin-resumo" aria-label="Resumo dos pedidos">
+                    <div class="admin-summary-card">
+                        <span>Total de pedidos</span>
+                        <strong id="admin-summary-total">0</strong>
+                    </div>
+                    <div class="admin-summary-card is-received">
+                        <span>Recebidos</span>
+                        <strong id="admin-summary-received">0</strong>
+                    </div>
+                    <div class="admin-summary-card is-progress">
+                        <span>Em andamento</span>
+                        <strong id="admin-summary-progress">0</strong>
+                    </div>
+                    <div class="admin-summary-card is-finished">
+                        <span>Concluídos</span>
+                        <strong id="admin-summary-finished">0</strong>
+                    </div>
+                </div>
+
                 <div class="admin-orders-toolbar">
                     <label>
                         Pesquisar pedidos
