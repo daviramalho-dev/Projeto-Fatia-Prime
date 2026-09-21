@@ -91,6 +91,47 @@ class AdminProdutoApiTests {
     }
 
     @Test
+    void usuarioComumNaoExecutaOperacoesAdministrativas() throws Exception {
+        usuarioRepository.saveAndFlush(new Usuario(
+            "Usuário Comum",
+            "usuario-produtos@fatiaprime.test",
+            passwordEncoder.encode("senha-123"),
+            UsuarioRole.USER
+        ));
+
+        MockHttpSession session = (MockHttpSession) mockMvc.perform(
+                post("/api/auth/login")
+                    .with(csrf())
+                    .param("email", "usuario-produtos@fatiaprime.test")
+                    .param("senha", "senha-123"))
+            .andExpect(status().isNoContent())
+            .andReturn()
+            .getRequest()
+            .getSession();
+
+        mockMvc.perform(get("/api/admin/produtos").session(session))
+            .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/admin/produtos")
+                .session(session)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"Pizza bloqueada\",\"preco\":10,\"categoriaId\":" + carnes.getId() + "}"))
+            .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/admin/produtos/{id}", produtoAtivo.getId())
+                .session(session)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"Pizza bloqueada\",\"preco\":10,\"categoriaId\":" + carnes.getId() + "}"))
+            .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/admin/produtos/{id}/status", produtoAtivo.getId())
+                .session(session)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"inativo\"}"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
     void filtraPorNomeCategoriaEStatus() throws Exception {
         mockMvc.perform(get("/api/admin/produtos")
                 .param("nome", "calabresa")
