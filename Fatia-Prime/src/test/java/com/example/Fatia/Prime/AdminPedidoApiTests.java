@@ -54,7 +54,7 @@ class AdminPedidoApiTests {
         produtoRepository.deleteAll();
         categoriaRepository.deleteAll();
 
-        admin = new Usuario("João da Silva", "admin-api@fatiaprime.test", passwordEncoder.encode("senha-123"));
+        admin = new Usuario("João da Silva", "admin-api@fatiaprime.test", passwordEncoder.encode("senha-123"), UsuarioRole.ADMIN);
         admin.setTelefone("(11) 98765-4321");
         admin = usuarioRepository.saveAndFlush(admin);
 

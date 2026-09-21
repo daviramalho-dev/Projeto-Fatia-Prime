@@ -100,7 +100,10 @@ class PedidoPublicoApiTests {
 
         mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].clienteNome").value("Cliente Consulta"));
+            .andExpect(jsonPath("$[0].clienteNome").doesNotExist())
+            .andExpect(jsonPath("$[0].clienteEmail").doesNotExist())
+            .andExpect(jsonPath("$[0].endereco").doesNotExist())
+            .andExpect(jsonPath("$[0].observacoes").doesNotExist());
         mockMvc.perform(get("/api/pedidos/consulta").param("telefone", "(61) 98888-7777"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].codigo").value(codigo));
@@ -145,6 +148,24 @@ class PedidoPublicoApiTests {
                 .content(corpo))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.message").value("O pedido deve conter pelo menos um item"));
+    }
+
+    @Test
+    void rejeitaDadosDeClienteEQuantidadeInvalidos() throws Exception {
+        String corpo = """
+            {
+              "clienteNome": "Cliente Público",
+              "clienteEmail": "email-invalido",
+              "clienteTelefone": "123",
+              "itens": [{"produtoId": %d, "quantidade": 51}]
+            }
+            """.formatted(produto.getId());
+
+        mockMvc.perform(post("/api/pedidos")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo))
+            .andExpect(status().isBadRequest());
     }
 
     @Test

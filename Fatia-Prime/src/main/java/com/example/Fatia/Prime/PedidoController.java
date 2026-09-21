@@ -42,7 +42,7 @@ public class PedidoController {
 
     @GetMapping("/consulta")
     @Transactional(readOnly = true)
-    public List<PedidoResponse> consultar(
+    public List<PedidoConsultaResponse> consultar(
         @RequestParam(required = false) String codigo,
         @RequestParam(required = false) String telefone
     ) {
@@ -61,7 +61,7 @@ public class PedidoController {
         if (pedidos.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido não encontrado");
         }
-        return pedidos.stream().map(PedidoResponse::de).toList();
+        return pedidos.stream().map(PedidoConsultaResponse::de).toList();
     }
 
     @PostMapping
@@ -118,6 +118,10 @@ public class PedidoController {
         }
         if (request.clienteTelefone() == null || normalizarTelefone(request.clienteTelefone()).isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O telefone do cliente é obrigatório");
+        }
+        String telefone = normalizarTelefone(request.clienteTelefone());
+        if (telefone.length() != 10 && telefone.length() != 11) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O telefone do cliente é inválido");
         }
     }
 

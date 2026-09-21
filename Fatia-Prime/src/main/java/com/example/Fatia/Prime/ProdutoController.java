@@ -29,6 +29,9 @@ public class ProdutoController {
     public ProdutoResponse buscarPorId(@PathVariable Long id) {
         Produto produto = repository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
+        if (!produto.isAtivo()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado");
+        }
 
         return ProdutoResponse.de(produto);
     }
