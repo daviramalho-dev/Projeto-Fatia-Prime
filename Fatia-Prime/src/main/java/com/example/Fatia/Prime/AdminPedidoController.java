@@ -80,8 +80,10 @@ public class AdminPedidoController {
     private boolean corresponde(Pedido pedido, String codigo, String telefone, String nome, String status) {
         Usuario usuario = pedido.getUsuario();
         String pedidoCodigo = normalizar(pedido.getCodigo());
-        String pedidoTelefone = normalizarTelefone(usuario != null ? usuario.getTelefone() : null);
-        String pedidoNome = normalizar(usuario != null ? usuario.getNome() : null);
+        String pedidoTelefone = normalizarTelefone(pedido.getClienteTelefone() != null
+            ? pedido.getClienteTelefone() : usuario != null ? usuario.getTelefone() : null);
+        String pedidoNome = normalizar(pedido.getClienteNome() != null
+            ? pedido.getClienteNome() : usuario != null ? usuario.getNome() : null);
         return (codigo.isBlank() || pedidoCodigo.contains(codigo))
             && (telefone.isBlank() || pedidoTelefone.contains(telefone))
             && (nome.isBlank() || pedidoNome.contains(nome))

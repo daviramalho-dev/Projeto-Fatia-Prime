@@ -5,8 +5,11 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 public record PedidoRequest(
-    @NotNull(message = "O usuário é obrigatório")
     Long usuarioId,
+    String clienteNome,
+    String clienteEmail,
+    String clienteTelefone,
+    String endereco,
     String observacoes,
     @NotNull(message = "O pedido deve conter itens")
     @Valid

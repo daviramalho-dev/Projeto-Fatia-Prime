@@ -7,6 +7,10 @@ import java.util.List;
 public record PedidoResponse(
     Long id,
     Long usuarioId,
+    String clienteNome,
+    String clienteEmail,
+    String clienteTelefone,
+    String endereco,
     String codigo,
     String status,
     LocalDateTime dataCriacao,
@@ -22,6 +26,10 @@ public record PedidoResponse(
         return new PedidoResponse(
             pedido.getId(),
             pedido.getUsuario() != null ? pedido.getUsuario().getId() : null,
+            pedido.getClienteNome() != null ? pedido.getClienteNome() : pedido.getUsuario() != null ? pedido.getUsuario().getNome() : null,
+            pedido.getClienteEmail() != null ? pedido.getClienteEmail() : pedido.getUsuario() != null ? pedido.getUsuario().getEmail() : null,
+            pedido.getClienteTelefone() != null ? pedido.getClienteTelefone() : pedido.getUsuario() != null ? pedido.getUsuario().getTelefone() : null,
+            pedido.getEndereco(),
             pedido.getCodigo(),
             pedido.getStatus(),
             pedido.getDataCriacao(),

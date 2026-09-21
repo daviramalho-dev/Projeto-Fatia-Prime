@@ -100,13 +100,16 @@ Os endpoints REST atualmente disponíveis no projeto são:
 ### Pedidos
 
 - `GET /api/pedidos`  
-  Retorna a lista de pedidos cadastrados.
+  Retorna a lista administrativa de pedidos autenticados.
 
 - `GET /api/pedidos/{id}`  
-  Retorna um pedido específico por ID.
+  Retorna um pedido específico por ID para usuários autenticados.
 
 - `POST /api/pedidos`  
-  Cria um pedido a partir do usuário e dos itens informados.
+  Cria um pedido público com os dados do cliente e dos itens. O preço e o total são calculados pelo backend.
+
+- `GET /api/pedidos/consulta?codigo=...` ou `?telefone=...`
+  Consulta publicamente o status e o resumo de um pedido.
 
 ## Banco de dados
 
@@ -118,6 +121,7 @@ O projeto usa H2 em memória, configurado em:
 - senha: vazia
 
 A JPA está configurada com `ddl-auto=update`, o que permite que o Hibernate crie ou atualize as tabelas automaticamente durante a execução local.
+As categorias e alguns produtos iniciais são carregados de `Fatia-Prime/src/main/resources/data.sql`.
 
 ## Frontend
 
@@ -135,8 +139,9 @@ Ela inclui apresentação da marca, catálogo, carrinho e integração com Whats
 2. Navega pelo cardápio.
 3. Adiciona produtos ao carrinho.
 4. Ajusta quantidades e revisa o total.
-5. Finaliza o pedido pelo WhatsApp.
-6. O backend também disponibiliza cadastro e consulta de usuários por API REST.
+5. O checkout cria o pedido pela API e persiste no H2.
+6. A confirmação apresenta o código retornado e oferece o envio dos dados pelo WhatsApp.
+7. O pedido pode ser consultado pelo código ou telefone.
 
 ## Observações
 

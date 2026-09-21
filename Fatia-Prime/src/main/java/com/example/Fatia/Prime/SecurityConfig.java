@@ -56,6 +56,8 @@ public class SecurityConfig {
                     "/api/categorias/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/pedidos").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/pedidos/consulta").permitAll()
                 .requestMatchers("/api/admin/**", "/api/pedidos/**", "/api/usuarios/**").hasRole("ADMIN")
                 .anyRequest().permitAll())
             .formLogin(form -> form
