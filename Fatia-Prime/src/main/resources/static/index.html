@@ -724,6 +724,25 @@
                     <span class="order-query-status status-received">Pedido recebido</span>
                 </div>
 
+                <div class="order-progress" aria-label="Progresso do pedido">
+                    <div class="order-progress-step" data-order-step="Pedido recebido">
+                        <span class="order-progress-marker">1</span>
+                        <strong>Recebido</strong>
+                    </div>
+                    <div class="order-progress-line" aria-hidden="true"></div>
+                    <div class="order-progress-step" data-order-step="Pedido em andamento">
+                        <span class="order-progress-marker">2</span>
+                        <strong>Em andamento</strong>
+                    </div>
+                    <div class="order-progress-line" aria-hidden="true"></div>
+                    <div class="order-progress-step" data-order-step="Pedido concluído">
+                        <span class="order-progress-marker">3</span>
+                        <strong>Concluído</strong>
+                    </div>
+                </div>
+
+                <p class="order-query-status-message" aria-live="polite"></p>
+
                 <div class="order-query-details">
                     <div class="order-query-meta">
                         <strong>Código</strong>
@@ -876,6 +895,7 @@
         <div class="confirmation-content">
             <h2>Pedido realizado com sucesso!</h2>
             <p class="confirmation-code">Pedido FP-000000-ABC123</p>
+            <p class="confirmation-status status-received">Pedido recebido</p>
 
             <div class="confirmation-section">
                 <h3>Resumo do pedido</h3>
@@ -889,7 +909,10 @@
             </div>
         </div>
 
-        <button class="btn-primary confirmation-continue" type="button">VOLTAR AO CARDÁPIO</button>
+        <div class="confirmation-actions">
+            <button class="btn-primary confirmation-track" type="button">ACOMPANHAR PEDIDO</button>
+            <button class="btn-secondary confirmation-continue" type="button">VOLTAR AO CARDÁPIO</button>
+        </div>
     </aside>
 
     <div class="cart-backdrop" aria-hidden="true"></div>

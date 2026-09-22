@@ -15,13 +15,16 @@ const checkoutTotalElement = document.querySelector('.checkout-total strong');
 const confirmationPanel = document.querySelector('.confirmation-panel');
 const confirmationSummaryElement = document.querySelector('.confirmation-items');
 const confirmationCodeElement = document.querySelector('.confirmation-code');
+const confirmationStatusElement = document.querySelector('.confirmation-status');
 const confirmationCustomerElement = document.querySelector('.confirmation-customer');
 const confirmationTotalElement = document.querySelector('.confirmation-total strong');
+const confirmationTrack = document.querySelector('.confirmation-track');
 const orderQueryForm = document.querySelector('#order-query-form');
 const orderQueryMessage = document.querySelector('.order-query-message');
 const orderQueryResult = document.querySelector('.order-query-result');
 const orderQueryCode = document.querySelector('#order-query-code');
 const orderQueryPhone = document.querySelector('#order-query-phone');
+const orderQueryStatusMessage = document.querySelector('.order-query-status-message');
 const adminLoginForm = document.querySelector('#admin-login-form');
 const adminLoginMessage = document.querySelector('.admin-login-message');
 const adminOrderSearch = document.querySelector('#admin-order-search');
@@ -461,7 +464,7 @@ function closeConfirmation() {
 function saveRecentOrder(orderData) {
     const normalizedOrder = {
         ...orderData,
-        status: orderData.status || getOrderStatus(orderData.code, orderData.phone),
+        status: orderData.status,
         createdAt: new Date().toISOString(),
     };
 
@@ -501,16 +504,6 @@ function readOrderHistory() {
     }
 }
 
-function getOrderStatus(code, phone) {
-    const seed = `${code || ''}${phone || ''}`;
-    let hash = 0;
-    for (let index = 0; index < seed.length; index += 1) {
-        hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
-    }
-    const states = ['Pedido recebido', 'Pedido em andamento', 'Pedido concluído'];
-    return states[hash % states.length];
-}
-
 function escapeHtml(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -522,6 +515,14 @@ function escapeHtml(value) {
 
 function getOrderStatusClass(status) {
     return getOrderQueryStatusLabel(status);
+}
+
+function getOrderStatusMessage(status) {
+    return {
+        'Pedido recebido': 'Recebemos seu pedido e ele está aguardando o início do preparo.',
+        'Pedido em andamento': 'Seu pedido está sendo preparado pela nossa equipe.',
+        'Pedido concluído': 'Seu pedido foi concluído. Obrigado por pedir na Fatia Prime!',
+    }[status] || '';
 }
 
 function formatOrderDate(value) {
@@ -796,7 +797,7 @@ function renderAdminOrders() {
 }
 
 function renderConfirmation(orderData) {
-    if (!confirmationPanel || !confirmationSummaryElement || !confirmationCodeElement || !confirmationTotalElement || !confirmationCustomerElement) {
+    if (!confirmationPanel || !confirmationSummaryElement || !confirmationCodeElement || !confirmationStatusElement || !confirmationTotalElement || !confirmationCustomerElement) {
         return;
     }
 
@@ -804,6 +805,8 @@ function renderConfirmation(orderData) {
     if (!data) return;
 
     confirmationCodeElement.textContent = `Pedido ${data.code}`;
+    confirmationStatusElement.textContent = data.status;
+    confirmationStatusElement.className = `confirmation-status ${getOrderQueryStatusLabel(data.status)}`;
     confirmationSummaryElement.innerHTML = data.items.map((item) => `
         <li>
             <div>
@@ -837,6 +840,13 @@ function openConfirmation(orderData) {
         checkoutPanel.classList.remove('is-open');
         checkoutPanel.setAttribute('aria-hidden', 'true');
     }
+}
+
+function openOrderTracking(orderData) {
+    closeConfirmation();
+    if (orderQueryCode) orderQueryCode.value = orderData.code || '';
+    if (orderQueryPhone) orderQueryPhone.value = orderData.phone ? formatPhone(orderData.phone) : '';
+    document.querySelector('#consultar-pedido')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function renderCheckoutSummary() {
@@ -1013,7 +1023,7 @@ function getOrderQueryStatusLabel(status) {
 }
 
 function normalizePublicOrder(order) {
-    if (!order || typeof order !== 'object' || !order.codigo || !Array.isArray(order.itens)) return null;
+    if (!order || typeof order !== 'object' || !order.codigo || !ORDER_STATUSES.includes(order.status) || !Array.isArray(order.itens)) return null;
     const items = order.itens.map((item) => {
         const price = Number(item.precoUnitario);
         const quantity = Number(item.quantidade);
@@ -1028,7 +1038,7 @@ function normalizePublicOrder(order) {
     if (items.some((item) => !item)) return null;
     return {
         code: String(order.codigo),
-        status: String(order.status || 'Pedido recebido'),
+        status: String(order.status),
         createdAt: order.dataCriacao,
         customer: order.clienteNome || '',
         email: order.clienteEmail || '',
@@ -1062,7 +1072,7 @@ function renderOrderQueryResult(orderData) {
     if (!orderQueryResult || !orderQueryCode || !orderQueryPhone) return;
 
     orderQueryResult.hidden = false;
-    const status = orderData.status || getOrderStatus(orderData.code, orderData.phone);
+    const status = orderData.status;
     const list = Array.isArray(orderData.items) ? orderData.items : [];
     const total = Number(orderData.total) || 0;
 
@@ -1079,6 +1089,18 @@ function renderOrderQueryResult(orderData) {
         statusBadge.textContent = status;
         statusBadge.className = `order-query-status ${getOrderQueryStatusLabel(status)}`;
     }
+    if (orderQueryStatusMessage) {
+        orderQueryStatusMessage.textContent = getOrderStatusMessage(status);
+    }
+    const currentStep = ORDER_STATUSES.indexOf(status);
+    document.querySelectorAll('[data-order-step]').forEach((step, index) => {
+        step.classList.toggle('is-complete', index < currentStep);
+        step.classList.toggle('is-current', index === currentStep);
+        step.classList.toggle('is-upcoming', index > currentStep);
+    });
+    document.querySelectorAll('.order-progress-line').forEach((line, index) => {
+        line.classList.toggle('is-complete', index < currentStep);
+    });
 
     const resultItems = document.querySelector('.order-query-items');
     const resultTotal = document.querySelector('.order-query-total strong');
@@ -1618,6 +1640,10 @@ if (checkoutForm) {
 }
 
 document.querySelector('.confirmation-close').addEventListener('click', closeConfirmation);
+confirmationTrack?.addEventListener('click', () => {
+    const orderData = JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) || 'null');
+    if (orderData) openOrderTracking(orderData);
+});
 document.querySelector('.confirmation-continue').addEventListener('click', () => {
     closeConfirmation();
     window.cart = [];
