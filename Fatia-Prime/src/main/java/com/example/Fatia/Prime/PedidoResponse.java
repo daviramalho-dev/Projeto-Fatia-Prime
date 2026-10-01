@@ -16,7 +16,10 @@ public record PedidoResponse(
     LocalDateTime dataCriacao,
     BigDecimal valorTotal,
     String observacoes,
-    List<ItemPedidoResponse> itens
+    List<ItemPedidoResponse> itens,
+    String cep,
+    BigDecimal subtotal,
+    BigDecimal frete
 ) {
     public static PedidoResponse de(Pedido pedido) {
         List<ItemPedidoResponse> itens = pedido.getItens() == null
@@ -35,7 +38,10 @@ public record PedidoResponse(
             pedido.getDataCriacao(),
             pedido.getValorTotal(),
             pedido.getObservacoes(),
-            itens
+            itens,
+            pedido.getCep(),
+            pedido.calcularSubtotal(),
+            pedido.getValorFrete()
         );
     }
 }

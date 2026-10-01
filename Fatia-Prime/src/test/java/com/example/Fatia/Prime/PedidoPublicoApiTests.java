@@ -58,6 +58,7 @@ class PedidoPublicoApiTests {
               "clienteNome": "Cliente Público",
               "clienteEmail": "cliente@fatiaprime.test",
               "clienteTelefone": "(61) 99999-8888",
+              "cep": "99990000",
               "endereco": "Rua das Pizzas, 10",
               "observacoes": "Sem cebola",
               "itens": [{"produtoId": %d, "quantidade": 2}]
@@ -73,10 +74,12 @@ class PedidoPublicoApiTests {
             .andExpect(jsonPath("$.clienteNome").value("Cliente Público"))
             .andExpect(jsonPath("$.clienteTelefone").value("61999998888"))
             .andExpect(jsonPath("$.status").value("Pedido recebido"))
-            .andExpect(jsonPath("$.valorTotal").value(99.80));
+            .andExpect(jsonPath("$.subtotal").value(99.80))
+            .andExpect(jsonPath("$.frete").value(5.00))
+            .andExpect(jsonPath("$.valorTotal").value(104.80));
 
         assertEquals(1, pedidoRepository.count());
-        assertEquals(new BigDecimal("99.80"), pedidoRepository.findAll().get(0).getValorTotal());
+        assertEquals(new BigDecimal("104.80"), pedidoRepository.findAll().get(0).getValorTotal());
     }
 
     @Test
@@ -86,6 +89,8 @@ class PedidoPublicoApiTests {
               "clienteNome": "Cliente Consulta",
               "clienteEmail": "consulta@fatiaprime.test",
               "clienteTelefone": "61988887777",
+              "cep": "99990000",
+              "endereco": "Rua da Consulta, 10",
               "itens": [{"produtoId": %d, "quantidade": 1}]
             }
             """.formatted(produto.getId());
@@ -119,6 +124,8 @@ class PedidoPublicoApiTests {
               "clienteNome": "Cliente Público",
               "clienteEmail": "cliente@fatiaprime.test",
               "clienteTelefone": "61999998888",
+              "cep": "99990000",
+              "endereco": "Rua das Pizzas, 10",
               "itens": [{"produtoId": %d, "quantidade": 1}]
             }
             """.formatted(usuario.getId(), produto.getId());
@@ -138,6 +145,8 @@ class PedidoPublicoApiTests {
               "clienteNome": "Cliente Público",
               "clienteEmail": "cliente@fatiaprime.test",
               "clienteTelefone": "61999998888",
+              "cep": "99990000",
+              "endereco": "Rua das Pizzas, 10",
               "itens": []
             }
             """;
@@ -157,6 +166,8 @@ class PedidoPublicoApiTests {
               "clienteNome": "Cliente Público",
               "clienteEmail": "email-invalido",
               "clienteTelefone": "123",
+              "cep": "99990000",
+              "endereco": "Rua das Pizzas, 10",
               "itens": [{"produtoId": %d, "quantidade": 51}]
             }
             """.formatted(produto.getId());

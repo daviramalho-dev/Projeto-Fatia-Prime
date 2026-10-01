@@ -20,15 +20,18 @@ public class PedidoController {
     private final PedidoRepository pedidoRepository;
     private final ProdutoRepository produtoRepository;
     private final OpcaoPizzaRepository opcaoPizzaRepository;
+    private final FaixaFreteRepository faixaFreteRepository;
 
     public PedidoController(
         PedidoRepository pedidoRepository,
         ProdutoRepository produtoRepository,
-        OpcaoPizzaRepository opcaoPizzaRepository
+        OpcaoPizzaRepository opcaoPizzaRepository,
+        FaixaFreteRepository faixaFreteRepository
     ) {
         this.pedidoRepository = pedidoRepository;
         this.produtoRepository = produtoRepository;
         this.opcaoPizzaRepository = opcaoPizzaRepository;
+        this.faixaFreteRepository = faixaFreteRepository;
     }
 
     @GetMapping
@@ -81,15 +84,23 @@ public class PedidoController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pedidos públicos não podem informar usuário");
         }
         validarClientePublico(request);
+        String cep = normalizarCep(request.cep());
+        FaixaFrete faixaFrete = faixaFreteRepository
+            .findFirstByAtivoTrueAndCepInicialLessThanEqualAndCepFinalGreaterThanEqualOrderByCepInicialAsc(cep, cep)
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Infelizmente, ainda não entregamos nessa região."
+            ));
         pedido.setClienteNome(request.clienteNome().trim());
         pedido.setClienteEmail(request.clienteEmail().trim());
         pedido.setClienteTelefone(normalizarTelefone(request.clienteTelefone()));
         pedido.setEndereco(normalizarOpcional(request.endereco()));
+        pedido.setCep(cep);
         pedido.setCodigo("FP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
         pedido.setStatus("Pedido recebido");
         pedido.setObservacoes(request.observacoes());
 
-        BigDecimal total = BigDecimal.ZERO;
+        BigDecimal subtotal = BigDecimal.ZERO;
 
         for (ItemPedidoRequest itemRequest : request.itens()) {
             if (itemRequest == null || itemRequest.produtoId() == null) {
@@ -156,10 +167,11 @@ public class PedidoController {
             item.setBordaPreco(precoBorda);
             item.setAdicionais(adicionais);
             pedido.adicionarItem(item);
-            total = total.add(precoUnitario.multiply(BigDecimal.valueOf(itemRequest.quantidade())));
+            subtotal = subtotal.add(precoUnitario.multiply(BigDecimal.valueOf(itemRequest.quantidade())));
         }
 
-        pedido.setValorTotal(total);
+        pedido.setValorFrete(faixaFrete.getValorFrete());
+        pedido.setValorTotal(subtotal.add(faixaFrete.getValorFrete()));
         Pedido salvo = pedidoRepository.saveAndFlush(pedido);
         return PedidoResponse.de(salvo);
     }
@@ -212,5 +224,15 @@ public class PedidoController {
     private String normalizarOpcional(String valor) {
         String normalizado = valor == null ? null : valor.trim();
         return normalizado == null || normalizado.isBlank() ? null : normalizado;
+    }
+
+    private String normalizarCep(String cep) {
+        if (cep == null || cep.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe seu CEP.");
+        }
+        if (!cep.trim().matches("[0-9]{5}-?[0-9]{3}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um CEP válido.");
+        }
+        return cep.replaceAll("\\D", "");
     }
 }

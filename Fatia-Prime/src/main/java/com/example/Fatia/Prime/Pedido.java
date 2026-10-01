@@ -31,6 +31,9 @@ public class Pedido {
     @Column(name = "endereco", length = 500)
     private String endereco;
 
+    @Column(name = "cep", nullable = false, length = 8)
+    private String cep;
+
     @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao;
 
@@ -42,6 +45,9 @@ public class Pedido {
 
     @Column(name = "valor_total", nullable = false, precision = 10, scale = 2)
     private BigDecimal valorTotal;
+
+    @Column(name = "valor_frete", nullable = false, precision = 10, scale = 2)
+    private BigDecimal valorFrete = BigDecimal.ZERO;
 
     @Column(name = "observacoes", length = 500)
     private String observacoes;
@@ -101,6 +107,14 @@ public class Pedido {
         this.endereco = endereco;
     }
 
+    public String getCep() {
+        return cep;
+    }
+
+    public void setCep(String cep) {
+        this.cep = cep;
+    }
+
     public LocalDateTime getDataCriacao() {
         return dataCriacao;
     }
@@ -127,6 +141,23 @@ public class Pedido {
 
     public void setValorTotal(BigDecimal valorTotal) {
         this.valorTotal = valorTotal;
+    }
+
+    public BigDecimal getValorFrete() {
+        return valorFrete == null ? BigDecimal.ZERO : valorFrete;
+    }
+
+    public void setValorFrete(BigDecimal valorFrete) {
+        this.valorFrete = valorFrete == null ? BigDecimal.ZERO : valorFrete;
+    }
+
+    @Transient
+    public BigDecimal calcularSubtotal() {
+        if (itens == null) return BigDecimal.ZERO;
+        return itens.stream()
+            .filter(item -> item != null && item.getPrecoUnitario() != null && item.getQuantidade() != null)
+            .map(item -> item.getPrecoUnitario().multiply(BigDecimal.valueOf(item.getQuantidade())))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public String getObservacoes() {

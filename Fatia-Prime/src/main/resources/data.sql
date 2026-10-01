@@ -57,3 +57,10 @@ merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(n
 values ('Morango extra', 'ADICIONAL', 'DOCE', 5.00, true);
 merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
 values ('Granulado', 'ADICIONAL', 'DOCE', 3.00, true);
+
+merge into faixas_frete (nome, cep_inicial, cep_final, valor_frete, ativo) key(nome)
+values ('Demonstração - Região 1 (faixa artificial)', '99990000', '99990099', 5.00, true);
+merge into faixas_frete (nome, cep_inicial, cep_final, valor_frete, ativo) key(nome)
+values ('Demonstração - Região 2 (faixa artificial)', '99990100', '99990199', 8.00, true);
+merge into faixas_frete (nome, cep_inicial, cep_final, valor_frete, ativo) key(nome)
+values ('Demonstração - Região 3 (faixa artificial)', '99990200', '99990299', 12.00, true);

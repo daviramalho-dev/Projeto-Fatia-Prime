@@ -10,7 +10,9 @@ public record PedidoConsultaResponse(
     LocalDateTime dataCriacao,
     String clienteTelefone,
     BigDecimal valorTotal,
-    List<ItemPedidoResponse> itens
+    List<ItemPedidoResponse> itens,
+    BigDecimal subtotal,
+    BigDecimal frete
 ) {
     public static PedidoConsultaResponse de(Pedido pedido) {
         List<ItemPedidoResponse> itens = pedido.getItens() == null
@@ -23,7 +25,9 @@ public record PedidoConsultaResponse(
             pedido.getDataCriacao(),
             pedido.getClienteTelefone(),
             pedido.getValorTotal(),
-            itens
+            itens,
+            pedido.calcularSubtotal(),
+            pedido.getValorFrete()
         );
     }
 }

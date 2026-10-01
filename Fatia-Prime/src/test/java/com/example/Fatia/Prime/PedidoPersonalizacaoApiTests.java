@@ -87,7 +87,9 @@ class PedidoPersonalizacaoApiTests {
             {"produtoId":%d,"quantidade":1,"tipoPizza":"INTEIRA","precoUnitario":0,"valorTotal":0}
             """.formatted(saborEconomico.getId()))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.valorTotal").value(40.00))
+            .andExpect(jsonPath("$.subtotal").value(40.00))
+            .andExpect(jsonPath("$.frete").value(5.00))
+            .andExpect(jsonPath("$.valorTotal").value(45.00))
             .andExpect(jsonPath("$.itens[0].precoUnitario").value(40.00))
             .andExpect(jsonPath("$.itens[0].tipoPizza").value("INTEIRA"))
             .andExpect(jsonPath("$.itens[0].nomeProduto").value("Calabresa Prime"));
@@ -100,7 +102,9 @@ class PedidoPersonalizacaoApiTests {
              "bordaId":%d,"adicionalIds":[%d],"precoUnitario":1,"valorTotal":1}
             """.formatted(saborEconomico.getId(), saborPremium.getId(), bordaCatupiry.getId(), adicionalQueijo.getId()))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.valorTotal").value(122.00))
+            .andExpect(jsonPath("$.subtotal").value(122.00))
+            .andExpect(jsonPath("$.frete").value(5.00))
+            .andExpect(jsonPath("$.valorTotal").value(127.00))
             .andExpect(jsonPath("$.itens[0].precoUnitario").value(61.00))
             .andExpect(jsonPath("$.itens[0].tipoPizza").value("MEIO_A_MEIO"))
             .andExpect(jsonPath("$.itens[0].nomeProduto").value("Calabresa Prime"))
@@ -118,7 +122,9 @@ class PedidoPersonalizacaoApiTests {
             """.formatted(saborPremium.getId(), saborEconomico.getId()))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.itens[0].precoUnitario").value(50.00))
-            .andExpect(jsonPath("$.valorTotal").value(50.00));
+            .andExpect(jsonPath("$.subtotal").value(50.00))
+            .andExpect(jsonPath("$.frete").value(5.00))
+            .andExpect(jsonPath("$.valorTotal").value(55.00));
     }
 
     @Test
@@ -225,12 +231,16 @@ class PedidoPersonalizacaoApiTests {
 
         mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].subtotal").value(61.00))
+            .andExpect(jsonPath("$[0].frete").value(5.00))
             .andExpect(jsonPath("$[0].itens[0].nomeSegundoProduto").value("Frango com Catupiry"))
             .andExpect(jsonPath("$[0].itens[0].borda").value("Catupiry"))
             .andExpect(jsonPath("$[0].itens[0].adicionais[0].nome").value("Queijo extra"));
 
         mockMvc.perform(get("/api/admin/pedidos").session(adminSession()))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].subtotal").value(61.00))
+            .andExpect(jsonPath("$[0].frete").value(5.00))
             .andExpect(jsonPath("$[0].itens[0].nomeProduto").value("Calabresa Prime"))
             .andExpect(jsonPath("$[0].itens[0].nomeSegundoProduto").value("Frango com Catupiry"))
             .andExpect(jsonPath("$[0].itens[0].borda").value("Catupiry"))
@@ -246,7 +256,9 @@ class PedidoPersonalizacaoApiTests {
             {"produtoId":%d,"quantidade":1,"bordaId":%d,"adicionalIds":[%d]}
             """.formatted(saborDoce.getId(), opcaoDoce.getId(), adicionalMorango.getId()))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.valorTotal").value(66.00))
+            .andExpect(jsonPath("$.subtotal").value(66.00))
+            .andExpect(jsonPath("$.frete").value(5.00))
+            .andExpect(jsonPath("$.valorTotal").value(71.00))
             .andExpect(jsonPath("$.itens[0].borda").value("Chocolate"))
             .andExpect(jsonPath("$.itens[0].adicionais[0].nome").value("Morango extra"));
     }
@@ -270,6 +282,8 @@ class PedidoPersonalizacaoApiTests {
               "clienteNome":"Cliente BL48",
               "clienteEmail":"cliente-bl48@fatiaprime.test",
               "clienteTelefone":"61999998888",
+              "cep":"99990000",
+              "endereco":"Rua da Pizza, 10",
               "itens":[%s]
             }
             """.formatted(item);

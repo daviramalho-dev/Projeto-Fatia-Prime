@@ -66,6 +66,7 @@ class AdminPedidoApiTests {
         pedido.setUsuario(admin);
         pedido.setCodigo("FP-TESTE-001");
         pedido.setStatus("Pedido recebido");
+        pedido.setCep("99990000");
         pedido.setObservacoes("Sem cebola");
         pedido.setValorTotal(new BigDecimal("99.80"));
         pedido.setItens(List.of(new ItemPedido(produto, 2, new BigDecimal("49.90"))));

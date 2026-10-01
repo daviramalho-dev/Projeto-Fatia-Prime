@@ -12,6 +12,12 @@ const checkoutForm = document.querySelector('#checkout-form');
 const checkoutMessage = document.querySelector('.checkout-message');
 const checkoutItemsElement = document.querySelector('.checkout-items');
 const checkoutTotalElement = document.querySelector('.checkout-total strong');
+const checkoutSubtotalElement = document.querySelector('.checkout-subtotal');
+const checkoutFreightElement = document.querySelector('.checkout-freight');
+const cartSubtotalElement = document.querySelector('.cart-subtotal');
+const cartFreightElement = document.querySelector('.cart-freight');
+const cartTotalLabel = document.querySelector('.cart-total span');
+const checkoutTotalLabel = document.querySelector('.checkout-total span');
 const pizzaCustomizer = document.querySelector('.pizza-customizer');
 const customizerFirstFlavor = document.querySelector('.customizer-first-flavor');
 const customizerSecondFlavor = document.querySelector('.customizer-second-flavor');
@@ -26,13 +32,18 @@ const confirmationCodeElement = document.querySelector('.confirmation-code');
 const confirmationStatusElement = document.querySelector('.confirmation-status');
 const confirmationCustomerElement = document.querySelector('.confirmation-customer');
 const confirmationTotalElement = document.querySelector('.confirmation-total strong');
+const confirmationSubtotalElement = document.querySelector('.confirmation-subtotal');
+const confirmationFreightElement = document.querySelector('.confirmation-freight');
 const confirmationTrack = document.querySelector('.confirmation-track');
+const confirmationWhatsappLink = document.querySelector('.confirmation-whatsapp');
 const orderQueryForm = document.querySelector('#order-query-form');
 const orderQueryMessage = document.querySelector('.order-query-message');
 const orderQueryResult = document.querySelector('.order-query-result');
 const orderQueryCode = document.querySelector('#order-query-code');
 const orderQueryPhone = document.querySelector('#order-query-phone');
 const orderQueryStatusMessage = document.querySelector('.order-query-status-message');
+const orderQuerySubtotalElement = document.querySelector('.order-query-subtotal');
+const orderQueryFreightElement = document.querySelector('.order-query-freight');
 const adminLoginForm = document.querySelector('#admin-login-form');
 const adminLoginMessage = document.querySelector('.admin-login-message');
 const adminOrderSearch = document.querySelector('#admin-order-search');
@@ -45,6 +56,8 @@ const adminSummaryReceived = document.querySelector('#admin-summary-received');
 const adminSummaryProgress = document.querySelector('#admin-summary-progress');
 const adminSummaryFinished = document.querySelector('#admin-summary-finished');
 const adminOrderDetails = document.querySelector('.admin-order-details');
+const adminOrderSubtotalElement = document.querySelector('.admin-order-subtotal strong');
+const adminOrderFreightElement = document.querySelector('.admin-order-freight strong');
 const adminOrderStatusEditor = document.querySelector('#admin-order-status-editor');
 const adminStatusMessage = document.querySelector('.admin-status-message');
 const adminStatusSave = document.querySelector('.admin-status-save');
@@ -75,8 +88,8 @@ const catalogFeedback = document.querySelector('.catalog-feedback');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
-let cepLookupRequestId = 0;
-let lastRequestedCep = '';
+let deliveryQuoteRequestId = 0;
+let currentDeliveryQuote = null;
 let editingProductId = null;
 let editingOptionId = null;
 let customizerQuantity = 1;
@@ -234,13 +247,16 @@ function normalizeAdminOrder(order) {
         createdAt: order.dataCriacao,
         customer: order.nomeCliente,
         phone: order.telefone,
+        cep: order.cep || '',
         email: order.email,
         address: order.endereco,
         notes: order.observacoes,
         items: Array.isArray(order.itens)
             ? order.itens.map((item) => ({ ...normalizeOrderItem(item), id: item.id }))
             : [],
-        total: order.total,
+        subtotal: Number(order.subtotal ?? order.total) || 0,
+        freight: Number(order.frete) || 0,
+        total: Number(order.total) || 0,
     };
 }
 
@@ -957,6 +973,7 @@ function renderAdminOrderDetails(order) {
     const customerFields = [
         ['Nome', order.customer || 'Não informado'],
         ['Telefone', order.phone ? formatPhone(order.phone) : 'Não informado'],
+        ['CEP', order.cep ? formatCep(order.cep) : 'Não informado'],
         ['E-mail', order.email || 'Não informado'],
         ['Endereço', order.address || 'Não informado'],
         ['Observações', order.notes || 'Não informado'],
@@ -984,6 +1001,8 @@ function renderAdminOrderDetails(order) {
                 </li>`).join('')
             : '<li><span>Itens não informados.</span></li>';
     }
+    if (adminOrderSubtotalElement) adminOrderSubtotalElement.textContent = money.format(Number(order.subtotal) || 0);
+    if (adminOrderFreightElement) adminOrderFreightElement.textContent = money.format(Number(order.freight) || 0);
     if (totalElement) totalElement.textContent = money.format(Number(order.total) || 0);
     adminOrderDetails.hidden = false;
     adminOrderDetails.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1048,11 +1067,14 @@ function renderConfirmation(orderData) {
             </div>
             <strong>${money.format(Number(item.subtotal) || Number(item.price) * Number(item.quantity))}</strong>
         </li>`).join('');
+    if (confirmationSubtotalElement) confirmationSubtotalElement.textContent = money.format(Number(data.subtotal ?? data.total) || 0);
+    if (confirmationFreightElement) confirmationFreightElement.textContent = money.format(Number(data.freight) || 0);
     confirmationTotalElement.textContent = money.format(Number(data.total));
 
     const customerInfo = [
         data.customer ? `Nome: ${data.customer}` : null,
         data.phone ? `Telefone: ${data.phone}` : null,
+        data.cep ? `CEP: ${formatCep(data.cep)}` : null,
         data.address ? `Endereço: ${data.address}` : null,
     ].filter(Boolean).join(' • ');
 
@@ -1063,6 +1085,7 @@ function renderConfirmation(orderData) {
 
 function openConfirmation(orderData) {
     if (!confirmationPanel) return;
+    if (confirmationWhatsappLink) confirmationWhatsappLink.hidden = true;
     renderConfirmation(orderData);
     confirmationPanel.classList.add('is-open');
     confirmationPanel.setAttribute('aria-hidden', 'false');
@@ -1096,7 +1119,7 @@ function renderCheckoutSummary() {
             </li>`).join('')
         : '<li><span>Seu carrinho está vazio.</span></li>';
 
-    checkoutTotalElement.textContent = money.format(cartTotal());
+    renderDeliveryBreakdown();
 }
 
 function normalizePhone(value) {
@@ -1113,16 +1136,97 @@ function formatPhone(value) {
 }
 
 function formatCep(value) {
-    const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
+    const digits = String(value || '').replace(/\D/g, '');
     if (digits.length <= 5) return digits;
     return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
 
-function setAddressLookupMessage(form, message, type = '') {
-    const element = form?.querySelector('.address-lookup-message');
+function setDeliveryQuoteMessage(form, message, type = '') {
+    const element = form?.querySelector('.delivery-quote-message');
     if (!element) return;
     element.textContent = message;
-    element.className = `address-lookup-message ${type}`.trim();
+    element.className = `delivery-quote-message ${type}`.trim();
+}
+
+function renderDeliveryBreakdown() {
+    const subtotal = cartTotal();
+    const freight = currentDeliveryQuote?.frete;
+    const hasFreight = Number.isFinite(freight) && freight >= 0;
+    const hasItems = Array.isArray(window.cart) && window.cart.length > 0;
+    const awaitingQuote = hasItems && !hasFreight;
+    const total = subtotal + (hasFreight ? freight : 0);
+
+    if (cartSubtotalElement) cartSubtotalElement.textContent = money.format(subtotal);
+    if (cartFreightElement) cartFreightElement.textContent = hasFreight
+        ? money.format(freight)
+        : 'Informe o CEP no checkout';
+    if (cartTotalLabel) cartTotalLabel.textContent = awaitingQuote ? 'Total com entrega' : 'Total';
+    if (totalElement) totalElement.textContent = awaitingQuote ? 'Informe o CEP' : money.format(total);
+
+    if (checkoutSubtotalElement) checkoutSubtotalElement.textContent = money.format(subtotal);
+    if (checkoutFreightElement) checkoutFreightElement.textContent = hasFreight
+        ? money.format(freight)
+        : 'Informe seu CEP';
+    if (checkoutTotalLabel) checkoutTotalLabel.textContent = 'Total';
+    if (checkoutTotalElement) checkoutTotalElement.textContent = hasFreight
+        ? money.format(total)
+        : 'Aguardando CEP';
+}
+
+async function refreshDeliveryQuote(cep, form, force = false) {
+    const normalizedCep = String(cep || '').replace(/\D/g, '');
+    if (!/^[0-9]{8}$/.test(normalizedCep)) {
+        currentDeliveryQuote = null;
+        deliveryQuoteRequestId += 1;
+        renderDeliveryBreakdown();
+        setDeliveryQuoteMessage(form, normalizedCep ? 'Informe um CEP válido.' : '');
+        return false;
+    }
+
+    if (!force && currentDeliveryQuote?.cep === normalizedCep) {
+        setDeliveryQuoteMessage(
+            form,
+            `Entrega para ${currentDeliveryQuote.regiao}: ${money.format(currentDeliveryQuote.frete)}.`,
+            'success'
+        );
+        return true;
+    }
+
+    const requestId = ++deliveryQuoteRequestId;
+    currentDeliveryQuote = null;
+    renderDeliveryBreakdown();
+    setDeliveryQuoteMessage(form, 'Calculando entrega...');
+
+    try {
+        const quote = await fetchApiJson(`/api/frete/consulta?cep=${encodeURIComponent(normalizedCep)}`);
+        if (requestId !== deliveryQuoteRequestId) return false;
+        const freight = Number(quote?.valorFrete);
+        if (!Number.isFinite(freight) || freight < 0 || !quote?.regiao) {
+            throw new Error('Não foi possível calcular a entrega. Tente novamente.');
+        }
+        currentDeliveryQuote = {
+            cep: normalizedCep,
+            regiao: String(quote.regiao),
+            frete: freight,
+        };
+        renderDeliveryBreakdown();
+        setDeliveryQuoteMessage(
+            form,
+            `Entrega para ${currentDeliveryQuote.regiao}: ${money.format(freight)}.`,
+            'success'
+        );
+        return true;
+    } catch (error) {
+        if (requestId !== deliveryQuoteRequestId) return false;
+        currentDeliveryQuote = null;
+        renderDeliveryBreakdown();
+        setDeliveryQuoteMessage(
+            form,
+            error.message || 'Não foi possível calcular a entrega. Tente novamente.',
+            'error'
+        );
+        return false;
+    }
 }
 
 function composeAddress(formData) {
@@ -1139,52 +1243,6 @@ function composeAddress(formData) {
     return [streetLine, complement, neighborhood, cityLine, cep && `CEP ${cep}`]
         .filter(Boolean)
         .join(' • ');
-}
-
-async function lookupAddressByCep(form) {
-    const cepField = form?.elements.namedItem('customerCep');
-    if (!cepField) return;
-
-    const cep = String(cepField.value || '').replace(/\D/g, '');
-    if (cep.length !== 8) {
-        lastRequestedCep = '';
-        setAddressLookupMessage(form, cep ? 'Digite um CEP com 8 números.' : '');
-        return;
-    }
-
-    if (cep === lastRequestedCep) return;
-    lastRequestedCep = cep;
-
-    const requestId = ++cepLookupRequestId;
-    setAddressLookupMessage(form, 'Consultando CEP...');
-
-    try {
-        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-        if (!response.ok) throw new Error('CEP unavailable');
-        const data = await response.json();
-        if (requestId !== cepLookupRequestId) return;
-        if (data.erro) {
-            setAddressLookupMessage(form, 'CEP não encontrado. Você pode preencher o endereço manualmente.', 'error');
-            return;
-        }
-
-        const fields = {
-            customerStreet: data.logradouro,
-            customerNeighborhood: data.bairro,
-            customerCity: data.localidade,
-            customerState: data.uf,
-        };
-        Object.entries(fields).forEach(([name, value]) => {
-            const field = form.elements.namedItem(name);
-            if (!field || !value || (field.value.trim() && field.dataset.cepAutofilled !== 'true')) return;
-            field.value = value;
-            field.dataset.cepAutofilled = 'true';
-        });
-        setAddressLookupMessage(form, 'Endereço preenchido. Confira e ajuste se necessário.', 'success');
-    } catch (error) {
-        if (requestId !== cepLookupRequestId) return;
-        setAddressLookupMessage(form, 'Não foi possível consultar o CEP. Você pode preencher o endereço manualmente.', 'error');
-    }
 }
 
 function isValidPhone(value) {
@@ -1273,9 +1331,12 @@ function normalizePublicOrder(order) {
         customer: order.clienteNome || '',
         email: order.clienteEmail || '',
         phone: order.clienteTelefone || '',
+        cep: order.cep || '',
         address: order.endereco || '',
         notes: order.observacoes || '',
         items,
+        subtotal: Number(order.subtotal ?? order.valorTotal),
+        freight: Number(order.frete) || 0,
         total: Number(order.valorTotal),
     };
 }
@@ -1334,6 +1395,8 @@ function renderOrderQueryResult(orderData) {
 
     const resultItems = document.querySelector('.order-query-items');
     const resultTotal = document.querySelector('.order-query-total strong');
+    if (orderQuerySubtotalElement) orderQuerySubtotalElement.textContent = money.format(Number(orderData.subtotal ?? total) || 0);
+    if (orderQueryFreightElement) orderQueryFreightElement.textContent = money.format(Number(orderData.freight) || 0);
     if (resultItems) {
         resultItems.innerHTML = list.length
             ? list.map((item) => `
@@ -1471,7 +1534,6 @@ function openCheckout() {
 function updateCart() {
     const count = window.cart.reduce((total, item) => total + item.quantity, 0);
     document.querySelectorAll('.cart-count').forEach((element) => (element.textContent = count));
-    totalElement.textContent = money.format(cartTotal());
     itemsElement.innerHTML = window.cart.length
         ? window.cart.map((item, index) => `
             <div class="cart-item">
@@ -1488,6 +1550,7 @@ function updateCart() {
     if (checkoutPanel && checkoutPanel.classList.contains('is-open')) {
         renderCheckoutSummary();
     }
+    renderDeliveryBreakdown();
     saveCart();
 }
 
@@ -1912,21 +1975,10 @@ if (checkoutForm) {
     if (cepField) {
         cepField.addEventListener('input', () => {
             cepField.value = formatCep(cepField.value);
-            setAddressLookupMessage(checkoutForm, '');
-            if (cepField.value.replace(/\D/g, '').length === 8) {
-                lookupAddressByCep(checkoutForm);
-            }
+            void refreshDeliveryQuote(cepField.value, checkoutForm);
         });
-        cepField.addEventListener('blur', () => lookupAddressByCep(checkoutForm));
+        cepField.addEventListener('blur', () => refreshDeliveryQuote(cepField.value, checkoutForm));
     }
-
-    checkoutForm.querySelectorAll('[name^="customer"]').forEach((field) => {
-        if (field.name !== 'customerCep') {
-            field.addEventListener('input', () => {
-                field.dataset.cepAutofilled = 'false';
-            });
-        }
-    });
 }
 
 document.querySelector('.admin-order-details-close')?.addEventListener('click', () => {
@@ -1971,6 +2023,30 @@ if (checkoutForm) {
             return;
         }
 
+        const cep = normalizePhone(formData.get('customerCep'));
+        if (!cep) {
+            markFieldInvalid('customerCep', 'Informe seu CEP.');
+            return;
+        }
+        if (cep.length !== 8) {
+            markFieldInvalid('customerCep', 'Informe um CEP válido.');
+            return;
+        }
+
+        const requiredAddressFields = [
+            ['customerStreet', 'Informe a rua ou o logradouro.'],
+            ['customerNumber', 'Informe o número do endereço.'],
+            ['customerNeighborhood', 'Informe o bairro.'],
+            ['customerCity', 'Informe a cidade.'],
+            ['customerState', 'Informe o estado.'],
+        ];
+        for (const [fieldName, message] of requiredAddressFields) {
+            if (!String(formData.get(fieldName) || '').trim()) {
+                markFieldInvalid(fieldName, message);
+                return;
+            }
+        }
+
         if (!Array.isArray(window.cart) || !window.cart.length || !cartItemsAreValid()) {
             showCheckoutMessage('Carrinho vazio.', false);
             return;
@@ -1981,10 +2057,20 @@ if (checkoutForm) {
             return;
         }
 
+        const whatsappWindow = window.open('about:blank', '_blank');
+
+        if (!await refreshDeliveryQuote(cep, checkoutForm, true)) {
+            whatsappWindow?.close();
+            const quoteMessage = checkoutForm.querySelector('.delivery-quote-message')?.textContent;
+            showCheckoutMessage(quoteMessage || 'Informe um CEP atendido para calcular a entrega.', false);
+            return;
+        }
+
         const payload = {
             clienteNome: customer,
             clienteEmail: email,
             clienteTelefone: normalizePhone(phone),
+            cep,
             endereco: address,
             observacoes: notes,
             itens: window.cart.map((item) => ({
@@ -2012,9 +2098,13 @@ if (checkoutForm) {
                 `Código: ${createdOrder.code}`,
                 `Status: ${createdOrder.status}`,
                 ...createdOrder.items.map((item) => `• ${item.quantity}x ${pizzaWhatsAppDescription(item)} — ${money.format(item.subtotal)}`),
-                '', `Total: ${money.format(createdOrder.total)}`,
+                '',
+                `Subtotal: ${money.format(createdOrder.subtotal)}`,
+                `Entrega: ${money.format(createdOrder.freight)}`,
+                `Total: ${money.format(createdOrder.total)}`,
                 `Nome: ${createdOrder.customer}`,
                 `E-mail: ${createdOrder.email}`,
+                createdOrder.cep && `CEP: ${formatCep(createdOrder.cep)}`,
                 createdOrder.address && `Endereço: ${createdOrder.address}`,
                 `Telefone: ${formatPhone(createdOrder.phone)}`,
                 createdOrder.notes && `Observações: ${createdOrder.notes}`,
@@ -2022,8 +2112,16 @@ if (checkoutForm) {
             saveRecentOrder(createdOrder);
             showCheckoutMessage('Pedido criado com sucesso.', true);
             openConfirmation(createdOrder);
-            window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+            const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+            if (confirmationWhatsappLink) {
+                confirmationWhatsappLink.href = whatsappUrl;
+                confirmationWhatsappLink.hidden = Boolean(whatsappWindow);
+            }
+            if (whatsappWindow) {
+                whatsappWindow.location.href = whatsappUrl;
+            }
         } catch (error) {
+            whatsappWindow?.close();
             showCheckoutMessage(error.message || 'Não foi possível criar o pedido. Tente novamente.', false);
         } finally {
             if (submitButton) {
@@ -2043,10 +2141,14 @@ document.querySelector('.confirmation-continue').addEventListener('click', () =>
     closeConfirmation();
     window.cart = [];
     updateCart();
+    currentDeliveryQuote = null;
+    deliveryQuoteRequestId += 1;
     closeCheckout();
     if (checkoutForm) {
         checkoutForm.reset();
+        setDeliveryQuoteMessage(checkoutForm, '');
     }
+    renderDeliveryBreakdown();
     const cartCustomerName = document.querySelector('#customer-name');
     const cartOrderNotes = document.querySelector('#order-notes');
     if (cartCustomerName) cartCustomerName.value = '';
