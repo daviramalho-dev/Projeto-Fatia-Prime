@@ -15,7 +15,10 @@ public record AdminPedidoResponse(
     String endereco,
     String observacoes,
     List<AdminItemPedidoResponse> itens,
-    BigDecimal total
+    BigDecimal total,
+    String cep,
+    BigDecimal subtotal,
+    BigDecimal frete
 ) {
     public static AdminPedidoResponse de(Pedido pedido) {
         List<AdminItemPedidoResponse> itens = pedido.getItens() == null
@@ -33,7 +36,10 @@ public record AdminPedidoResponse(
             pedido.getEndereco(),
             pedido.getObservacoes(),
             itens,
-            pedido.getValorTotal()
+            pedido.getValorTotal(),
+            pedido.getCep(),
+            pedido.calcularSubtotal(),
+            pedido.getValorFrete()
         );
     }
 }

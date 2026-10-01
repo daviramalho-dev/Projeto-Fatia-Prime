@@ -27,6 +27,7 @@ A interface apresenta a marca e carrega o catálogo pela API. O frontend está i
 - Catálogo de pizzas salgadas e doces, com categorias, filtros e imagens disponíveis.
 - Personalização de pizza inteira ou meio a meio; no meio a meio, o preço base usa o sabor mais caro.
 - Bordas recheadas e adicionais compatíveis, com acréscimos configuráveis e resumo atualizado.
+- Entrega calculada pelo CEP, com subtotal, frete e total apresentados separadamente no pedido.
 - Carrinho de compras com armazenamento local no navegador (`localStorage`).
 - Checkout com validação dos dados e criação do pedido pela API.
 - Confirmação do pedido com código para consulta posterior.
@@ -191,6 +192,13 @@ A autenticação administrativa utiliza os seguintes endpoints:
 - `PATCH /api/admin/opcoes-pizza/{id}/status`
   Ativa ou desativa uma opção sem removê-la.
 
+### Entrega
+
+- `GET /api/frete/consulta?cep=99990000`
+  Normaliza o CEP e retorna a região atendida e o valor da faixa ativa; CEP inválido retorna erro de validação e CEP sem faixa ativa não pode ser usado para finalizar pedidos.
+- As faixas iniciais ficam no seed local e estão identificadas como dados artificiais de demonstração, não como cobertura geográfica comercial.
+- Ao criar o pedido, o backend resolve novamente a faixa e grava o CEP normalizado e o valor do frete cobrado naquele momento. O total é recalculado como subtotal dos produtos mais frete; valores financeiros enviados pelo navegador não são usados.
+
 ### Pedidos
 
 - `GET /api/pedidos`  
@@ -222,7 +230,7 @@ O projeto usa H2 em memória, configurado em:
 
 A JPA está configurada com `ddl-auto=update`, o que permite que o Hibernate crie ou atualize as tabelas automaticamente durante a execução. As categorias e os produtos iniciais são carregados de `Fatia-Prime/src/main/resources/data.sql`.
 
-As entidades persistidas são `Usuario`, `Categoria`, `Produto`, `Pedido` e `ItemPedido`. Os relacionamentos principais são produtos associados a categorias, pedidos associados opcionalmente a usuários e itens associados a pedidos e produtos.
+As entidades persistidas são `Usuario`, `Categoria`, `Produto`, `FaixaFrete`, `Pedido` e `ItemPedido`. Os relacionamentos principais são produtos associados a categorias, pedidos associados opcionalmente a usuários e itens associados a pedidos e produtos. O pedido guarda o CEP normalizado e o frete cobrado como snapshot; pedidos existentes não são recalculados se as faixas mudarem.
 
 Os dados do H2 em memória são perdidos quando a aplicação reinicia. Categorias e produtos iniciais são recriados pelo seed. Essa configuração atende ao objetivo acadêmico e demonstrativo atual, mas o H2 em memória não deve ser apresentado como banco persistente de produção.
 

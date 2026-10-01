@@ -1441,6 +1441,23 @@ button {
     font-size: 20px;
 }
 
+.admin-order-subtotal,
+.admin-order-freight {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 8px;
+    color: #c7c7c7;
+    font-size: 12px;
+}
+
+.admin-order-subtotal strong,
+.admin-order-freight strong {
+    color: #fff;
+    font-size: 13px;
+}
+
 .admin-catalog {
     padding: 100px 7% 90px;
     background: #101010;
@@ -1843,6 +1860,44 @@ footer p {
 .cart-footer { padding-top: 18px; border-top: 1px solid #303030; }
 .cart-total { margin-bottom: 17px; font-size: 15px; }
 .cart-total strong, .checkout-total strong { color: #f5c400; font-size: 20px; }
+.delivery-breakdown {
+    display: grid;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.delivery-breakdown > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    color: #c7c7c7;
+    font-size: 12px;
+}
+
+.delivery-breakdown strong {
+    color: #fff;
+    font-size: 12px;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.delivery-quote-message {
+    min-height: 18px;
+    margin-top: 8px;
+    color: #c7c7c7;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.delivery-quote-message.success {
+    color: #6de59b;
+}
+
+.delivery-quote-message.error {
+    color: #ff8a80;
+}
+
 .cart-footer label { display: block; margin: 12px 0; color: #ddd; font-size: 12px; font-weight: 600; }
 .cart-footer input, .cart-footer textarea { width: 100%; margin-top: 6px; padding: 10px; border: 1px solid #444; background: #0c0c0c; color: #fff; font: inherit; resize: vertical; }
 .checkout-button { width: 100%; border: 0; margin-top: 5px; }
@@ -2016,22 +2071,6 @@ footer p {
 .checkout-address-grid select:focus {
     border-color: #f5c400;
     box-shadow: 0 0 0 1px rgba(245, 196, 0, .4);
-}
-
-.address-lookup-message {
-    min-height: 18px;
-    margin-top: 10px;
-    color: #999;
-    font-size: 10px;
-    line-height: 1.5;
-}
-
-.address-lookup-message.success {
-    color: #6de59b;
-}
-
-.address-lookup-message.error {
-    color: #ff8a80;
 }
 
 .checkout-message {
@@ -2219,7 +2258,7 @@ footer p {
     margin-top: 20px;
 }
 
-.confirmation-actions button {
+.confirmation-actions > * {
     width: 100%;
 }
 

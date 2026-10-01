@@ -615,6 +615,8 @@
                     <div class="admin-order-products">
                         <h4>Produtos</h4>
                         <ul class="admin-order-product-list"></ul>
+                        <div class="admin-order-subtotal"><span>Subtotal</span><strong></strong></div>
+                        <div class="admin-order-freight"><span>Entrega</span><strong></strong></div>
                         <div class="admin-order-total"><span>Total</span><strong></strong></div>
                     </div>
                 </div>
@@ -806,6 +808,10 @@
                 <div class="order-query-summary">
                     <h3>Resumo do pedido</h3>
                     <ul class="order-query-items"></ul>
+                    <div class="delivery-breakdown order-query-delivery-breakdown">
+                        <div><span>Subtotal</span><strong class="order-query-subtotal">R$ 0,00</strong></div>
+                        <div><span>Entrega</span><strong class="order-query-freight">R$ 0,00</strong></div>
+                    </div>
                     <div class="order-query-total"><span>Total</span><strong>R$ 0,00</strong></div>
                 </div>
             </div>
@@ -904,6 +910,10 @@
         <div class="cart-header"><h2>SEU PEDIDO</h2><button class="cart-close" type="button" aria-label="Fechar pedido">×</button></div>
         <div class="cart-items"><p class="cart-empty">Seu carrinho está vazio.</p></div>
         <div class="cart-footer">
+            <div class="delivery-breakdown cart-delivery-breakdown">
+                <div><span>Subtotal</span><strong class="cart-subtotal">R$ 0,00</strong></div>
+                <div><span>Entrega</span><strong class="cart-freight">Informe o CEP no checkout</strong></div>
+            </div>
             <div class="cart-total"><span>Total</span><strong>R$ 0,00</strong></div>
             <label>Seu nome<input id="customer-name" type="text" autocomplete="name" placeholder="Como podemos chamar você?"></label>
             <label>Observações<textarea id="order-notes" rows="3" placeholder="Ex.: sem cebola"></textarea></label>
@@ -921,6 +931,10 @@
         <div class="checkout-summary">
             <h3>Resumo do pedido</h3>
             <ul class="checkout-items"></ul>
+            <div class="delivery-breakdown checkout-delivery-breakdown">
+                <div><span>Subtotal</span><strong class="checkout-subtotal">R$ 0,00</strong></div>
+                <div><span>Entrega</span><strong class="checkout-freight">Informe seu CEP</strong></div>
+            </div>
             <div class="checkout-total"><span>Total</span><strong>R$ 0,00</strong></div>
         </div>
 
@@ -945,27 +959,27 @@
                 <div class="checkout-address-section field-full">
                     <div class="checkout-address-heading">
                         <strong>Endereço de entrega</strong>
-                        <span>Opcional. Informe o CEP para preencher os dados automaticamente.</span>
+                        <span>Informe seu CEP para calcular a entrega e preencha o endereço.</span>
                     </div>
                     <div class="checkout-address-grid">
                         <label>
                             CEP
-                            <input name="customerCep" type="text" data-cep autocomplete="postal-code" inputmode="numeric" maxlength="9" placeholder="00000-000">
+                            <input name="customerCep" type="text" data-cep autocomplete="postal-code" inputmode="numeric" maxlength="9" placeholder="00000-000" required>
                         </label>
                         <label>
                             Estado
-                            <select name="customerState" autocomplete="address-level1">
+                            <select name="customerState" autocomplete="address-level1" required>
                                 <option value="">UF</option>
                                 <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option>
                             </select>
                         </label>
                         <label class="address-field-wide">
                             Rua / logradouro
-                            <input name="customerStreet" type="text" autocomplete="street-address" placeholder="Rua, avenida ou praça">
+                            <input name="customerStreet" type="text" autocomplete="street-address" placeholder="Rua, avenida ou praça" required>
                         </label>
                         <label>
                             Número
-                            <input name="customerNumber" type="text" inputmode="numeric" placeholder="Número">
+                            <input name="customerNumber" type="text" inputmode="numeric" placeholder="Número" required>
                         </label>
                         <label>
                             Complemento
@@ -973,14 +987,14 @@
                         </label>
                         <label>
                             Bairro
-                            <input name="customerNeighborhood" type="text" autocomplete="address-level2" placeholder="Bairro">
+                            <input name="customerNeighborhood" type="text" autocomplete="address-level2" placeholder="Bairro" required>
                         </label>
                         <label>
                             Cidade
-                            <input name="customerCity" type="text" autocomplete="address-level2" placeholder="Cidade">
+                            <input name="customerCity" type="text" autocomplete="address-level2" placeholder="Cidade" required>
                         </label>
                     </div>
-                    <div class="address-lookup-message" aria-live="polite"></div>
+                    <div class="delivery-quote-message" aria-live="polite"></div>
                 </div>
             </div>
             <div class="checkout-message" aria-live="polite"></div>
@@ -1002,6 +1016,10 @@
             <div class="confirmation-section">
                 <h3>Resumo do pedido</h3>
                 <ul class="confirmation-items"></ul>
+                    <div class="delivery-breakdown confirmation-delivery-breakdown">
+                        <div><span>Subtotal</span><strong class="confirmation-subtotal">R$ 0,00</strong></div>
+                        <div><span>Entrega</span><strong class="confirmation-freight">R$ 0,00</strong></div>
+                    </div>
                 <div class="confirmation-total"><span>Total</span><strong>R$ 0,00</strong></div>
             </div>
 
@@ -1013,6 +1031,7 @@
 
         <div class="confirmation-actions">
             <button class="btn-primary confirmation-track" type="button">ACOMPANHAR PEDIDO</button>
+            <a class="btn-secondary confirmation-whatsapp" href="#" target="_blank" rel="noopener noreferrer" hidden>ENVIAR PEDIDO PELO WHATSAPP</a>
             <button class="btn-secondary confirmation-continue" type="button">VOLTAR AO CARDÁPIO</button>
         </div>
     </aside>
