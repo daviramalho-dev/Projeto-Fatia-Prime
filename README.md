@@ -1,68 +1,115 @@
-# Projeto-Fatia-Prime
+# 🍕 Projeto Fatia Prime
 
-## Descrição
+<p align="center"><strong>Cardápio, pedidos e administração para uma pizzaria em uma aplicação web integrada.</strong></p>
 
-O Projeto-Fatia-Prime é uma aplicação web integrada para uma pizzaria, com foco em apresentação do cardápio, interação do cliente e gerenciamento de usuários, produtos e pedidos.
+<p align="center">
+  <img src="https://img.shields.io/badge/Java-26-ED8B00?logo=openjdk&logoColor=white" alt="Java 26">
+  <img src="https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot 4.1.1">
+  <img src="https://img.shields.io/badge/Spring%20Data-JPA-6DB33F?logo=spring&logoColor=white" alt="Spring Data JPA">
+  <img src="https://img.shields.io/badge/Spring%20Security-6DB33F?logo=springsecurity&logoColor=white" alt="Spring Security">
+  <img src="https://img.shields.io/badge/H2-Database-09476B?logo=h2database&logoColor=white" alt="H2 Database">
+  <img src="https://img.shields.io/badge/Gradle-Build-02303A?logo=gradle&logoColor=white" alt="Gradle">
+  <img src="https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white" alt="HTML5">
+  <img src="https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white" alt="CSS3">
+  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=222" alt="JavaScript">
+</p>
 
-A interface oferece uma landing page com apresentação da marca, catálogo de pizzas carregado pela API, categorias, filtros, carrinho de compras e integração com WhatsApp para envio do pedido. No backend, o projeto utiliza Spring Boot, Spring Data JPA, Spring Security, Spring Validation e H2, com API REST integrada ao frontend.
+## Sobre o projeto
+
+O Projeto Fatia Prime é uma aplicação web integrada para uma pizzaria, com foco na apresentação do cardápio, na experiência de pedidos dos clientes e no gerenciamento administrativo de usuários, produtos e pedidos.
+
+A interface apresenta a marca e carrega o catálogo pela API. O frontend está integrado ao backend Spring Boot, que disponibiliza uma API REST e utiliza Spring Data JPA, Spring Security, Spring Validation e H2.
+
+## Funcionalidades
+
+### Para clientes
+
+- Catálogo de produtos com categorias e filtros.
+- Carrinho de compras com armazenamento local no navegador (`localStorage`).
+- Checkout com validação dos dados e criação do pedido pela API.
+- Confirmação do pedido com código para consulta posterior.
+- Consulta pública do pedido por código ou telefone e acompanhamento do status.
+- Opção de compartilhar os dados do pedido pelo WhatsApp.
+
+### Para administradores
+
+- Autenticação administrativa.
+- Gerenciamento, consulta e atualização do status dos pedidos.
+- Cadastro, edição, consulta, ativação e desativação de produtos.
+- Consulta e cadastro administrativo de usuários.
+
+## Acesso ao sistema
+
+Acesse a aplicação integrada, com frontend e backend Spring Boot, no Render:
+
+**[Abrir Projeto Fatia Prime](https://fatia-prime.onrender.com)**
+
+O workflow configurado do GitHub Pages publica somente os arquivos estáticos do frontend. O Pages não executa o Spring Boot nem disponibiliza o backend ou a API; para utilizar o sistema completo, acesse o link do Render acima.
 
 ## Tecnologias utilizadas
 
-- Java
-- Spring Boot 4.1.1
-- Spring Web MVC
-- Spring Data JPA
-- Spring Validation
-- Spring Security
-- H2 Database
-- HTML5
-- CSS3
-- JavaScript
-- Gradle
+- **Java 26** e **Spring Boot 4.1.1** — aplicação backend e servidor web.
+- **Spring Web MVC** — endpoints REST e entrega do frontend estático.
+- **Spring Data JPA** e **Hibernate** — persistência e mapeamento das entidades.
+- **Spring Security** e **Spring Security Crypto** — autenticação, autorização e BCrypt.
+- **Spring Validation** — validação de dados recebidos pela API.
+- **H2 Database** — banco relacional em memória.
+- **HTML5, CSS3 e JavaScript** — interface do sistema, sem framework frontend.
+- **Gradle Wrapper** — compilação, execução e testes do projeto.
+- **Docker** — imagem de execução definida no `Dockerfile` para o deploy.
 
 ## Pré-requisitos
 
 Antes de executar o projeto, verifique se você possui:
 
-- JDK 26
-- Git
-- Navegador web moderno
-- Conexão com a internet para baixar dependências do Gradle
-- Para executar no Render, a aplicação utiliza a variável de ambiente `PORT`.
+- JDK 26.
+- Git.
+- Navegador web moderno.
+- Conexão com a internet para baixar as dependências do Gradle.
 
-O projeto já inclui o Gradle Wrapper, então não é necessário instalar o Gradle manualmente.
+O projeto já inclui o Gradle Wrapper, então não é necessário instalar o Gradle manualmente. No Render, a aplicação utiliza a variável de ambiente `PORT`.
 
-## Como executar
+## Como executar localmente
 
 1. Clone o repositório:
 
-   git clone https://github.com/daviramalho-dev/Projeto-Fatia-Prime.git
+  ```bash
+  git clone https://github.com/daviramalho-dev/Projeto-Fatia-Prime.git
+  ```
 
-2. Acesse a pasta do projeto:
+2. Acesse a pasta da aplicação:
 
-   cd Projeto-Fatia-Prime/Fatia-Prime
+  ```bash
+  cd Projeto-Fatia-Prime/Fatia-Prime
+  ```
 
-3. Execute a aplicação:
+3. Inicie o Spring Boot:
 
-   ./gradlew bootRun
+  ```bash
+  ./gradlew bootRun
+  ```
 
-4. Acesse a aplicação no navegador em:
+4. Acesse [http://localhost:8080](http://localhost:8080).
 
-   http://127.0.0.1:8080
-
-Em produção, a aplicação está preparada para execução no Render em:
-
-https://fatia-prime.onrender.com
-
-O Render executa a aplicação Spring Boot completa, incluindo o frontend e o backend. Localmente, a aplicação escuta em `0.0.0.0` e utiliza a porta `8080` por padrão, ou a porta informada pela variável `PORT`.
+Localmente, o servidor escuta em `0.0.0.0` e usa a porta `8080` por padrão, ou a porta definida pela variável `PORT`.
 
 ## Como executar os testes
 
 Para executar a suíte atual do projeto, utilize:
 
+```bash
 ./gradlew clean test --no-daemon
+```
 
 Esse comando compila o projeto, inicia o contexto Spring Boot e executa os testes configurados.
+
+## Como a aplicação funciona
+
+- **Spring Boot** inicializa o servidor, entrega os arquivos do frontend e integra os endpoints REST.
+- **Spring Data JPA**, com Hibernate, mapeia as entidades `Usuario`, `Categoria`, `Produto`, `Pedido` e `ItemPedido` para tabelas e simplifica o acesso aos dados por repositories.
+- **H2** é usado como banco relacional em memória. Os dados cadastrados são perdidos quando a aplicação reinicia; o seed recria as categorias e os produtos iniciais.
+- **Spring Security** autentica administradores por e-mail e senha, mantém a sessão e restringe as rotas administrativas por perfil. As operações protegidas também usam token CSRF.
+- **BCrypt** é usado pelo `PasswordEncoder` para gerar e verificar hashes de senha; as senhas não são armazenadas em texto puro.
 
 ## Estrutura do projeto
 
@@ -194,8 +241,21 @@ O frontend é servido pelo próprio Spring Boot e se comunica com as APIs REST d
 - A aplicação foi desenvolvida principalmente como projeto acadêmico.
 - O banco H2 em memória é recriado a cada execução; os dados são perdidos após reinício e o seed recria categorias e produtos iniciais.
 - O projeto continua com a arquitetura simples atual: HTML5, CSS3 e JavaScript no frontend; Spring Boot com controllers, repositories e JPA no backend; e H2 como banco.
-- O login administrativo protege as rotas administrativas, e as senhas são armazenadas como hash.
+- O login administrativo protege as rotas administrativas, e as senhas são armazenadas como hash BCrypt.
 - O carrinho utiliza `localStorage`, enquanto o checkout e os pedidos são processados pelo backend.
 - O deploy atual está preparado para o Render: https://fatia-prime.onrender.com
-- A configuração histórica de GitHub Pages está relacionada ao workflow anterior de arquivos estáticos; a aplicação completa depende do Spring Boot e do backend.
+- O workflow de GitHub Pages publica somente o frontend estático; a aplicação completa depende do backend Spring Boot, disponibilizado no Render.
 - Última atualização: setembro de 2026.
+
+## Equipe
+
+Integrantes conforme a seção “Equipe do Projeto” da documentação do projeto:
+
+- Davi Sousa Ramalho
+- Fabio Henrique Martins dos Santos
+- Gabriel Fontes de Alcântara Valadares
+- João Vitor da Silva Lopes
+- Leonardo Matos Santos
+- Leonardo Nunes Lima
+- Lucca Eustáquio de Souza
+- Matheus Pereira Cunha de Souza
