@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
@@ -24,7 +25,6 @@ public record PedidoRequest(
     @Size(max = 500, message = "As observações devem ter no máximo 500 caracteres")
     String observacoes,
     @NotEmpty(message = "O pedido deve conter pelo menos um item")
-    @Valid
-    List<ItemPedidoRequest> itens
+    List<@NotNull @Valid ItemPedidoRequest> itens
 ) {
 }

@@ -10,7 +10,8 @@ public record ProdutoResponse(
     String imagem,
     boolean ativo,
     Long categoriaId,
-    String categoriaNome
+    String categoriaNome,
+    TipoProdutoPizza tipo
 ) {
     public static ProdutoResponse de(Produto produto) {
         return new ProdutoResponse(
@@ -21,7 +22,8 @@ public record ProdutoResponse(
             produto.getImagem(),
             produto.isAtivo(),
             produto.getCategoria() != null ? produto.getCategoria().getId() : null,
-            produto.getCategoria() != null ? produto.getCategoria().getNome() : null
+            produto.getCategoria() != null ? produto.getCategoria().getNome() : null,
+            produto.getTipo()
         );
     }
 }

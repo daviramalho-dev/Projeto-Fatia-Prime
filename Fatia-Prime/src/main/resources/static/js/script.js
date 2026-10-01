@@ -12,6 +12,14 @@ const checkoutForm = document.querySelector('#checkout-form');
 const checkoutMessage = document.querySelector('.checkout-message');
 const checkoutItemsElement = document.querySelector('.checkout-items');
 const checkoutTotalElement = document.querySelector('.checkout-total strong');
+const pizzaCustomizer = document.querySelector('.pizza-customizer');
+const customizerFirstFlavor = document.querySelector('.customizer-first-flavor');
+const customizerSecondFlavor = document.querySelector('.customizer-second-flavor');
+const customizerSecondField = document.querySelector('.customizer-second-field');
+const customizerBorder = document.querySelector('.customizer-border');
+const customizerAddonList = document.querySelector('.customizer-addon-list');
+const customizerQuantityValue = document.querySelector('.customizer-quantity-value');
+const customizerAddToCart = document.querySelector('.customizer-add-to-cart');
 const confirmationPanel = document.querySelector('.confirmation-panel');
 const confirmationSummaryElement = document.querySelector('.confirmation-items');
 const confirmationCodeElement = document.querySelector('.confirmation-code');
@@ -47,6 +55,12 @@ const adminProductFormMessage = document.querySelector('.admin-product-form-mess
 const adminProductFormTitle = document.querySelector('#admin-product-form-title');
 const adminProductFormLabel = document.querySelector('#admin-product-form-label');
 const adminProductCancel = document.querySelector('.admin-product-cancel');
+const adminPizzaOptionList = document.querySelector('.admin-pizza-option-list');
+const adminPizzaOptionsEmpty = document.querySelector('.admin-pizza-options-empty');
+const adminPizzaOptionForm = document.querySelector('#admin-pizza-option-form');
+const adminPizzaOptionFormTitle = document.querySelector('#admin-pizza-option-form-title');
+const adminPizzaOptionMessage = document.querySelector('.admin-pizza-option-message');
+const adminPizzaOptionCancel = document.querySelector('.admin-pizza-option-cancel');
 const adminAccess = document.querySelector('.admin-access');
 const adminHeader = document.querySelector('.admin-header');
 const adminLogout = document.querySelector('.admin-logout');
@@ -57,12 +71,16 @@ const publicFooter = document.querySelector('footer');
 const publicOrderTracking = document.querySelector('.order-tracking');
 const publicWhatsapp = document.querySelector('.whatsapp-float');
 const publicMenuFilters = document.querySelector('.menu-filters');
+const catalogFeedback = document.querySelector('.catalog-feedback');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
 let cepLookupRequestId = 0;
 let lastRequestedCep = '';
 let editingProductId = null;
+let editingOptionId = null;
+let customizerQuantity = 1;
+let customizerOptions = [];
 let selectedAdminOrderId = null;
 let adminOrders = [];
 let adminOrdersRequestId = 0;
@@ -70,6 +88,7 @@ let publicProducts = [];
 let publicCategories = [];
 let adminProducts = [];
 let adminCategories = [];
+let adminPizzaOptions = [];
 let adminCatalogRequestId = 0;
 
 function setInterfaceMode(mode) {
@@ -219,14 +238,7 @@ function normalizeAdminOrder(order) {
         address: order.endereco,
         notes: order.observacoes,
         items: Array.isArray(order.itens)
-            ? order.itens.map((item) => ({
-                id: item.id,
-                productId: item.produtoId,
-                name: item.nomeProduto,
-                quantity: item.quantidade,
-                price: item.precoUnitario,
-                subtotal: item.subtotal,
-            }))
+            ? order.itens.map((item) => ({ ...normalizeOrderItem(item), id: item.id }))
             : [],
         total: order.total,
     };
@@ -291,28 +303,65 @@ function sanitizeCart(items) {
     return items.reduce((accumulator, item) => {
         if (!item || typeof item !== 'object') return accumulator;
 
-        const name = typeof item.name === 'string' ? item.name.trim() : '';
+        const pizzaType = item.pizzaType === 'MEIO_A_MEIO' ? 'MEIO_A_MEIO' : 'INTEIRA';
+        const firstFlavor = item.firstFlavor && typeof item.firstFlavor === 'object'
+            ? { id: Number(item.firstFlavor.id), name: String(item.firstFlavor.name || '').trim() }
+            : { id: Number(item.productId ?? item.id), name: String(item.name || '').trim() };
+        const secondFlavor = item.secondFlavor && typeof item.secondFlavor === 'object'
+            ? { id: Number(item.secondFlavor.id), name: String(item.secondFlavor.name || '').trim() }
+            : null;
         const price = Number(item.price);
-        const quantity = Number(item.quantity);
+        const quantity = Math.trunc(Number(item.quantity));
 
-        if (!name || !Number.isFinite(price) || price <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
+        if (!firstFlavor.name || !Number.isFinite(price) || price <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
             return accumulator;
         }
+        if (pizzaType === 'MEIO_A_MEIO'
+            && (!Number.isInteger(secondFlavor?.id) || secondFlavor.id <= 0 || !secondFlavor.name)) return accumulator;
 
-        const existing = accumulator.find((entry) => entry.name === name);
-        if (existing) {
-            existing.quantity += Math.trunc(quantity);
-            return accumulator;
-        }
-
-        accumulator.push({
-            name,
+        const border = item.border && Number.isInteger(Number(item.border.id)) && String(item.border.name || '').trim()
+            ? { id: Number(item.border.id), name: String(item.border.name).trim(), price: Math.max(0, Number(item.border.price) || 0) }
+            : null;
+        const addons = Array.isArray(item.addons) ? item.addons
+            .filter((addon) => addon && Number.isInteger(Number(addon.id)) && String(addon.name || '').trim())
+            .map((addon) => ({
+                id: Number(addon.id),
+                name: String(addon.name).trim(),
+                price: Math.max(0, Number(addon.price) || 0),
+            })) : [];
+        const productId = Number(item.productId ?? firstFlavor.id);
+        const normalized = {
+            name: pizzaType === 'MEIO_A_MEIO' ? 'Pizza meio a meio' : 'Pizza inteira',
             price,
-            quantity: Math.trunc(quantity),
-            productId: item.productId ?? item.id ?? null,
-        });
+            quantity,
+            productId: Number.isInteger(productId) && productId > 0 ? productId : null,
+            pizzaType,
+            firstFlavor,
+            secondFlavor: pizzaType === 'MEIO_A_MEIO' ? secondFlavor : null,
+            border,
+            addons,
+        };
+        normalized.key = getCartItemKey(normalized);
+
+        const existing = accumulator.find((entry) => entry.key === normalized.key);
+        if (existing) {
+            existing.quantity += quantity;
+            return accumulator;
+        }
+
+        accumulator.push(normalized);
         return accumulator;
     }, []);
+}
+
+function getCartItemKey(item) {
+    return [
+        item.pizzaType,
+        item.firstFlavor?.id,
+        item.secondFlavor?.id || '',
+        item.border?.id || '',
+        ...(item.addons || []).map((addon) => addon.id).sort((first, second) => first - second),
+    ].join(':');
 }
 
 function loadCart() {
@@ -348,6 +397,7 @@ function normalizeApiProduct(product, categories) {
     return {
         id: Number(product.id),
         name: String(product.nome).trim(),
+        type: product.tipo === 'DOCE' ? 'DOCE' : 'SALGADA',
         description: String(product.descricao || '').trim(),
         categoryId: product.categoriaId == null ? '' : String(product.categoriaId),
         categoryName: category?.name || String(product.categoriaNome || '').trim(),
@@ -513,6 +563,60 @@ function escapeHtml(value) {
         .replace(/'/g, '&#039;');
 }
 
+function normalizeOrderItem(item) {
+    const price = Number(item?.precoUnitario);
+    const quantity = Number(item?.quantidade);
+    const pizzaType = item?.tipoPizza === 'MEIO_A_MEIO' ? 'MEIO_A_MEIO' : 'INTEIRA';
+    const addons = Array.isArray(item?.adicionais) ? item.adicionais.map((addon) => ({
+        id: addon.opcaoId,
+        name: String(addon.nome || '').trim(),
+        price: Number(addon.precoAdicional) || 0,
+    })) : [];
+    return {
+        productId: item?.produtoId,
+        name: pizzaType === 'MEIO_A_MEIO' ? 'Pizza meio a meio' : 'Pizza inteira',
+        quantity,
+        price,
+        subtotal: Number(item?.subtotal) || price * quantity,
+        pizzaType,
+        firstFlavor: { id: item?.produtoId, name: String(item?.nomeProduto || 'Sabor não informado') },
+        secondFlavor: item?.nomeSegundoProduto
+            ? { id: item.segundoProdutoId, name: String(item.nomeSegundoProduto) }
+            : null,
+        border: item?.borda ? { id: item.bordaId, name: String(item.borda), price: Number(item.precoBorda) || 0 } : null,
+        addons,
+    };
+}
+
+function getPizzaPresentation(item) {
+    const pizzaType = item?.pizzaType === 'MEIO_A_MEIO' ? 'MEIO_A_MEIO' : 'INTEIRA';
+    const firstName = item?.firstFlavor?.name || item?.name || 'Sabor não informado';
+    const secondName = item?.secondFlavor?.name;
+    return {
+        title: pizzaType === 'MEIO_A_MEIO' ? 'Pizza meio a meio' : 'Pizza inteira',
+        flavors: pizzaType === 'MEIO_A_MEIO'
+            ? `Sabores: ${firstName} + ${secondName || 'Escolha pendente'}`
+            : `Sabor: ${firstName}`,
+        border: item?.border?.name ? `Borda: ${item.border.name}` : 'Sem borda recheada',
+        addons: item?.addons?.length
+            ? `Adicionais: ${item.addons.map((addon) => addon.name).join(', ')}`
+            : 'Sem adicionais',
+    };
+}
+
+function pizzaDetailsMarkup(item) {
+    const presentation = getPizzaPresentation(item);
+    return `<strong>${escapeHtml(presentation.title)}</strong>
+        <small>${escapeHtml(presentation.flavors)}</small>
+        <small>${escapeHtml(presentation.border)}</small>
+        <small>${escapeHtml(presentation.addons)}</small>`;
+}
+
+function pizzaWhatsAppDescription(item) {
+    const presentation = getPizzaPresentation(item);
+    return `${presentation.title} | ${presentation.flavors} | ${presentation.border} | ${presentation.addons}`;
+}
+
 function getOrderStatusClass(status) {
     return getOrderQueryStatusLabel(status);
 }
@@ -543,6 +647,39 @@ function normalizeAdminProduct(product, categories) {
     return { ...normalized, active: product.ativo !== false };
 }
 
+function normalizeAdminPizzaOption(option) {
+    const price = Number(option?.precoAdicional);
+    if (!option || !Number.isInteger(Number(option.id)) || !option.nome
+        || !['BORDA', 'ADICIONAL'].includes(option.tipo)
+        || !['SALGADA', 'DOCE'].includes(option.tipoProduto)
+        || !Number.isFinite(price) || price < 0) return null;
+    return {
+        id: Number(option.id),
+        name: String(option.nome).trim(),
+        kind: option.tipo,
+        productType: option.tipoProduto,
+        price,
+        active: option.ativo !== false,
+    };
+}
+
+function renderAdminPizzaOptions() {
+    if (!adminPizzaOptionList || !adminPizzaOptionsEmpty) return;
+    adminPizzaOptionList.innerHTML = adminPizzaOptions.map((option) => `
+        <article class="admin-pizza-option ${option.active ? '' : 'is-inactive'}">
+            <div>
+                <strong>${escapeHtml(option.name)}</strong>
+                <small>${option.kind === 'BORDA' ? 'Borda' : 'Adicional'} · ${option.productType === 'DOCE' ? 'Doces' : 'Salgadas'} · ${money.format(option.price)}</small>
+                <small>${option.active ? 'Disponível' : 'Desativada'}</small>
+            </div>
+            <div class="admin-pizza-option-actions">
+                <button class="btn-secondary" type="button" data-edit-pizza-option="${option.id}">EDITAR</button>
+                <button class="btn-secondary" type="button" data-toggle-pizza-option="${option.id}">${option.active ? 'DESATIVAR' : 'REATIVAR'}</button>
+            </div>
+        </article>`).join('');
+    adminPizzaOptionsEmpty.hidden = adminPizzaOptions.length > 0;
+}
+
 function renderAdminProducts() {
     if (!adminCatalogList || !adminCatalogEmpty) return;
     adminCatalogList.innerHTML = adminProducts.map((product) => `
@@ -552,7 +689,7 @@ function renderAdminProducts() {
                     <strong>${escapeHtml(product.name)}</strong>
                     <span class="admin-product-state ${product.active ? 'is-active' : 'is-inactive'}">${product.active ? 'Ativa' : 'Desativada'}</span>
                 </div>
-                <span>${escapeHtml(product.categoryName || 'Sem categoria')} · ${money.format(product.price)}</span>
+                <span>${escapeHtml(product.categoryName || 'Sem categoria')} · ${product.type === 'DOCE' ? 'Doce' : 'Salgada'} · ${money.format(product.price)}</span>
                 <small>${escapeHtml(product.description || 'Sem descrição')}</small>
             </div>
             <div class="admin-product-card-actions">
@@ -567,15 +704,17 @@ async function loadAdminProducts() {
     if (!adminCatalogList) return;
     const requestId = ++adminCatalogRequestId;
     try {
-        const [products, categories] = await Promise.all([
+        const [products, categories, options] = await Promise.all([
             fetchApiJson('/api/admin/produtos'),
             fetchApiJson('/api/categorias'),
+            fetchApiJson('/api/admin/opcoes-pizza'),
         ]);
-        if (!Array.isArray(products) || !Array.isArray(categories)) throw new Error('Resposta inválida do catálogo.');
+        if (!Array.isArray(products) || !Array.isArray(categories) || !Array.isArray(options)) throw new Error('Resposta inválida do catálogo.');
         adminCategories = categories
             .filter((category) => category && category.id != null && category.nome)
             .map((category) => ({ id: category.id, name: String(category.nome).trim() }));
         adminProducts = products.map((product) => normalizeAdminProduct(product, adminCategories)).filter(Boolean);
+        adminPizzaOptions = options.map(normalizeAdminPizzaOption).filter(Boolean);
         if (requestId !== adminCatalogRequestId) return;
         const categoryField = adminProductForm?.elements.namedItem('productCategory');
         if (categoryField) {
@@ -583,11 +722,103 @@ async function loadAdminProducts() {
                 + adminCategories.map((category) => `<option value="${escapeHtml(category.id)}">${escapeHtml(category.name)}</option>`).join('');
         }
         renderAdminProducts();
+        renderAdminPizzaOptions();
     } catch (error) {
         if (requestId !== adminCatalogRequestId) return;
         adminProducts = [];
+        adminPizzaOptions = [];
         renderAdminProducts();
+        renderAdminPizzaOptions();
         showAdminProductMessage(error.message || 'Não foi possível carregar o catálogo.');
+    }
+}
+
+function showAdminPizzaOptionMessage(message, type = 'error') {
+    if (!adminPizzaOptionMessage) return;
+    adminPizzaOptionMessage.textContent = message;
+    adminPizzaOptionMessage.className = `admin-pizza-option-message ${type}`.trim();
+}
+
+function resetAdminPizzaOptionForm() {
+    if (!adminPizzaOptionForm) return;
+    adminPizzaOptionForm.reset();
+    editingOptionId = null;
+    adminPizzaOptionFormTitle.textContent = 'Adicionar opção';
+    adminPizzaOptionCancel.hidden = true;
+    showAdminPizzaOptionMessage('');
+}
+
+function editAdminPizzaOption(option) {
+    if (!adminPizzaOptionForm || !option) return;
+    editingOptionId = option.id;
+    adminPizzaOptionForm.elements.namedItem('optionName').value = option.name;
+    adminPizzaOptionForm.elements.namedItem('optionKind').value = option.kind;
+    adminPizzaOptionForm.elements.namedItem('optionProductType').value = option.productType;
+    adminPizzaOptionForm.elements.namedItem('optionPrice').value = option.price;
+    adminPizzaOptionFormTitle.textContent = 'Editar opção';
+    adminPizzaOptionCancel.hidden = false;
+    showAdminPizzaOptionMessage('');
+    adminPizzaOptionForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function toggleAdminPizzaOption(optionIdValue) {
+    const option = adminPizzaOptions.find((item) => String(item.id) === String(optionIdValue));
+    if (!option) return;
+    if (option.active && !window.confirm(`Deseja desativar "${option.name}"?`)) return;
+    try {
+        const csrfToken = await getCsrfToken();
+        const updated = await fetchApiJson(`/api/admin/opcoes-pizza/${encodeURIComponent(option.id)}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken },
+            body: JSON.stringify({ status: option.active ? 'inativo' : 'ativo' }),
+        });
+        const normalized = normalizeAdminPizzaOption(updated);
+        adminPizzaOptions = adminPizzaOptions.map((item) => item.id === normalized.id ? normalized : item);
+        renderAdminPizzaOptions();
+        showAdminPizzaOptionMessage(normalized.active ? 'Opção reativada.' : 'Opção desativada.', 'success');
+    } catch (error) {
+        showAdminPizzaOptionMessage(error.message || 'Não foi possível atualizar a opção.');
+    }
+}
+
+async function submitAdminPizzaOption(event) {
+    event.preventDefault();
+    if (!adminPizzaOptionForm) return;
+    const formData = new FormData(adminPizzaOptionForm);
+    const name = String(formData.get('optionName') || '').trim();
+    const price = Number(formData.get('optionPrice'));
+    if (!name || !Number.isFinite(price) || price < 0) {
+        showAdminPizzaOptionMessage('Informe o nome e um acréscimo igual ou maior que zero.');
+        return;
+    }
+
+    const existing = adminPizzaOptions.find((option) => option.id === editingOptionId);
+    const payload = {
+        nome: name,
+        tipo: String(formData.get('optionKind')),
+        tipoProduto: String(formData.get('optionProductType')),
+        precoAdicional: price,
+        ativo: existing ? existing.active : true,
+    };
+    const url = editingOptionId
+        ? `/api/admin/opcoes-pizza/${encodeURIComponent(editingOptionId)}`
+        : '/api/admin/opcoes-pizza';
+    try {
+        const csrfToken = await getCsrfToken();
+        const saved = await fetchApiJson(url, {
+            method: editingOptionId ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken },
+            body: JSON.stringify(payload),
+        });
+        const normalized = normalizeAdminPizzaOption(saved);
+        adminPizzaOptions = editingOptionId
+            ? adminPizzaOptions.map((option) => option.id === normalized.id ? normalized : option)
+            : [...adminPizzaOptions, normalized];
+        renderAdminPizzaOptions();
+        resetAdminPizzaOptionForm();
+        showAdminPizzaOptionMessage('Opção salva com sucesso.', 'success');
+    } catch (error) {
+        showAdminPizzaOptionMessage(error.message || 'Não foi possível salvar a opção.');
     }
 }
 
@@ -613,6 +844,7 @@ function editAdminProduct(product) {
     adminProductForm.elements.namedItem('productName').value = product.name;
     adminProductForm.elements.namedItem('productDescription').value = product.description;
     adminProductForm.elements.namedItem('productCategory').value = product.categoryId;
+    adminProductForm.elements.namedItem('productType').value = product.type;
     adminProductForm.elements.namedItem('productPrice').value = product.price;
     adminProductForm.elements.namedItem('productImage').value = product.image;
     if (adminProductFormTitle) adminProductFormTitle.textContent = 'Editar pizza';
@@ -679,6 +911,7 @@ async function submitAdminProduct(event) {
         preco: price,
         imagem: image,
         categoriaId: Number(categoryId),
+        tipo: String(formData.get('productType') || 'SALGADA'),
         ativo: editingProductId
             ? adminProducts.find((product) => String(product.id) === String(editingProductId)).active
             : true,
@@ -746,7 +979,7 @@ function renderAdminOrderDetails(order) {
         productList.innerHTML = items.length
             ? items.map((item) => `
                 <li>
-                    <div><strong>${escapeHtml(item.name || 'Produto não informado')}</strong><small>${Number(item.quantity)}x ${money.format(Number(item.price))} cada</small></div>
+                    <div>${pizzaDetailsMarkup(item)}<small>${Number(item.quantity)}x ${money.format(Number(item.price))} cada</small></div>
                     <strong>${money.format(Number(item.subtotal) || Number(item.price) * Number(item.quantity))}</strong>
                 </li>`).join('')
             : '<li><span>Itens não informados.</span></li>';
@@ -810,10 +1043,10 @@ function renderConfirmation(orderData) {
     confirmationSummaryElement.innerHTML = data.items.map((item) => `
         <li>
             <div>
-                    <strong>${escapeHtml(item.name)}</strong>
-                <small>${item.quantity}x • ${money.format(Number(item.price))} cada</small>
+                ${pizzaDetailsMarkup(item)}
+                <small>${item.quantity}x · ${money.format(Number(item.price))} cada</small>
             </div>
-            <strong>${money.format(Number(item.price) * Number(item.quantity))}</strong>
+            <strong>${money.format(Number(item.subtotal) || Number(item.price) * Number(item.quantity))}</strong>
         </li>`).join('');
     confirmationTotalElement.textContent = money.format(Number(data.total));
 
@@ -856,7 +1089,7 @@ function renderCheckoutSummary() {
         ? window.cart.map((item) => `
             <li>
                 <div>
-                    <strong>${escapeHtml(item.name)}</strong>
+                    ${pizzaDetailsMarkup(item)}
                     <small>${item.quantity}x ${money.format(item.price)} cada</small>
                 </div>
                 <strong>${money.format(item.price * item.quantity)}</strong>
@@ -1025,15 +1258,12 @@ function getOrderQueryStatusLabel(status) {
 function normalizePublicOrder(order) {
     if (!order || typeof order !== 'object' || !order.codigo || !ORDER_STATUSES.includes(order.status) || !Array.isArray(order.itens)) return null;
     const items = order.itens.map((item) => {
-        const price = Number(item.precoUnitario);
-        const quantity = Number(item.quantidade);
-        if (!item || !Number.isFinite(price) || !Number.isFinite(quantity) || quantity <= 0) return null;
-        return {
-            name: String(item.nomeProduto || 'Produto não informado'),
-            price,
-            quantity,
-            subtotal: price * quantity,
-        };
+        const normalized = normalizeOrderItem(item);
+        if (!Number.isFinite(normalized.price) || normalized.price <= 0
+            || !Number.isFinite(normalized.quantity) || normalized.quantity <= 0
+            || !normalized.firstFlavor.name) return null;
+        if (normalized.pizzaType === 'MEIO_A_MEIO' && !normalized.secondFlavor?.name) return null;
+        return normalized;
     });
     if (items.some((item) => !item)) return null;
     return {
@@ -1109,10 +1339,10 @@ function renderOrderQueryResult(orderData) {
             ? list.map((item) => `
                 <li>
                     <div>
-                        <strong>${escapeHtml(item.name)}</strong>
-                        <small>${Number(item.quantity)}x • ${money.format(Number(item.price))}</small>
+                        ${pizzaDetailsMarkup(item)}
+                        <small>${Number(item.quantity)}x · ${money.format(Number(item.price))} cada</small>
                     </div>
-                    <strong>${money.format(Number(item.price) * Number(item.quantity))}</strong>
+                    <strong>${money.format(Number(item.subtotal) || Number(item.price) * Number(item.quantity))}</strong>
                 </li>`).join('')
             : '<li><span>Não há itens neste pedido.</span></li>';
     }
@@ -1130,15 +1360,27 @@ function cartItemsAreValid() {
             && typeof item.name === 'string'
             && item.name.trim()
             && Number.isFinite(Number(item.price))
-            && Number(item.price) >= 0
+            && Number(item.price) > 0
             && Number.isFinite(Number(item.quantity))
-            && Number(item.quantity) > 0);
+            && Number.isInteger(Number(item.quantity))
+            && Number(item.quantity) > 0
+            && item.firstFlavor?.name
+            && item.firstFlavor.id != null
+            && (item.pizzaType !== 'MEIO_A_MEIO'
+                || item.secondFlavor?.id != null && item.secondFlavor?.name)
+            && (!item.border || Number.isInteger(Number(item.border.id)))
+            && Array.isArray(item.addons)
+            && item.addons.every((addon) => Number.isInteger(Number(addon.id))));
 }
 
 function cartItemsHaveProductIds() {
     return Array.isArray(window.cart)
         && window.cart.length > 0
-        && window.cart.every((item) => Number.isInteger(Number(item.productId)) && Number(item.productId) > 0);
+        && window.cart.every((item) => Number.isInteger(Number(item.productId))
+            && Number(item.productId) > 0
+            && Number(item.firstFlavor?.id) === Number(item.productId)
+            && (item.pizzaType !== 'MEIO_A_MEIO'
+                || Number.isInteger(Number(item.secondFlavor?.id)) && Number(item.secondFlavor.id) > 0));
 }
 
 async function createOrderViaApi(payload) {
@@ -1233,11 +1475,13 @@ function updateCart() {
     itemsElement.innerHTML = window.cart.length
         ? window.cart.map((item, index) => `
             <div class="cart-item">
-                <div><strong>${escapeHtml(item.name)}</strong><small>${money.format(item.price)} cada</small></div>
+                <div class="cart-item-description">${pizzaDetailsMarkup(item)}<small>${item.quantity}x ${money.format(item.price)} cada</small></div>
+                <strong class="cart-item-subtotal">${money.format(item.price * item.quantity)}</strong>
                 <div class="cart-item-controls">
                     <button type="button" data-change="${index}" data-step="-1" aria-label="Remover uma unidade">−</button>
                     <span>${item.quantity}</span>
                     <button type="button" data-change="${index}" data-step="1" aria-label="Adicionar uma unidade">+</button>
+                    <button type="button" class="cart-item-remove" data-remove-item="${index}" aria-label="Remover pizza do carrinho">×</button>
                 </div>
             </div>`).join('')
         : '<p class="cart-empty">Seu carrinho está vazio.</p>';
@@ -1247,15 +1491,128 @@ function updateCart() {
     saveCart();
 }
 
-function addProduct(element) {
-    const product = {
-        name: element.dataset.product,
-        price: Number(element.dataset.price),
-        productId: Number(element.dataset.productId),
+async function addProduct(element) {
+    const productId = Number(element.dataset.productId);
+    const product = publicProducts.find((item) => item.id === productId);
+    if (!product || !pizzaCustomizer) return;
+
+    if (catalogFeedback) {
+        catalogFeedback.textContent = '';
+        catalogFeedback.hidden = true;
+    }
+
+    try {
+        customizerOptions = await fetchApiJson(`/api/opcoes-pizza?tipoProduto=${encodeURIComponent(product.type)}`);
+        if (!Array.isArray(customizerOptions)) throw new Error('Não foi possível carregar as opções da pizza.');
+        const flavors = publicProducts.filter((item) => item.type === product.type && item.active);
+        customizerFirstFlavor.innerHTML = flavors.map((flavor) =>
+            `<option value="${escapeHtml(flavor.id)}">${escapeHtml(flavor.name)} · ${money.format(flavor.price)}</option>`).join('');
+        customizerSecondFlavor.innerHTML = '<option value="">Selecione o segundo sabor</option>' + flavors
+            .map((flavor) => `<option value="${escapeHtml(flavor.id)}">${escapeHtml(flavor.name)} · ${money.format(flavor.price)}</option>`).join('');
+        customizerBorder.innerHTML = '<option value="">Sem borda recheada · R$ 0,00</option>'
+            + customizerOptions.filter((option) => option.tipo === 'BORDA')
+                .map((option) => `<option value="${escapeHtml(option.id)}">${escapeHtml(option.nome)} · + ${money.format(Number(option.precoAdicional))}</option>`).join('');
+        customizerAddonList.innerHTML = customizerOptions.filter((option) => option.tipo === 'ADICIONAL').length
+            ? customizerOptions.filter((option) => option.tipo === 'ADICIONAL').map((option) => `
+                <label class="customizer-addon-option">
+                    <input type="checkbox" value="${escapeHtml(option.id)}">
+                    <span>${escapeHtml(option.nome)}</span>
+                    <strong>+ ${money.format(Number(option.precoAdicional))}</strong>
+                </label>`).join('')
+            : '<p class="customizer-no-addons">Nenhum adicional disponível.</p>';
+        customizerFirstFlavor.value = String(product.id);
+        customizerSecondFlavor.value = '';
+        customizerBorder.value = '';
+        customizerQuantity = 1;
+        pizzaCustomizer.querySelector('input[name="pizzaType"][value="INTEIRA"]').checked = true;
+        renderPizzaCustomizerSummary();
+        pizzaCustomizer.showModal();
+    } catch (error) {
+        if (catalogFeedback) {
+            catalogFeedback.textContent = 'Não foi possível carregar as opções da pizza. Tente novamente.';
+            catalogFeedback.hidden = false;
+        }
+    }
+}
+
+function renderPizzaCustomizerSummary() {
+    if (!pizzaCustomizer) return;
+    const pizzaType = pizzaCustomizer.querySelector('input[name="pizzaType"]:checked')?.value || 'INTEIRA';
+    const isHalfAndHalf = pizzaType === 'MEIO_A_MEIO';
+    const firstProduct = publicProducts.find((item) => String(item.id) === customizerFirstFlavor.value);
+    const secondProduct = isHalfAndHalf
+        ? publicProducts.find((item) => String(item.id) === customizerSecondFlavor.value)
+        : null;
+    customizerSecondField.hidden = !isHalfAndHalf;
+    customizerSecondFlavor.required = isHalfAndHalf;
+    pizzaCustomizer.querySelector('.customizer-first-label').textContent = isHalfAndHalf ? '1º sabor' : 'Sabor';
+    const basePrice = firstProduct
+        ? secondProduct ? Math.max(firstProduct.price, secondProduct.price) : firstProduct.price
+        : 0;
+    const selectedBorder = customizerOptions.find((option) => String(option.id) === customizerBorder.value && option.tipo === 'BORDA');
+    const selectedAddons = [...customizerAddonList.querySelectorAll('input:checked')]
+        .map((input) => customizerOptions.find((option) => String(option.id) === input.value))
+        .filter(Boolean);
+    const extrasPrice = (selectedBorder ? Number(selectedBorder.precoAdicional) : 0)
+        + selectedAddons.reduce((total, option) => total + Number(option.precoAdicional), 0);
+    const unitPrice = basePrice + extrasPrice;
+    const flavorLabel = !firstProduct
+        ? 'Escolha um sabor'
+        : isHalfAndHalf
+            ? `${firstProduct.name}${secondProduct ? ` + ${secondProduct.name}` : ' + escolha o segundo sabor'}`
+            : firstProduct.name;
+
+    pizzaCustomizer.querySelector('.customizer-summary-type').textContent = isHalfAndHalf ? 'Pizza meio a meio' : 'Pizza inteira';
+    pizzaCustomizer.querySelector('.customizer-summary-flavors').textContent = isHalfAndHalf
+        ? `Sabores: ${flavorLabel}`
+        : `Sabor: ${flavorLabel}`;
+    pizzaCustomizer.querySelector('.customizer-summary-border').textContent = selectedBorder
+        ? `Borda: ${selectedBorder.nome} · + ${money.format(Number(selectedBorder.precoAdicional))}`
+        : 'Sem borda recheada';
+    pizzaCustomizer.querySelector('.customizer-summary-addons').textContent = selectedAddons.length
+        ? `Adicionais: ${selectedAddons.map((option) => `${option.nome} (+ ${money.format(Number(option.precoAdicional))})`).join(', ')}`
+        : 'Sem adicionais';
+    customizerQuantityValue.textContent = customizerQuantity;
+    pizzaCustomizer.querySelector('.customizer-summary-price-label').textContent = `Total · ${customizerQuantity} ${customizerQuantity === 1 ? 'pizza' : 'pizzas'}`;
+    pizzaCustomizer.querySelector('.customizer-summary-price').textContent = money.format(unitPrice * customizerQuantity);
+    customizerAddToCart.disabled = !firstProduct || (isHalfAndHalf && !secondProduct);
+}
+
+function addCustomizedPizza() {
+    const pizzaType = pizzaCustomizer.querySelector('input[name="pizzaType"]:checked')?.value || 'INTEIRA';
+    const firstProduct = publicProducts.find((item) => String(item.id) === customizerFirstFlavor.value);
+    const secondProduct = pizzaType === 'MEIO_A_MEIO'
+        ? publicProducts.find((item) => String(item.id) === customizerSecondFlavor.value)
+        : null;
+    if (!firstProduct || (pizzaType === 'MEIO_A_MEIO' && !secondProduct)) return;
+
+    const borderOption = customizerOptions.find((option) => String(option.id) === customizerBorder.value && option.tipo === 'BORDA');
+    const addons = [...customizerAddonList.querySelectorAll('input:checked')]
+        .map((input) => customizerOptions.find((option) => String(option.id) === input.value))
+        .filter(Boolean);
+    const basePrice = secondProduct ? Math.max(firstProduct.price, secondProduct.price) : firstProduct.price;
+    const border = borderOption
+        ? { id: Number(borderOption.id), name: borderOption.nome, price: Number(borderOption.precoAdicional) }
+        : null;
+    const normalizedAddons = addons.map((option) => ({
+        id: Number(option.id), name: option.nome, price: Number(option.precoAdicional),
+    }));
+    const pizza = {
+        name: pizzaType === 'MEIO_A_MEIO' ? 'Pizza meio a meio' : 'Pizza inteira',
+        productId: firstProduct.id,
+        pizzaType,
+        firstFlavor: { id: firstProduct.id, name: firstProduct.name },
+        secondFlavor: secondProduct ? { id: secondProduct.id, name: secondProduct.name } : null,
+        border,
+        addons: normalizedAddons,
+        price: basePrice + (border?.price || 0) + normalizedAddons.reduce((total, addon) => total + addon.price, 0),
+        quantity: customizerQuantity,
     };
-    const existing = window.cart.find((item) => item.name === product.name);
-    if (existing) existing.quantity += 1;
-    else window.cart.push({ ...product, quantity: 1 });
+    pizza.key = getCartItemKey(pizza);
+    const existing = window.cart.find((item) => item.key === pizza.key);
+    if (existing) existing.quantity = Math.min(50, existing.quantity + pizza.quantity);
+    else window.cart.push(pizza);
+    pizzaCustomizer.close();
     updateCart();
     openCart();
 }
@@ -1281,6 +1638,23 @@ publicMenuFilters?.addEventListener('click', (event) => {
     if (button) applyCategoryFilter(button.dataset.filter);
 });
 
+pizzaCustomizer?.querySelector('.pizza-customizer-close')?.addEventListener('click', () => pizzaCustomizer.close());
+pizzaCustomizer?.addEventListener('click', (event) => {
+    if (event.target === pizzaCustomizer) pizzaCustomizer.close();
+});
+pizzaCustomizer?.addEventListener('change', (event) => {
+    if (event.target.matches('input[name="pizzaType"], .customizer-first-flavor, .customizer-second-flavor, .customizer-border, .customizer-addon-list input')) {
+        renderPizzaCustomizerSummary();
+    }
+});
+pizzaCustomizer?.addEventListener('click', (event) => {
+    const stepButton = event.target.closest('[data-customizer-quantity]');
+    if (!stepButton) return;
+    customizerQuantity = Math.min(50, Math.max(1, customizerQuantity + Number(stepButton.dataset.customizerQuantity)));
+    renderPizzaCustomizerSummary();
+});
+customizerAddToCart?.addEventListener('click', addCustomizedPizza);
+
 document.querySelector('.pizza-grid')?.addEventListener('click', (event) => {
     const button = event.target.closest('.btn-card');
     if (button) addProduct(button.closest('[data-product]'));
@@ -1301,13 +1675,19 @@ backdrop.addEventListener('click', () => {
 });
 
 itemsElement.addEventListener('click', (event) => {
+    const removeButton = event.target.closest('[data-remove-item]');
+    if (removeButton) {
+        window.cart.splice(Number(removeButton.dataset.removeItem), 1);
+        updateCart();
+        return;
+    }
     const button = event.target.closest('[data-change]');
     if (!button) return;
     const index = Number(button.dataset.change);
     const item = window.cart[index];
     if (!item) return;
 
-    item.quantity += Number(button.dataset.step);
+    item.quantity = Math.min(50, item.quantity + Number(button.dataset.step));
     if (item.quantity <= 0) window.cart.splice(index, 1);
     updateCart();
 });
@@ -1315,6 +1695,7 @@ itemsElement.addEventListener('click', (event) => {
 document.querySelector('.checkout-button').addEventListener('click', () => {
     openCheckout();
 });
+document.querySelector('.cart-continue')?.addEventListener('click', closeCart);
 
 if (orderQueryForm) {
     orderQueryForm.addEventListener('submit', async (event) => {
@@ -1504,6 +1885,16 @@ if (adminCatalogList) {
 
 adminProductForm?.addEventListener('submit', submitAdminProduct);
 adminProductCancel?.addEventListener('click', resetAdminProductForm);
+adminPizzaOptionList?.addEventListener('click', (event) => {
+    const editButton = event.target.closest('[data-edit-pizza-option]');
+    const toggleButton = event.target.closest('[data-toggle-pizza-option]');
+    if (editButton) {
+        editAdminPizzaOption(adminPizzaOptions.find((option) => String(option.id) === editButton.dataset.editPizzaOption));
+    }
+    if (toggleButton) toggleAdminPizzaOption(toggleButton.dataset.togglePizzaOption);
+});
+adminPizzaOptionForm?.addEventListener('submit', submitAdminPizzaOption);
+adminPizzaOptionCancel?.addEventListener('click', resetAdminPizzaOptionForm);
 
 document.querySelectorAll('[data-phone-mask]').forEach((field) => {
     field.addEventListener('input', () => {
@@ -1599,6 +1990,10 @@ if (checkoutForm) {
             itens: window.cart.map((item) => ({
                 produtoId: Number(item.productId),
                 quantidade: Math.trunc(Number(item.quantity)),
+                tipoPizza: item.pizzaType,
+                segundoProdutoId: item.pizzaType === 'MEIO_A_MEIO' ? Number(item.secondFlavor.id) : null,
+                bordaId: item.border ? Number(item.border.id) : null,
+                adicionalIds: item.addons.map((addon) => Number(addon.id)),
             })),
         };
         const submitButton = checkoutForm.querySelector('.checkout-submit');
@@ -1616,7 +2011,7 @@ if (checkoutForm) {
                 'Olá! Meu pedido foi criado:',
                 `Código: ${createdOrder.code}`,
                 `Status: ${createdOrder.status}`,
-                ...createdOrder.items.map((item) => `• ${item.quantity}x ${item.name} — ${money.format(item.subtotal)}`),
+                ...createdOrder.items.map((item) => `• ${item.quantity}x ${pizzaWhatsAppDescription(item)} — ${money.format(item.subtotal)}`),
                 '', `Total: ${money.format(createdOrder.total)}`,
                 `Nome: ${createdOrder.customer}`,
                 `E-mail: ${createdOrder.email}`,

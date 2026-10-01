@@ -55,7 +55,8 @@ public class SecurityConfig {
                     "/assets/**",
                     "/api/auth/**",
                     "/api/produtos/**",
-                    "/api/categorias/**"
+                    "/api/categorias/**",
+                    "/api/opcoes-pizza/**"
                 ).permitAll()
                 .requestMatchers("/h2-console/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/pedidos").permitAll()

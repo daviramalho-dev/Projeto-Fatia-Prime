@@ -27,6 +27,10 @@ public class Produto {
     @Column(nullable = false)
     private boolean ativo = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_produto", nullable = false, length = 20)
+    private TipoProdutoPizza tipo = TipoProdutoPizza.SALGADA;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "categoria_id", nullable = false)
     private Categoria categoria;
@@ -86,6 +90,14 @@ public class Produto {
 
     public void setAtivo(boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public TipoProdutoPizza getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(TipoProdutoPizza tipo) {
+        this.tipo = tipo;
     }
 
     public Categoria getCategoria() {

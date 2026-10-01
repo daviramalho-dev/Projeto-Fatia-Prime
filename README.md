@@ -24,7 +24,9 @@ A interface apresenta a marca e carrega o catálogo pela API. O frontend está i
 
 ### Para clientes
 
-- Catálogo de produtos com categorias e filtros.
+- Catálogo de pizzas salgadas e doces, com categorias, filtros e imagens disponíveis.
+- Personalização de pizza inteira ou meio a meio; no meio a meio, o preço base usa o sabor mais caro.
+- Bordas recheadas e adicionais compatíveis, com acréscimos configuráveis e resumo atualizado.
 - Carrinho de compras com armazenamento local no navegador (`localStorage`).
 - Checkout com validação dos dados e criação do pedido pela API.
 - Confirmação do pedido com código para consulta posterior.
@@ -36,6 +38,7 @@ A interface apresenta a marca e carrega o catálogo pela API. O frontend está i
 - Autenticação administrativa.
 - Gerenciamento, consulta e atualização do status dos pedidos.
 - Cadastro, edição, consulta, ativação e desativação de produtos.
+- Configuração de bordas recheadas e adicionais, incluindo preço, tipo de pizza e disponibilidade.
 - Consulta e cadastro administrativo de usuários.
 
 ## Acesso ao sistema
@@ -176,6 +179,17 @@ A autenticação administrativa utiliza os seguintes endpoints:
 
 - `PATCH /api/admin/produtos/{id}/status`
   Ativa ou desativa um produto sem excluí-lo.
+
+### Opções de pizza
+
+- `GET /api/opcoes-pizza?tipoProduto=SALGADA` ou `?tipoProduto=DOCE`
+  Retorna bordas e adicionais ativos compatíveis com o tipo de pizza.
+- `GET /api/admin/opcoes-pizza`
+  Lista as opções para administradores autenticados.
+- `POST /api/admin/opcoes-pizza` e `PUT /api/admin/opcoes-pizza/{id}`
+  Criam e editam bordas ou adicionais e seus preços.
+- `PATCH /api/admin/opcoes-pizza/{id}/status`
+  Ativa ou desativa uma opção sem removê-la.
 
 ### Pedidos
 

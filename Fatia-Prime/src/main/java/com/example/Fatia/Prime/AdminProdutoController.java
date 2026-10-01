@@ -99,6 +99,7 @@ public class AdminProdutoController {
         produto.setPreco(request.preco());
         produto.setImagem(normalizarOpcional(request.imagem()));
         produto.setCategoria(categoria);
+        produto.setTipo(request.tipo() == null ? TipoProdutoPizza.SALGADA : request.tipo());
         if (request.ativo() != null) produto.setAtivo(request.ativo());
     }
 

@@ -664,6 +664,18 @@ button {
     margin: 0 auto 28px;
 }
 
+.catalog-feedback {
+    max-width: 900px;
+    margin: 0 auto 18px;
+    padding: 12px 14px;
+    border-left: 3px solid #f5c400;
+    background: #171717;
+    color: #f3d968;
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
 .menu-filter-button {
     border: 1px solid #f5c400;
     background: transparent;
@@ -2794,4 +2806,409 @@ footer p {
         padding: 18px;
     }
 
+}
+
+.pizza-customizer {
+    position: fixed;
+    inset: 0;
+    width: min(620px, calc(100vw - 24px));
+    max-width: none;
+    max-height: min(92dvh, 860px);
+    margin: auto;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #444;
+    background: #151515;
+    color: #fff;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .65);
+}
+
+.pizza-customizer::backdrop {
+    background: rgba(0, 0, 0, .76);
+    backdrop-filter: blur(3px);
+}
+
+.pizza-customizer[open] {
+    display: flex;
+    flex-direction: column;
+}
+
+.pizza-customizer-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 22px 26px;
+    background: #101010;
+    border-bottom: 1px solid #303030;
+}
+
+.pizza-customizer-header span {
+    color: #f5c400;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+}
+
+.pizza-customizer-header h2 {
+    margin-top: 4px;
+    font-family: "Bebas Neue", sans-serif;
+    font-size: 32px;
+    font-weight: 400;
+}
+
+.pizza-customizer-close {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    border: 1px solid #444;
+    background: transparent;
+    color: #fff;
+    font-size: 28px;
+}
+
+.pizza-customizer-content {
+    display: grid;
+    gap: 17px;
+    overflow-y: auto;
+    padding: 22px 26px 26px;
+}
+
+.pizza-type-choices,
+.pizza-customizer-addons {
+    min-width: 0;
+    border: 0;
+}
+
+.pizza-type-choices legend,
+.pizza-customizer-addons legend,
+.pizza-customizer-field {
+    margin-bottom: 9px;
+    color: #ddd;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.pizza-type-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+}
+
+.pizza-type-choices legend,
+.pizza-customizer-addons legend {
+    width: 100%;
+}
+
+.pizza-type-choices label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid #484848;
+    color: #eee;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.pizza-type-choices input,
+.customizer-addon-option input {
+    accent-color: #f5c400;
+}
+
+.pizza-customizer-field {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+}
+
+.pizza-customizer-field select,
+#admin-pizza-option-form input,
+#admin-pizza-option-form select {
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 12px;
+    border: 1px solid #444;
+    background: #0c0c0c;
+    color: #fff;
+    font: inherit;
+}
+
+.customizer-addon-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.customizer-addon-option {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 9px 10px;
+    border: 1px solid #383838;
+    color: #ddd;
+    font-size: 12px;
+}
+
+.customizer-addon-option strong {
+    color: #f5c400;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.customizer-no-addons {
+    color: #aaa;
+    font-size: 12px;
+}
+
+.pizza-customizer-quantity {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #ddd;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.pizza-customizer-quantity > div {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+}
+
+.pizza-customizer-quantity button {
+    width: 42px;
+    height: 42px;
+    border: 1px solid #555;
+    background: transparent;
+    color: #fff;
+    font-size: 22px;
+}
+
+.customizer-quantity-value {
+    min-width: 24px;
+    text-align: center;
+}
+
+.pizza-customizer-summary {
+    display: grid;
+    gap: 7px;
+    padding: 15px;
+    border: 1px solid #393939;
+    background: #101010;
+}
+
+.pizza-customizer-summary h3 {
+    margin-bottom: 3px;
+    color: #f5c400;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.pizza-customizer-summary p {
+    color: #c7c7c7;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.pizza-customizer-summary .customizer-summary-type {
+    color: #fff;
+    font-weight: 700;
+}
+
+.pizza-customizer-summary > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 7px;
+    padding-top: 12px;
+    border-top: 1px solid #333;
+}
+
+.customizer-summary-price-label {
+    color: #ddd;
+    font-size: 12px;
+}
+
+.customizer-summary-price {
+    color: #f5c400;
+    font-size: 20px;
+    white-space: nowrap;
+}
+
+.customizer-add-to-cart {
+    width: 100%;
+    min-height: 48px;
+    border: 0;
+}
+
+.customizer-add-to-cart:disabled {
+    cursor: not-allowed;
+    opacity: .45;
+}
+
+.cart-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.cart-item-description {
+    flex: 1 1 60%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.cart-item-description strong,
+.cart-item-description small {
+    display: block;
+    line-height: 1.5;
+}
+
+.cart-item-description small {
+    margin-top: 4px;
+}
+
+.cart-item-subtotal {
+    flex: 0 0 auto;
+    color: #f5c400;
+    white-space: nowrap;
+}
+
+.cart-item-controls {
+    width: 100%;
+    justify-content: flex-end;
+}
+
+.cart-item-controls .cart-item-remove {
+    border-color: transparent;
+    color: #ff8a80;
+}
+
+.admin-options-panel {
+    grid-column: 1 / -1;
+}
+
+.admin-pizza-option-list {
+    display: grid;
+    gap: 9px;
+    margin-bottom: 20px;
+}
+
+.admin-pizza-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px;
+    border: 1px solid #343434;
+    background: #101010;
+}
+
+.admin-pizza-option.is-inactive {
+    opacity: .65;
+}
+
+.admin-pizza-option > div:first-child {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.admin-pizza-option small {
+    color: #aaa;
+    font-size: 11px;
+    overflow-wrap: anywhere;
+}
+
+.admin-pizza-option-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-pizza-option-actions button {
+    min-height: 40px;
+}
+
+.admin-pizza-options-empty {
+    margin-bottom: 18px;
+    color: #aaa;
+    font-size: 13px;
+}
+
+#admin-pizza-option-form {
+    display: grid;
+    gap: 14px;
+    padding-top: 18px;
+    border-top: 1px solid #333;
+}
+
+#admin-pizza-option-form > strong {
+    color: #f5c400;
+    font-size: 15px;
+}
+
+#admin-pizza-option-form label {
+    display: grid;
+    gap: 7px;
+    color: #ddd;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.admin-pizza-option-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-pizza-option-message {
+    min-height: 18px;
+    font-size: 12px;
+}
+
+.admin-pizza-option-message.error {
+    color: #ff8a80;
+}
+
+.admin-pizza-option-message.success {
+    color: #6de59b;
+}
+
+@media (max-width: 640px) {
+    .pizza-customizer {
+        width: calc(100vw - 20px);
+        max-height: calc(100dvh - 20px);
+    }
+
+    .pizza-customizer-header {
+        padding: 16px;
+    }
+
+    .pizza-customizer-content {
+        gap: 14px;
+        padding: 16px;
+    }
+
+    .customizer-addon-list,
+    .admin-pizza-option-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-pizza-option {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-pizza-option-actions button {
+        flex: 1;
+    }
 }
