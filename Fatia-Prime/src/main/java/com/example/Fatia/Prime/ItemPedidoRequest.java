@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import java.util.List;
 
 public record ItemPedidoRequest(
     @NotNull(message = "O produto é obrigatório")
@@ -12,6 +13,15 @@ public record ItemPedidoRequest(
     @NotNull(message = "A quantidade é obrigatória")
     @Min(value = 1, message = "A quantidade deve ser maior que zero")
     @Max(value = 50, message = "A quantidade não pode ser maior que 50")
-    Integer quantidade
+    Integer quantidade,
+    TipoPizza tipoPizza,
+    @Positive(message = "O segundo sabor deve ser válido")
+    Long segundoProdutoId,
+    @Positive(message = "A borda deve ser válida")
+    Long bordaId,
+    List<@NotNull @Positive(message = "O adicional deve ser válido") Long> adicionalIds
 ) {
+    public ItemPedidoRequest {
+        adicionalIds = adicionalIds == null ? List.of() : adicionalIds;
+    }
 }

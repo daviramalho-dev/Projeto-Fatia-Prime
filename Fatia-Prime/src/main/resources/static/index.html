@@ -281,6 +281,7 @@
 
             </div>
 
+            <p class="catalog-feedback" role="alert" hidden></p>
 
             <div class="menu-filters" aria-label="Filtros do cardápio">
                 <button class="menu-filter-button is-active" type="button" data-filter="all" aria-pressed="true">Todos</button>
@@ -669,6 +670,13 @@
                             </select>
                         </label>
                         <label>
+                            Tipo de pizza
+                            <select name="productType" required>
+                                <option value="SALGADA">Salgada</option>
+                                <option value="DOCE">Doce</option>
+                            </select>
+                        </label>
+                        <label>
                             Preço
                             <input name="productPrice" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="49,90" required>
                         </label>
@@ -680,6 +688,47 @@
                         <div class="admin-product-form-actions">
                             <button class="btn-primary" type="submit">SALVAR PIZZA</button>
                             <button class="btn-secondary admin-product-cancel" type="button" hidden>CANCELAR EDIÇÃO</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="admin-catalog-panel admin-options-panel">
+                    <div class="admin-catalog-panel-heading">
+                        <span>PERSONALIZAÇÃO</span>
+                        <h3>Bordas e adicionais</h3>
+                    </div>
+                    <div class="admin-pizza-option-list" aria-live="polite"></div>
+                    <div class="admin-pizza-options-empty" hidden>Nenhuma opção cadastrada.</div>
+                    <form id="admin-pizza-option-form" novalidate>
+                        <strong id="admin-pizza-option-form-title">Adicionar opção</strong>
+                        <label>
+                            Nome
+                            <input name="optionName" type="text" maxlength="100" placeholder="Ex.: Catupiry" required>
+                        </label>
+                        <div class="admin-pizza-option-fields">
+                            <label>
+                                Opção
+                                <select name="optionKind" required>
+                                    <option value="BORDA">Borda recheada</option>
+                                    <option value="ADICIONAL">Adicional</option>
+                                </select>
+                            </label>
+                            <label>
+                                Para pizzas
+                                <select name="optionProductType" required>
+                                    <option value="SALGADA">Salgadas</option>
+                                    <option value="DOCE">Doces</option>
+                                </select>
+                            </label>
+                            <label>
+                                Acréscimo (R$)
+                                <input name="optionPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="7,00" required>
+                            </label>
+                        </div>
+                        <div class="admin-pizza-option-message" aria-live="polite"></div>
+                        <div class="admin-product-form-actions">
+                            <button class="btn-primary" type="submit">SALVAR OPÇÃO</button>
+                            <button class="btn-secondary admin-pizza-option-cancel" type="button" hidden>CANCELAR</button>
                         </div>
                     </form>
                 </div>
@@ -799,6 +848,58 @@
         <span>WhatsApp</span>
     </a>
 
+    <dialog class="pizza-customizer" aria-labelledby="pizza-customizer-title">
+        <div class="pizza-customizer-header">
+            <div>
+                <span>FEITA DO SEU JEITO</span>
+                <h2 id="pizza-customizer-title">Personalize sua pizza</h2>
+            </div>
+            <button class="pizza-customizer-close" type="button" aria-label="Fechar personalização">×</button>
+        </div>
+        <div class="pizza-customizer-content">
+            <fieldset class="pizza-type-choices">
+                <legend>Como prefere?</legend>
+                <label><input type="radio" name="pizzaType" value="INTEIRA" checked> Inteira</label>
+                <label><input type="radio" name="pizzaType" value="MEIO_A_MEIO"> Meio a meio</label>
+            </fieldset>
+            <label class="pizza-customizer-field">
+                <span class="customizer-first-label">Sabor</span>
+                <select class="customizer-first-flavor" required></select>
+            </label>
+            <label class="pizza-customizer-field customizer-second-field" hidden>
+                2º sabor
+                <select class="customizer-second-flavor"></select>
+            </label>
+            <label class="pizza-customizer-field">
+                Borda recheada
+                <select class="customizer-border">
+                    <option value="">Sem borda recheada · R$ 0,00</option>
+                </select>
+            </label>
+            <fieldset class="pizza-customizer-addons">
+                <legend>Adicionais</legend>
+                <div class="customizer-addon-list"></div>
+            </fieldset>
+            <div class="pizza-customizer-quantity">
+                <span>Quantidade</span>
+                <div>
+                    <button type="button" data-customizer-quantity="-1" aria-label="Diminuir quantidade">−</button>
+                    <output class="customizer-quantity-value" aria-live="polite">1</output>
+                    <button type="button" data-customizer-quantity="1" aria-label="Aumentar quantidade">+</button>
+                </div>
+            </div>
+            <section class="pizza-customizer-summary" aria-live="polite">
+                <h3>Resumo da pizza</h3>
+                <p class="customizer-summary-type">Pizza inteira</p>
+                <p class="customizer-summary-flavors">Escolha um sabor</p>
+                <p class="customizer-summary-border">Sem borda recheada</p>
+                <p class="customizer-summary-addons">Sem adicionais</p>
+                <div><span class="customizer-summary-price-label">Total</span><strong class="customizer-summary-price">R$ 0,00</strong></div>
+            </section>
+            <button class="btn-primary customizer-add-to-cart" type="button">ADICIONAR AO CARRINHO</button>
+        </div>
+    </dialog>
+
     <aside class="cart-panel" aria-label="Seu pedido" aria-hidden="true">
         <div class="cart-header"><h2>SEU PEDIDO</h2><button class="cart-close" type="button" aria-label="Fechar pedido">×</button></div>
         <div class="cart-items"><p class="cart-empty">Seu carrinho está vazio.</p></div>
@@ -806,6 +907,7 @@
             <div class="cart-total"><span>Total</span><strong>R$ 0,00</strong></div>
             <label>Seu nome<input id="customer-name" type="text" autocomplete="name" placeholder="Como podemos chamar você?"></label>
             <label>Observações<textarea id="order-notes" rows="3" placeholder="Ex.: sem cebola"></textarea></label>
+            <button class="btn-secondary cart-continue" type="button">CONTINUAR COMPRANDO</button>
             <button class="btn-primary checkout-button" type="button">IR PARA CHECKOUT</button>
         </div>
     </aside>

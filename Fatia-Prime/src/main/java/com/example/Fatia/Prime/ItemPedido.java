@@ -3,6 +3,8 @@ package com.example.Fatia.Prime;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "itens_pedido")
@@ -26,6 +28,35 @@ public class ItemPedido {
     @Column(name = "preco_unitario", nullable = false, precision = 10, scale = 2)
     private BigDecimal precoUnitario;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_pizza", nullable = false, length = 20)
+    private TipoPizza tipoPizza = TipoPizza.INTEIRA;
+
+    @Column(name = "nome_produto_snapshot", length = 150)
+    private String nomeProdutoSnapshot;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "segundo_produto_id")
+    private Produto segundoProduto;
+
+    @Column(name = "nome_segundo_produto_snapshot", length = 150)
+    private String nomeSegundoProdutoSnapshot;
+
+    @Column(name = "borda_nome", length = 100)
+    private String bordaNome;
+
+    @Column(name = "borda_preco", precision = 10, scale = 2)
+    private BigDecimal bordaPreco = BigDecimal.ZERO;
+
+    @ElementCollection
+    @CollectionTable(name = "item_pedido_adicionais", joinColumns = @JoinColumn(name = "item_pedido_id"))
+    @AttributeOverrides({
+        @AttributeOverride(name = "opcaoId", column = @Column(name = "opcao_id")),
+        @AttributeOverride(name = "nome", column = @Column(name = "nome", nullable = false, length = 100)),
+        @AttributeOverride(name = "precoAdicional", column = @Column(name = "preco_adicional", nullable = false, precision = 10, scale = 2))
+    })
+    private List<ItemPedidoAdicional> adicionais = new ArrayList<>();
+
     public ItemPedido() {
     }
 
@@ -34,6 +65,7 @@ public class ItemPedido {
         this.produto = produto;
         this.quantidade = quantidade;
         this.precoUnitario = precoUnitario;
+        this.nomeProdutoSnapshot = produto != null ? produto.getNome() : null;
     }
 
     public Long getId() {
@@ -70,5 +102,61 @@ public class ItemPedido {
 
     public void setPrecoUnitario(BigDecimal precoUnitario) {
         this.precoUnitario = precoUnitario;
+    }
+
+    public TipoPizza getTipoPizza() {
+        return tipoPizza;
+    }
+
+    public void setTipoPizza(TipoPizza tipoPizza) {
+        this.tipoPizza = tipoPizza;
+    }
+
+    public String getNomeProdutoSnapshot() {
+        return nomeProdutoSnapshot;
+    }
+
+    public void setNomeProdutoSnapshot(String nomeProdutoSnapshot) {
+        this.nomeProdutoSnapshot = nomeProdutoSnapshot;
+    }
+
+    public Produto getSegundoProduto() {
+        return segundoProduto;
+    }
+
+    public void setSegundoProduto(Produto segundoProduto) {
+        this.segundoProduto = segundoProduto;
+    }
+
+    public String getNomeSegundoProdutoSnapshot() {
+        return nomeSegundoProdutoSnapshot;
+    }
+
+    public void setNomeSegundoProdutoSnapshot(String nomeSegundoProdutoSnapshot) {
+        this.nomeSegundoProdutoSnapshot = nomeSegundoProdutoSnapshot;
+    }
+
+    public String getBordaNome() {
+        return bordaNome;
+    }
+
+    public void setBordaNome(String bordaNome) {
+        this.bordaNome = bordaNome;
+    }
+
+    public BigDecimal getBordaPreco() {
+        return bordaPreco == null ? BigDecimal.ZERO : bordaPreco;
+    }
+
+    public void setBordaPreco(BigDecimal bordaPreco) {
+        this.bordaPreco = bordaPreco;
+    }
+
+    public List<ItemPedidoAdicional> getAdicionais() {
+        return adicionais;
+    }
+
+    public void setAdicionais(List<ItemPedidoAdicional> adicionais) {
+        this.adicionais = adicionais == null ? new ArrayList<>() : new ArrayList<>(adicionais);
     }
 }

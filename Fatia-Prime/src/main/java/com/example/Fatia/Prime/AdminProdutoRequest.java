@@ -24,6 +24,8 @@ public record AdminProdutoRequest(
     @NotNull(message = "A categoria é obrigatória")
     Long categoriaId,
 
-    Boolean ativo
+    Boolean ativo,
+
+    TipoProdutoPizza tipo
 ) {
 }

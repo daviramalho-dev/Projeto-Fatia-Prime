@@ -2,8 +2,11 @@ package com.example.Fatia.Prime;
 
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,16 +19,20 @@ public class PedidoController {
 
     private final PedidoRepository pedidoRepository;
     private final ProdutoRepository produtoRepository;
+    private final OpcaoPizzaRepository opcaoPizzaRepository;
 
     public PedidoController(
         PedidoRepository pedidoRepository,
-        ProdutoRepository produtoRepository
+        ProdutoRepository produtoRepository,
+        OpcaoPizzaRepository opcaoPizzaRepository
     ) {
         this.pedidoRepository = pedidoRepository;
         this.produtoRepository = produtoRepository;
+        this.opcaoPizzaRepository = opcaoPizzaRepository;
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public List<PedidoResponse> listar() {
         return pedidoRepository.findAll().stream()
             .map(PedidoResponse::de)
@@ -33,6 +40,7 @@ public class PedidoController {
     }
 
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public PedidoResponse buscarPorId(@PathVariable Long id) {
         Pedido pedido = pedidoRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido não encontrado"));
@@ -90,16 +98,63 @@ public class PedidoController {
             Produto produto = produtoRepository.findById(itemRequest.produtoId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
 
-            if (!produto.isAtivo()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Produto indisponível: " + produto.getNome());
-            }
-
             if (itemRequest.quantidade() == null || itemRequest.quantidade() <= 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Quantidade do item deve ser maior que zero");
             }
 
-            BigDecimal precoUnitario = produto.getPreco();
+            validarProdutoDisponivel(produto);
+            TipoPizza tipoPizza = itemRequest.tipoPizza() == null ? TipoPizza.INTEIRA : itemRequest.tipoPizza();
+            Produto segundoProduto = null;
+            if (tipoPizza == TipoPizza.MEIO_A_MEIO) {
+                if (itemRequest.segundoProdutoId() == null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione o segundo sabor da pizza");
+                }
+                segundoProduto = produtoRepository.findById(itemRequest.segundoProdutoId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Segundo sabor não encontrado"));
+                validarProdutoDisponivel(segundoProduto);
+                if (produto.getTipo() != segundoProduto.getTipo()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Os sabores precisam ser do mesmo tipo");
+                }
+            } else if (itemRequest.segundoProdutoId() != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pizza inteira aceita somente um sabor");
+            }
+
+            BigDecimal precoBase = segundoProduto == null || produto.getPreco().compareTo(segundoProduto.getPreco()) >= 0
+                ? produto.getPreco()
+                : segundoProduto.getPreco();
+            BigDecimal precoBorda = BigDecimal.ZERO;
+            String nomeBorda = null;
+            if (itemRequest.bordaId() != null) {
+                OpcaoPizza borda = opcaoPizzaRepository.findById(itemRequest.bordaId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Borda inválida"));
+                validarOpcao(borda, TipoOpcaoPizza.BORDA, produto.getTipo(), "Borda");
+                precoBorda = borda.getPrecoAdicional();
+                nomeBorda = borda.getNome();
+            }
+
+            BigDecimal precoAdicionais = BigDecimal.ZERO;
+            List<ItemPedidoAdicional> adicionais = new ArrayList<>();
+            Set<Long> idsAdicionais = new HashSet<>();
+            for (Long adicionalId : itemRequest.adicionalIds()) {
+                if (adicionalId == null || !idsAdicionais.add(adicionalId)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Adicional inválido ou repetido");
+                }
+                OpcaoPizza adicional = opcaoPizzaRepository.findById(adicionalId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Adicional inválido"));
+                validarOpcao(adicional, TipoOpcaoPizza.ADICIONAL, produto.getTipo(), "Adicional");
+                adicionais.add(new ItemPedidoAdicional(
+                    adicional.getId(), adicional.getNome(), adicional.getPrecoAdicional()));
+                precoAdicionais = precoAdicionais.add(adicional.getPrecoAdicional());
+            }
+
+            BigDecimal precoUnitario = precoBase.add(precoBorda).add(precoAdicionais);
             ItemPedido item = new ItemPedido(produto, itemRequest.quantidade(), precoUnitario);
+            item.setTipoPizza(tipoPizza);
+            item.setSegundoProduto(segundoProduto);
+            item.setNomeSegundoProdutoSnapshot(segundoProduto == null ? null : segundoProduto.getNome());
+            item.setBordaNome(nomeBorda);
+            item.setBordaPreco(precoBorda);
+            item.setAdicionais(adicionais);
             pedido.adicionarItem(item);
             total = total.add(precoUnitario.multiply(BigDecimal.valueOf(itemRequest.quantidade())));
         }
@@ -107,6 +162,21 @@ public class PedidoController {
         pedido.setValorTotal(total);
         Pedido salvo = pedidoRepository.saveAndFlush(pedido);
         return PedidoResponse.de(salvo);
+    }
+
+    private void validarProdutoDisponivel(Produto produto) {
+        if (!produto.isAtivo()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Produto indisponível: " + produto.getNome());
+        }
+        if (produto.getCategoria() == null || produto.getTipo() == null || produto.getPreco() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Produto inválido para pedidos");
+        }
+    }
+
+    private void validarOpcao(OpcaoPizza opcao, TipoOpcaoPizza tipo, TipoProdutoPizza tipoProduto, String rotulo) {
+        if (!opcao.isAtivo() || opcao.getTipo() != tipo || opcao.getTipoProduto() != tipoProduto) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, rotulo + " inválida ou indisponível");
+        }
     }
 
     private void validarClientePublico(PedidoRequest request) {
