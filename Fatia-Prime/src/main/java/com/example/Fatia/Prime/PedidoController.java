@@ -115,6 +115,19 @@ public class PedidoController {
 
             validarProdutoDisponivel(produto);
             TipoPizza tipoPizza = itemRequest.tipoPizza() == null ? TipoPizza.INTEIRA : itemRequest.tipoPizza();
+            if (produto.getTipo() == TipoProdutoPizza.BEBIDA) {
+                if (tipoPizza != TipoPizza.INTEIRA || itemRequest.segundoProdutoId() != null
+                    || itemRequest.bordaId() != null || !itemRequest.adicionalIds().isEmpty()
+                    || !itemRequest.molhoIds().isEmpty()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bebidas não aceitam personalização de pizza");
+                }
+                ItemPedido bebida = new ItemPedido(produto, itemRequest.quantidade(), produto.getPreco());
+                bebida.setTipoProdutoSnapshot(TipoProdutoPizza.BEBIDA);
+                pedido.adicionarItem(bebida);
+                subtotal = subtotal.add(produto.getPreco().multiply(BigDecimal.valueOf(itemRequest.quantidade())));
+                continue;
+            }
+
             Produto segundoProduto = null;
             if (tipoPizza == TipoPizza.MEIO_A_MEIO) {
                 if (itemRequest.segundoProdutoId() == null) {
@@ -154,12 +167,27 @@ public class PedidoController {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Adicional inválido"));
                 validarOpcao(adicional, TipoOpcaoPizza.ADICIONAL, produto.getTipo(), "Adicional");
                 adicionais.add(new ItemPedidoAdicional(
-                    adicional.getId(), adicional.getNome(), adicional.getPrecoAdicional()));
+                    adicional.getId(), adicional.getNome(), adicional.getPrecoAdicional(), TipoOpcaoPizza.ADICIONAL));
                 precoAdicionais = precoAdicionais.add(adicional.getPrecoAdicional());
             }
 
-            BigDecimal precoUnitario = precoBase.add(precoBorda).add(precoAdicionais);
+            BigDecimal precoMolhos = BigDecimal.ZERO;
+            Set<Long> idsMolhos = new HashSet<>();
+            for (Long molhoId : itemRequest.molhoIds()) {
+                if (molhoId == null || !idsMolhos.add(molhoId) || idsAdicionais.contains(molhoId)) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Molho inválido ou repetido");
+                }
+                OpcaoPizza molho = opcaoPizzaRepository.findById(molhoId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Molho inválido"));
+                validarOpcao(molho, TipoOpcaoPizza.MOLHO, produto.getTipo(), "Molho");
+                adicionais.add(new ItemPedidoAdicional(
+                    molho.getId(), molho.getNome(), molho.getPrecoAdicional(), TipoOpcaoPizza.MOLHO));
+                precoMolhos = precoMolhos.add(molho.getPrecoAdicional());
+            }
+
+            BigDecimal precoUnitario = precoBase.add(precoBorda).add(precoAdicionais).add(precoMolhos);
             ItemPedido item = new ItemPedido(produto, itemRequest.quantidade(), precoUnitario);
+            item.setTipoProdutoSnapshot(produto.getTipo());
             item.setTipoPizza(tipoPizza);
             item.setSegundoProduto(segundoProduto);
             item.setNomeSegundoProdutoSnapshot(segundoProduto == null ? null : segundoProduto.getNome());

@@ -35,6 +35,10 @@ public class ItemPedido {
     @Column(name = "nome_produto_snapshot", length = 150)
     private String nomeProdutoSnapshot;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_produto_snapshot", length = 20)
+    private TipoProdutoPizza tipoProdutoSnapshot;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "segundo_produto_id")
     private Produto segundoProduto;
@@ -53,7 +57,8 @@ public class ItemPedido {
     @AttributeOverrides({
         @AttributeOverride(name = "opcaoId", column = @Column(name = "opcao_id")),
         @AttributeOverride(name = "nome", column = @Column(name = "nome", nullable = false, length = 100)),
-        @AttributeOverride(name = "precoAdicional", column = @Column(name = "preco_adicional", nullable = false, precision = 10, scale = 2))
+        @AttributeOverride(name = "precoAdicional", column = @Column(name = "preco_adicional", nullable = false, precision = 10, scale = 2)),
+        @AttributeOverride(name = "tipo", column = @Column(name = "tipo_opcao", length = 20))
     })
     private List<ItemPedidoAdicional> adicionais = new ArrayList<>();
 
@@ -66,6 +71,7 @@ public class ItemPedido {
         this.quantidade = quantidade;
         this.precoUnitario = precoUnitario;
         this.nomeProdutoSnapshot = produto != null ? produto.getNome() : null;
+        this.tipoProdutoSnapshot = produto != null ? produto.getTipo() : null;
     }
 
     public Long getId() {
@@ -118,6 +124,14 @@ public class ItemPedido {
 
     public void setNomeProdutoSnapshot(String nomeProdutoSnapshot) {
         this.nomeProdutoSnapshot = nomeProdutoSnapshot;
+    }
+
+    public TipoProdutoPizza getTipoProdutoSnapshot() {
+        return tipoProdutoSnapshot != null ? tipoProdutoSnapshot : produto != null ? produto.getTipo() : null;
+    }
+
+    public void setTipoProdutoSnapshot(TipoProdutoPizza tipoProdutoSnapshot) {
+        this.tipoProdutoSnapshot = tipoProdutoSnapshot;
     }
 
     public Produto getSegundoProduto() {

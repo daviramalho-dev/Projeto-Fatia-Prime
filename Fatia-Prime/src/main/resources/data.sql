@@ -3,6 +3,7 @@ merge into categorias (nome) key(nome) values ('Carnes');
 merge into categorias (nome) key(nome) values ('Frango');
 merge into categorias (nome) key(nome) values ('Queijos');
 merge into categorias (nome) key(nome) values ('Doces');
+merge into categorias (nome) key(nome) values ('Bebidas');
 
 merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
 values ('Calabresa Prime', 'Calabresa, mozzarella e cebola.', 49.90, 'assets/calabresa prime.jpg', true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
@@ -42,6 +43,8 @@ merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_p
 values ('Chocolate com Morango', 'Chocolate ao leite, morangos e leve toque de leite condensado.', 56.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
 merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
 values ('Romeu e Julieta', 'Goiabada cremosa e queijo mozzarella.', 54.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Bebida demonstrativa 350 ml', 'Produto e preço de demonstração; substitua pelos dados comerciais da pizzaria.', 1.00, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
 
 merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
 values ('Catupiry', 'BORDA', 'SALGADA', 7.00, true);
@@ -57,6 +60,8 @@ merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(n
 values ('Morango extra', 'ADICIONAL', 'DOCE', 5.00, true);
 merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
 values ('Granulado', 'ADICIONAL', 'DOCE', 3.00, true);
+merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
+values ('Molho demonstrativo', 'MOLHO', 'SALGADA', 0.50, true);
 
 merge into faixas_frete (nome, cep_inicial, cep_final, valor_frete, ativo) key(nome)
 values ('Demonstração - Região 1 (faixa artificial)', '99990000', '99990099', 5.00, true);
@@ -64,3 +69,9 @@ merge into faixas_frete (nome, cep_inicial, cep_final, valor_frete, ativo) key(n
 values ('Demonstração - Região 2 (faixa artificial)', '99990100', '99990199', 8.00, true);
 merge into faixas_frete (nome, cep_inicial, cep_final, valor_frete, ativo) key(nome)
 values ('Demonstração - Região 3 (faixa artificial)', '99990200', '99990299', 12.00, true);
+
+update itens_pedido
+set tipo_produto_snapshot = (
+	select produtos.tipo_produto from produtos where produtos.id = itens_pedido.produto_id
+)
+where tipo_produto_snapshot is null;

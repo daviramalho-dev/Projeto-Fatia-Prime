@@ -638,18 +638,18 @@
                 <div class="admin-catalog-panel">
                     <div class="admin-catalog-panel-heading">
                         <span>CATÁLOGO</span>
-                        <h3>Pizzas cadastradas</h3>
+                        <h3>Produtos cadastrados</h3>
                     </div>
                     <div class="admin-catalog-list" aria-live="polite"></div>
                     <div class="admin-catalog-empty" hidden>
-                        <strong>Nenhuma pizza cadastrada</strong>
-                        <span>Use o formulário para adicionar uma pizza ao cardápio.</span>
+                        <strong>Nenhum produto cadastrado</strong>
+                        <span>Use o formulário para adicionar um produto ao cardápio.</span>
                     </div>
                 </div>
 
                 <div class="admin-catalog-panel">
                     <div class="admin-catalog-panel-heading">
-                        <span id="admin-product-form-label">NOVA PIZZA</span>
+                        <span id="admin-product-form-label">NOVO PRODUTO</span>
                         <h3 id="admin-product-form-title">Adicionar ao cardápio</h3>
                     </div>
                     <form id="admin-product-form" novalidate>
@@ -659,7 +659,7 @@
                         </label>
                         <label>
                             Descrição
-                            <textarea name="productDescription" rows="3" placeholder="Ingredientes e características da pizza"></textarea>
+                            <textarea name="productDescription" rows="3" placeholder="Descrição do produto"></textarea>
                         </label>
                         <label>
                             Categoria
@@ -672,10 +672,11 @@
                             </select>
                         </label>
                         <label>
-                            Tipo de pizza
+                            Tipo de produto
                             <select name="productType" required>
                                 <option value="SALGADA">Salgada</option>
                                 <option value="DOCE">Doce</option>
+                                <option value="BEBIDA">Bebida</option>
                             </select>
                         </label>
                         <label>
@@ -688,7 +689,7 @@
                         </label>
                         <div class="admin-product-form-message" aria-live="polite"></div>
                         <div class="admin-product-form-actions">
-                            <button class="btn-primary" type="submit">SALVAR PIZZA</button>
+                            <button class="btn-primary" type="submit">SALVAR PRODUTO</button>
                             <button class="btn-secondary admin-product-cancel" type="button" hidden>CANCELAR EDIÇÃO</button>
                         </div>
                     </form>
@@ -697,7 +698,7 @@
                 <div class="admin-catalog-panel admin-options-panel">
                     <div class="admin-catalog-panel-heading">
                         <span>PERSONALIZAÇÃO</span>
-                        <h3>Bordas e adicionais</h3>
+                        <h3>Bordas, adicionais e molhos</h3>
                     </div>
                     <div class="admin-pizza-option-list" aria-live="polite"></div>
                     <div class="admin-pizza-options-empty" hidden>Nenhuma opção cadastrada.</div>
@@ -713,6 +714,7 @@
                                 <select name="optionKind" required>
                                     <option value="BORDA">Borda recheada</option>
                                     <option value="ADICIONAL">Adicional</option>
+                                    <option value="MOLHO">Molho</option>
                                 </select>
                             </label>
                             <label>
@@ -886,6 +888,10 @@
                 <legend>Adicionais</legend>
                 <div class="customizer-addon-list"></div>
             </fieldset>
+            <fieldset class="pizza-customizer-addons">
+                <legend>Molhos adicionais</legend>
+                <div class="customizer-sauce-list"></div>
+            </fieldset>
             <div class="pizza-customizer-quantity">
                 <span>Quantidade</span>
                 <div>
@@ -900,6 +906,7 @@
                 <p class="customizer-summary-flavors">Escolha um sabor</p>
                 <p class="customizer-summary-border">Sem borda recheada</p>
                 <p class="customizer-summary-addons">Sem adicionais</p>
+                <p class="customizer-summary-sauces">Sem molhos adicionais</p>
                 <div><span class="customizer-summary-price-label">Total</span><strong class="customizer-summary-price">R$ 0,00</strong></div>
             </section>
             <button class="btn-primary customizer-add-to-cart" type="button">ADICIONAR AO CARRINHO</button>

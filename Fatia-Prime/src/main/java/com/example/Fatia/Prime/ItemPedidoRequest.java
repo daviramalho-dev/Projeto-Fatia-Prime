@@ -19,9 +19,11 @@ public record ItemPedidoRequest(
     Long segundoProdutoId,
     @Positive(message = "A borda deve ser válida")
     Long bordaId,
-    List<@NotNull @Positive(message = "O adicional deve ser válido") Long> adicionalIds
+    List<@NotNull @Positive(message = "O adicional deve ser válido") Long> adicionalIds,
+    List<@NotNull @Positive(message = "O molho deve ser válido") Long> molhoIds
 ) {
     public ItemPedidoRequest {
         adicionalIds = adicionalIds == null ? List.of() : adicionalIds;
+        molhoIds = molhoIds == null ? List.of() : molhoIds;
     }
 }
