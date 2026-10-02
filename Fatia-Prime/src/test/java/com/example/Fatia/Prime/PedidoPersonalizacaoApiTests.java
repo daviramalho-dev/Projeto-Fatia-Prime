@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,9 +18,10 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+@SpringBootTest(properties = {"app.frete.loja-lat=0.0", "app.frete.loja-lng=0.0"})
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class PedidoPersonalizacaoApiTests {
@@ -41,6 +44,9 @@ class PedidoPersonalizacaoApiTests {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    @MockitoBean
+    private CepGeocoder cepGeocoder;
+
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -56,6 +62,8 @@ class PedidoPersonalizacaoApiTests {
 
     @BeforeEach
     void prepararDados() {
+        when(cepGeocoder.geocodificar(anyString()))
+            .thenAnswer(invocation -> FreteTestCoordinates.paraCep(invocation.getArgument(0)));
         pedidoRepository.deleteAll();
         usuarioRepository.deleteAll();
         produtoRepository.deleteAll();
@@ -132,6 +140,14 @@ class PedidoPersonalizacaoApiTests {
         pedidoComItem("""
             {"produtoId":%d,"quantidade":1,"tipoPizza":"MEIO_A_MEIO"}
             """.formatted(saborEconomico.getId()))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void meioAMeioNaoRepeteOSabor() throws Exception {
+        pedidoComItem("""
+            {"produtoId":%d,"quantidade":1,"tipoPizza":"MEIO_A_MEIO","segundoProdutoId":%d}
+            """.formatted(saborEconomico.getId(), saborEconomico.getId()))
             .andExpect(status().isBadRequest());
     }
 

@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,9 +17,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+@SpringBootTest(properties = {"app.frete.loja-lat=0.0", "app.frete.loja-lng=0.0"})
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class PedidoPublicoApiTests {
@@ -39,8 +42,13 @@ class PedidoPublicoApiTests {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    @MockitoBean
+    private CepGeocoder cepGeocoder;
+
     @BeforeEach
     void prepararDados() {
+        when(cepGeocoder.geocodificar(anyString()))
+            .thenAnswer(invocation -> FreteTestCoordinates.paraCep(invocation.getArgument(0)));
         pedidoRepository.deleteAll();
         usuarioRepository.deleteAll();
         produtoRepository.deleteAll();

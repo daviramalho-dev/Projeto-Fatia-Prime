@@ -20,18 +20,21 @@ public class PedidoController {
     private final PedidoRepository pedidoRepository;
     private final ProdutoRepository produtoRepository;
     private final OpcaoPizzaRepository opcaoPizzaRepository;
-    private final FaixaFreteRepository faixaFreteRepository;
+    private final CepGeocoder cepGeocoder;
+    private final FreteProperties freteProperties;
 
     public PedidoController(
         PedidoRepository pedidoRepository,
         ProdutoRepository produtoRepository,
         OpcaoPizzaRepository opcaoPizzaRepository,
-        FaixaFreteRepository faixaFreteRepository
+        CepGeocoder cepGeocoder,
+        FreteProperties freteProperties
     ) {
         this.pedidoRepository = pedidoRepository;
         this.produtoRepository = produtoRepository;
         this.opcaoPizzaRepository = opcaoPizzaRepository;
-        this.faixaFreteRepository = faixaFreteRepository;
+        this.cepGeocoder = cepGeocoder;
+        this.freteProperties = freteProperties;
     }
 
     @GetMapping
@@ -84,13 +87,7 @@ public class PedidoController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pedidos públicos não podem informar usuário");
         }
         validarClientePublico(request);
-        String cep = normalizarCep(request.cep());
-        FaixaFrete faixaFrete = faixaFreteRepository
-            .findFirstByAtivoTrueAndCepInicialLessThanEqualAndCepFinalGreaterThanEqualOrderByCepInicialAsc(cep, cep)
-            .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Infelizmente, ainda não entregamos nessa região."
-            ));
+        String cep = FreteController.normalizarCep(request.cep());
         pedido.setClienteNome(request.clienteNome().trim());
         pedido.setClienteEmail(request.clienteEmail().trim());
         pedido.setClienteTelefone(normalizarTelefone(request.clienteTelefone()));
@@ -136,6 +133,9 @@ public class PedidoController {
                 segundoProduto = produtoRepository.findById(itemRequest.segundoProdutoId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Segundo sabor não encontrado"));
                 validarProdutoDisponivel(segundoProduto);
+                if (produto.getId().equals(segundoProduto.getId())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Escolha dois sabores diferentes");
+                }
                 if (produto.getTipo() != segundoProduto.getTipo()) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Os sabores precisam ser do mesmo tipo");
                 }
@@ -198,8 +198,11 @@ public class PedidoController {
             subtotal = subtotal.add(precoUnitario.multiply(BigDecimal.valueOf(itemRequest.quantidade())));
         }
 
-        pedido.setValorFrete(faixaFrete.getValorFrete());
-        pedido.setValorTotal(subtotal.add(faixaFrete.getValorFrete()));
+        FreteResponse cotacao = FreteController.calcularFrete(
+            cep, cepGeocoder, freteProperties, HttpStatus.BAD_REQUEST);
+        pedido.setCep(cotacao.cep());
+        pedido.setValorFrete(cotacao.valorFrete());
+        pedido.setValorTotal(subtotal.add(cotacao.valorFrete()));
         Pedido salvo = pedidoRepository.saveAndFlush(pedido);
         return PedidoResponse.de(salvo);
     }
@@ -254,13 +257,4 @@ public class PedidoController {
         return normalizado == null || normalizado.isBlank() ? null : normalizado;
     }
 
-    private String normalizarCep(String cep) {
-        if (cep == null || cep.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe seu CEP.");
-        }
-        if (!cep.trim().matches("[0-9]{5}-?[0-9]{3}")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um CEP válido.");
-        }
-        return cep.replaceAll("\\D", "");
-    }
 }

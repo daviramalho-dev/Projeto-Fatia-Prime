@@ -5,9 +5,8 @@ import java.math.BigDecimal;
 public record FreteResponse(
     String cep,
     String regiao,
-    BigDecimal valorFrete
+    BigDecimal valorFrete,
+    double distanciaKm,
+    String fonteCoordenadas
 ) {
-    public static FreteResponse de(String cep, FaixaFrete faixa) {
-        return new FreteResponse(cep, faixa.getNome(), faixa.getValorFrete());
-    }
 }

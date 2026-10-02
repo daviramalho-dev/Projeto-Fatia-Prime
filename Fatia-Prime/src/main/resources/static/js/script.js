@@ -16,6 +16,7 @@ const checkoutSubtotalElement = document.querySelector('.checkout-subtotal');
 const checkoutFreightElement = document.querySelector('.checkout-freight');
 const cartSubtotalElement = document.querySelector('.cart-subtotal');
 const cartFreightElement = document.querySelector('.cart-freight');
+const cartDeliveryCep = document.querySelector('.cart-delivery-cep');
 const cartTotalLabel = document.querySelector('.cart-total span');
 const checkoutTotalLabel = document.querySelector('.checkout-total span');
 const pizzaCustomizer = document.querySelector('.pizza-customizer');
@@ -642,7 +643,7 @@ function getPizzaPresentation(item) {
     return {
         title: pizzaType === 'MEIO_A_MEIO' ? 'Pizza meio a meio' : 'Pizza inteira',
         flavors: pizzaType === 'MEIO_A_MEIO'
-            ? `Sabores: ${firstName} + ${secondName || 'Escolha pendente'}`
+            ? `1/2 ${firstName} + 1/2 ${secondName || 'Escolha pendente'}`
             : `Sabor: ${firstName}`,
         border: item?.border?.name ? `Borda: ${item.border.name}` : 'Sem borda recheada',
         addons: item?.addons?.length
@@ -1183,11 +1184,19 @@ function formatCep(value) {
     return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
 
+function syncDeliveryCepFields(value) {
+    const formatted = formatCep(value);
+    if (cartDeliveryCep && cartDeliveryCep.value !== formatted) cartDeliveryCep.value = formatted;
+    const checkoutCep = checkoutForm?.elements.namedItem('customerCep');
+    if (checkoutCep && checkoutCep.value !== formatted) checkoutCep.value = formatted;
+}
+
 function setDeliveryQuoteMessage(form, message, type = '') {
     const element = form?.querySelector('.delivery-quote-message');
     if (!element) return;
     element.textContent = message;
-    element.className = `delivery-quote-message ${type}`.trim();
+    element.classList.remove('success', 'error');
+    if (type) element.classList.add(type);
 }
 
 function renderDeliveryBreakdown() {
@@ -1201,7 +1210,7 @@ function renderDeliveryBreakdown() {
     if (cartSubtotalElement) cartSubtotalElement.textContent = money.format(subtotal);
     if (cartFreightElement) cartFreightElement.textContent = hasFreight
         ? money.format(freight)
-        : 'Informe o CEP no checkout';
+        : 'Informe o CEP para calcular';
     if (cartTotalLabel) cartTotalLabel.textContent = awaitingQuote ? 'Total com entrega' : 'Total';
     if (totalElement) totalElement.textContent = awaitingQuote ? 'Informe o CEP' : money.format(total);
 
@@ -1641,6 +1650,7 @@ async function addProduct(element) {
         customizerBorder.innerHTML = '<option value="">Sem borda recheada · R$ 0,00</option>'
             + customizerOptions.filter((option) => option.tipo === 'BORDA')
                 .map((option) => `<option value="${escapeHtml(option.id)}">${escapeHtml(option.nome)} · + ${money.format(Number(option.precoAdicional))}</option>`).join('');
+        syncCustomizerSelects();
         customizerAddonList.innerHTML = customizerOptions.filter((option) => option.tipo === 'ADICIONAL').length
             ? customizerOptions.filter((option) => option.tipo === 'ADICIONAL').map((option) => `
                 <label class="customizer-addon-option">
@@ -1674,6 +1684,7 @@ async function addProduct(element) {
 
 function renderPizzaCustomizerSummary() {
     if (!pizzaCustomizer) return;
+    syncCustomizerSelects();
     const pizzaType = pizzaCustomizer.querySelector('input[name="pizzaType"]:checked')?.value || 'INTEIRA';
     const isHalfAndHalf = pizzaType === 'MEIO_A_MEIO';
     const firstProduct = publicProducts.find((item) => String(item.id) === customizerFirstFlavor.value);
@@ -1700,7 +1711,7 @@ function renderPizzaCustomizerSummary() {
     const flavorLabel = !firstProduct
         ? 'Escolha um sabor'
         : isHalfAndHalf
-            ? `${firstProduct.name}${secondProduct ? ` + ${secondProduct.name}` : ' + escolha o segundo sabor'}`
+            ? `1/2 ${firstProduct.name}${secondProduct ? ` + 1/2 ${secondProduct.name}` : ' + escolha o segundo sabor'}`
             : firstProduct.name;
 
     pizzaCustomizer.querySelector('.customizer-summary-type').textContent = isHalfAndHalf ? 'Pizza meio a meio' : 'Pizza inteira';
@@ -1720,6 +1731,98 @@ function renderPizzaCustomizerSummary() {
     pizzaCustomizer.querySelector('.customizer-summary-price-label').textContent = `Total · ${customizerQuantity} ${customizerQuantity === 1 ? 'pizza' : 'pizzas'}`;
     pizzaCustomizer.querySelector('.customizer-summary-price').textContent = money.format(unitPrice * customizerQuantity);
     customizerAddToCart.disabled = !firstProduct || (isHalfAndHalf && !secondProduct);
+}
+
+function ensureCustomSelect(select) {
+    let control = select.nextElementSibling;
+    if (control?.classList.contains('custom-select-enhanced')) return control;
+
+    control = document.createElement('div');
+    control.className = 'custom-select-enhanced';
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'custom-select-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    if (select.hasAttribute('aria-labelledby')) {
+        trigger.setAttribute('aria-labelledby', select.getAttribute('aria-labelledby'));
+    }
+    const list = document.createElement('div');
+    list.className = 'custom-select-options';
+    list.setAttribute('role', 'listbox');
+    list.hidden = true;
+    control.append(trigger, list);
+    select.insertAdjacentElement('afterend', control);
+    select.classList.add('custom-select-native-enhanced');
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+
+    trigger.addEventListener('click', () => {
+        const opening = list.hidden;
+        document.querySelectorAll('.custom-select-options').forEach((otherList) => {
+            otherList.hidden = true;
+            otherList.previousElementSibling?.setAttribute('aria-expanded', 'false');
+        });
+        list.hidden = !opening;
+        trigger.setAttribute('aria-expanded', String(opening));
+    });
+    list.addEventListener('click', (event) => {
+        const optionButton = event.target.closest('[data-custom-select-value]');
+        if (!optionButton || optionButton.disabled) return;
+        select.value = optionButton.dataset.customSelectValue;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        list.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.focus();
+    });
+    trigger.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            list.hidden = false;
+            trigger.setAttribute('aria-expanded', 'true');
+            list.querySelector('button:not(:disabled)')?.focus();
+        }
+    });
+    list.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            list.hidden = true;
+            trigger.setAttribute('aria-expanded', 'false');
+            trigger.focus();
+        }
+    });
+    return control;
+}
+
+function syncCustomizerSelects() {
+    [customizerFirstFlavor, customizerSecondFlavor, customizerBorder].forEach((select) => {
+        if (!select) return;
+        const control = ensureCustomSelect(select);
+        const trigger = control.querySelector('.custom-select-trigger');
+        const list = control.querySelector('.custom-select-options');
+        const options = [...select.options];
+        options.forEach((option) => {
+            const repeatedFlavor = select === customizerSecondFlavor
+                ? option.value && option.value === customizerFirstFlavor.value
+                : select === customizerFirstFlavor
+                    ? option.value && option.value === customizerSecondFlavor.value
+                    : false;
+            option.disabled = Boolean(repeatedFlavor);
+        });
+        if (customizerFirstFlavor.value && customizerFirstFlavor.value === customizerSecondFlavor.value) {
+            customizerSecondFlavor.value = '';
+        }
+        trigger.textContent = select.selectedOptions[0]?.textContent || 'Selecione uma opção';
+        list.replaceChildren(...options.map((option) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.setAttribute('role', 'option');
+            button.setAttribute('aria-selected', String(option.value === select.value));
+            button.dataset.customSelectValue = option.value;
+            button.textContent = option.textContent;
+            button.disabled = option.disabled;
+            return button;
+        }));
+    });
 }
 
 function addCustomizedPizza() {
@@ -1781,6 +1884,7 @@ function applyCategoryFilter(category) {
 }
 
 loadPublicCatalog();
+syncCustomizerSelects();
 
 publicMenuFilters?.addEventListener('click', (event) => {
     const button = event.target.closest('.menu-filter-button');
@@ -1793,6 +1897,9 @@ pizzaCustomizer?.addEventListener('click', (event) => {
 });
 pizzaCustomizer?.addEventListener('change', (event) => {
     if (event.target.matches('input[name="pizzaType"], .customizer-first-flavor, .customizer-second-flavor, .customizer-border, .customizer-addon-list input, .customizer-sauce-list input')) {
+        if (event.target === customizerFirstFlavor && customizerFirstFlavor.value === customizerSecondFlavor.value) {
+            customizerSecondFlavor.value = '';
+        }
         renderPizzaCustomizerSummary();
     }
 });
@@ -2061,11 +2168,24 @@ if (checkoutForm) {
     if (cepField) {
         cepField.addEventListener('input', () => {
             cepField.value = formatCep(cepField.value);
+            syncDeliveryCepFields(cepField.value);
             void refreshDeliveryQuote(cepField.value, checkoutForm);
         });
         cepField.addEventListener('blur', () => refreshDeliveryQuote(cepField.value, checkoutForm));
     }
 }
+
+if (cartDeliveryCep) {
+    cartDeliveryCep.addEventListener('input', () => {
+        cartDeliveryCep.value = formatCep(cartDeliveryCep.value);
+        syncDeliveryCepFields(cartDeliveryCep.value);
+        void refreshDeliveryQuote(cartDeliveryCep.value, panel);
+    });
+    cartDeliveryCep.addEventListener('blur', () => refreshDeliveryQuote(cartDeliveryCep.value, panel));
+}
+document.querySelector('.cart-quote-button')?.addEventListener('click', () => {
+    void refreshDeliveryQuote(cartDeliveryCep?.value, panel, true);
+});
 
 document.querySelector('.admin-order-details-close')?.addEventListener('click', () => {
     if (adminOrderDetails) adminOrderDetails.hidden = true;

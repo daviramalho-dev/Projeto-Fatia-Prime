@@ -339,9 +339,10 @@ button {
 
     padding: 15px 25px;
 
-    border: 1px solid #ffffff55;
+    border: 1px solid rgba(245, 196, 0, .35);
+    background: rgba(245, 196, 0, .08);
 
-    color: #ffffff;
+    color: #f3e6b0;
 
     font-size: 12px;
     font-weight: 700;
@@ -353,7 +354,7 @@ button {
 
 .btn-secondary:hover {
     border-color: #f5c400;
-
+    background: rgba(245, 196, 0, .16);
     color: #f5c400;
 }
 
@@ -1203,7 +1204,7 @@ button {
     gap: 8px 18px;
     margin-top: 12px;
     color: #999;
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .admin-order-card-side {
@@ -1221,9 +1222,10 @@ button {
 }
 
 .admin-order-details-button {
-    padding: 9px 11px;
+    min-height: 38px;
+    padding: 10px 12px;
     border-color: #444;
-    font-size: 9px;
+    font-size: 12px;
 }
 
 .admin-orders-empty {
@@ -1310,7 +1312,7 @@ button {
     flex-direction: column;
     gap: 8px;
     color: #ddd;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
 }
 
@@ -1423,7 +1425,7 @@ button {
 .admin-order-product-list small {
     margin-top: 4px;
     color: #999;
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .admin-order-total {
@@ -1540,7 +1542,7 @@ button {
     display: block;
     margin-top: 6px;
     color: #999;
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .admin-product-card-info small {
@@ -1575,8 +1577,9 @@ button {
 }
 
 .admin-product-card-actions button {
-    padding: 8px 10px;
-    font-size: 9px;
+    min-height: 38px;
+    padding: 10px 12px;
+    font-size: 12px;
 }
 
 .btn-danger {
@@ -1900,6 +1903,7 @@ footer p {
 
 .cart-footer label { display: block; margin: 12px 0; color: #ddd; font-size: 12px; font-weight: 600; }
 .cart-footer input, .cart-footer textarea { width: 100%; margin-top: 6px; padding: 10px; border: 1px solid #444; background: #0c0c0c; color: #fff; font: inherit; resize: vertical; }
+.cart-quote-button,
 .checkout-button { width: 100%; border: 0; margin-top: 5px; }
 
 .checkout-panel {
@@ -1963,6 +1967,26 @@ footer p {
     gap: 12px;
     font-size: 13px;
     color: #f3f3f3;
+}
+
+.cart-item-description > strong,
+.checkout-items li > div > strong,
+.order-query-items li > div > strong {
+    display: block;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.cart-item-description small,
+.checkout-items li > div > small,
+.order-query-items li > div > small {
+    display: block;
+    margin-top: 3px;
+    color: #c7c7c7;
+    font-size: 13px;
+    line-height: 1.5;
 }
 
 .checkout-items small {
@@ -2514,7 +2538,8 @@ footer p {
 
 .order-query-items small {
     margin-top: 4px;
-    font-size: 11px;
+    font-size: 13px;
+    line-height: 1.5;
     color: #c7c7c7;
 }
 
@@ -2975,6 +3000,96 @@ footer p {
     background: #0c0c0c;
     color: #fff;
     font: inherit;
+}
+
+.pizza-customizer-field select.custom-select-native-enhanced {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.custom-select-enhanced {
+    position: relative;
+    min-width: 0;
+}
+
+.custom-select-trigger {
+    position: relative;
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 38px 10px 12px;
+    border: 1px solid #444;
+    background: #0c0c0c;
+    color: #fff;
+    font: inherit;
+    text-align: left;
+}
+
+.custom-select-trigger::after {
+    position: absolute;
+    right: 14px;
+    content: "⌄";
+    color: #f5c400;
+}
+
+.custom-select-trigger:focus-visible,
+.custom-select-options button:focus-visible,
+.admin-header :is(a, button):focus-visible,
+.admin-orders :is(a, button, input, select, textarea):focus-visible,
+.admin-catalog :is(a, button, input, select, textarea):focus-visible {
+    outline: 2px solid #f5c400;
+    outline-offset: 2px;
+}
+
+.custom-select-options {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    left: 0;
+    z-index: 5;
+    display: grid;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid #555;
+    background: #101010;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, .45);
+}
+
+.custom-select-options[hidden] {
+    display: none;
+}
+
+.custom-select-options button {
+    min-height: 40px;
+    padding: 9px 12px;
+    border: 0;
+    border-bottom: 1px solid #292929;
+    background: transparent;
+    color: #eee;
+    font: inherit;
+    text-align: left;
+}
+
+.custom-select-options button[aria-selected="true"],
+.custom-select-options button:hover:not(:disabled) {
+    background: rgba(245, 196, 0, .12);
+    color: #f5c400;
+}
+
+.custom-select-options button:disabled {
+    color: #777;
+    cursor: not-allowed;
+}
+
+.admin-order-card-side button:hover,
+.admin-product-card-actions button:hover,
+.admin-status-save:hover {
+    border-color: #f5c400;
+    background: #f5c400;
+    color: #090909;
 }
 
 .customizer-addon-list {

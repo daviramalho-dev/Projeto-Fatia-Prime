@@ -40,11 +40,71 @@ merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_p
 values ('Provolone Prime', 'Provolone, mozzarella, parmesão, tomate seco e orégano.', 57.90, null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA');
 
 merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Strogonoff de Carne', 'Carne ao molho cremoso, mozzarella e batata palha.', 59.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Filé com Cheddar', 'Filé, cheddar cremoso e mozzarella.', 59.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Mussarela', 'Mozzarella, molho de tomate e orégano.', 48.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Calabresa Tradicional', 'Calabresa, mozzarella e cebola.', 49.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Atum', 'Atum, mozzarella, cebola e orégano.', 52.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Alho e Óleo', 'Alho dourado, azeite, mozzarella e orégano.', 47.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Presunto', 'Presunto, mozzarella e orégano.', 49.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Escarola com Bacon', 'Escarola refogada, bacon e mozzarella.', 53.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Lombo Canadense', 'Lombo canadense, mozzarella e cebola.', 54.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Frango com Cheddar e Bacon', 'Frango, cheddar cremoso e bacon.', 56.90, null, true, (select id from categorias where nome = 'Frango'), 'SALGADA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Gorgonzola com Nozes', 'Gorgonzola, mozzarella e nozes.', 59.90, null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Catupiry Especial', 'Catupiry cremoso, mozzarella e orégano.', 57.90, null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA');
+
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
 values ('Chocolate com Morango', 'Chocolate ao leite, morangos e leve toque de leite condensado.', 56.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
 merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
 values ('Romeu e Julieta', 'Goiabada cremosa e queijo mozzarella.', 54.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
 merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Bebida demonstrativa 350 ml', 'Produto e preço de demonstração; substitua pelos dados comerciais da pizzaria.', 1.00, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
+values ('Nutella', 'Creme de avelã com chocolate.', 56.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Nutella com Morango', 'Creme de avelã com chocolate e morangos.', 59.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Brigadeiro', 'Brigadeiro cremoso e granulado de chocolate.', 54.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Prestígio', 'Chocolate e coco.', 54.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Banana com Canela', 'Banana, açúcar e canela.', 52.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Doce de Leite com Coco', 'Doce de leite cremoso e coco.', 54.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Oreo com Chocolate Branco', 'Biscoito Oreo e chocolate branco.', 57.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Beijinho', 'Beijinho cremoso com coco.', 54.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
+
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Coca-Cola Original', 'Refrigerante Coca-Cola Original.', 8.00, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Coca-Cola Zero', 'Refrigerante Coca-Cola Zero Açúcar.', 8.00, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Pepsi Original', 'Refrigerante Pepsi Original.', 7.00, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Pepsi Black', 'Refrigerante Pepsi Black sem açúcar.', 7.00, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Pepsi Twist', 'Refrigerante Pepsi com toque de limão.', 7.00, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Fanta Laranja', 'Refrigerante sabor laranja.', 7.00, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Fanta Uva', 'Refrigerante sabor uva.', 7.00, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Sprite', 'Refrigerante sabor limão.', 7.00, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
+merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
+values ('Guaraná Antarctica', 'Refrigerante Guaraná Antarctica.', 7.00, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
+
+delete from produtos where nome = 'Bebida demonstrativa 350 ml';
 
 merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
 values ('Catupiry', 'BORDA', 'SALGADA', 7.00, true);
@@ -61,14 +121,10 @@ values ('Morango extra', 'ADICIONAL', 'DOCE', 5.00, true);
 merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
 values ('Granulado', 'ADICIONAL', 'DOCE', 3.00, true);
 merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
-values ('Molho demonstrativo', 'MOLHO', 'SALGADA', 0.50, true);
+values ('Molho de tomate', 'MOLHO', 'SALGADA', 0.00, true);
 
-merge into faixas_frete (nome, cep_inicial, cep_final, valor_frete, ativo) key(nome)
-values ('Demonstração - Região 1 (faixa artificial)', '99990000', '99990099', 5.00, true);
-merge into faixas_frete (nome, cep_inicial, cep_final, valor_frete, ativo) key(nome)
-values ('Demonstração - Região 2 (faixa artificial)', '99990100', '99990199', 8.00, true);
-merge into faixas_frete (nome, cep_inicial, cep_final, valor_frete, ativo) key(nome)
-values ('Demonstração - Região 3 (faixa artificial)', '99990200', '99990299', 12.00, true);
+delete from opcoes_pizza where nome = 'Molho demonstrativo';
+delete from faixas_frete where nome like 'Demonstração - Região %';
 
 update itens_pedido
 set tipo_produto_snapshot = (
