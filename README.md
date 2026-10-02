@@ -24,9 +24,9 @@ A interface apresenta a marca e carrega o catálogo pela API. O frontend está i
 
 ### Para clientes
 
-- Catálogo de pizzas salgadas e doces, com categorias, filtros e imagens disponíveis.
+- Catálogo de pizzas salgadas e doces e de bebidas, com categorias, filtros e imagens disponíveis.
 - Personalização de pizza inteira ou meio a meio; no meio a meio, o preço base usa o sabor mais caro.
-- Bordas recheadas e adicionais compatíveis, com acréscimos configuráveis e resumo atualizado.
+- Bordas recheadas, adicionais e molhos compatíveis, com preços configuráveis e resumo atualizado.
 - Entrega calculada pelo CEP, com subtotal, frete e total apresentados separadamente no pedido.
 - Carrinho de compras com armazenamento local no navegador (`localStorage`).
 - Checkout com validação dos dados e criação do pedido pela API.
@@ -38,8 +38,8 @@ A interface apresenta a marca e carrega o catálogo pela API. O frontend está i
 
 - Autenticação administrativa.
 - Gerenciamento, consulta e atualização do status dos pedidos.
-- Cadastro, edição, consulta, ativação e desativação de produtos.
-- Configuração de bordas recheadas e adicionais, incluindo preço, tipo de pizza e disponibilidade.
+- Cadastro, edição, consulta, ativação e desativação de pizzas e bebidas.
+- Configuração de bordas recheadas, adicionais e molhos, incluindo preço, tipo de pizza e disponibilidade.
 - Consulta e cadastro administrativo de usuários.
 
 ## Acesso ao sistema
@@ -167,7 +167,7 @@ A autenticação administrativa utiliza os seguintes endpoints:
 ### Produtos
 
 - `GET /api/produtos`  
-  Retorna os produtos ativos ordenados por nome.
+  Retorna pizzas e bebidas ativas ordenadas por nome. O campo `tipo` pode ser `SALGADA`, `DOCE` ou `BEBIDA`.
 
 - `GET /api/produtos/{id}`  
   Retorna um produto específico por ID.
@@ -184,11 +184,11 @@ A autenticação administrativa utiliza os seguintes endpoints:
 ### Opções de pizza
 
 - `GET /api/opcoes-pizza?tipoProduto=SALGADA` ou `?tipoProduto=DOCE`
-  Retorna bordas e adicionais ativos compatíveis com o tipo de pizza.
+  Retorna bordas, adicionais e molhos ativos compatíveis com o tipo de pizza.
 - `GET /api/admin/opcoes-pizza`
   Lista as opções para administradores autenticados.
 - `POST /api/admin/opcoes-pizza` e `PUT /api/admin/opcoes-pizza/{id}`
-  Criam e editam bordas ou adicionais e seus preços.
+  Criam e editam bordas, adicionais ou molhos e seus preços.
 - `PATCH /api/admin/opcoes-pizza/{id}/status`
   Ativa ou desativa uma opção sem removê-la.
 
@@ -197,7 +197,14 @@ A autenticação administrativa utiliza os seguintes endpoints:
 - `GET /api/frete/consulta?cep=99990000`
   Normaliza o CEP e retorna a região atendida e o valor da faixa ativa; CEP inválido retorna erro de validação e CEP sem faixa ativa não pode ser usado para finalizar pedidos.
 - As faixas iniciais ficam no seed local e estão identificadas como dados artificiais de demonstração, não como cobertura geográfica comercial.
+- O seed também inclui uma bebida e um molho com nomes e preços explicitamente demonstrativos; substitua-os pelos itens e preços oficiais antes de usar o catálogo comercialmente.
 - Ao criar o pedido, o backend resolve novamente a faixa e grava o CEP normalizado e o valor do frete cobrado naquele momento. O total é recalculado como subtotal dos produtos mais frete; valores financeiros enviados pelo navegador não são usados.
+
+### Bebidas, adicionais e molhos
+
+- Bebidas são produtos do catálogo e não passam pelo customizador de pizzas.
+- Adicionais e molhos são opções associadas ao item de pizza. O backend valida cada ID, disponibilidade e preço antes de salvar o pedido.
+- O carrinho mantém a configuração dos itens no `localStorage`; o pedido salva o tipo do produto, os nomes e preços cobrados das opções, além do preço unitário calculado.
 
 ### Pedidos
 
@@ -230,7 +237,7 @@ O projeto usa H2 em memória, configurado em:
 
 A JPA está configurada com `ddl-auto=update`, o que permite que o Hibernate crie ou atualize as tabelas automaticamente durante a execução. As categorias e os produtos iniciais são carregados de `Fatia-Prime/src/main/resources/data.sql`.
 
-As entidades persistidas são `Usuario`, `Categoria`, `Produto`, `FaixaFrete`, `Pedido` e `ItemPedido`. Os relacionamentos principais são produtos associados a categorias, pedidos associados opcionalmente a usuários e itens associados a pedidos e produtos. O pedido guarda o CEP normalizado e o frete cobrado como snapshot; pedidos existentes não são recalculados se as faixas mudarem.
+As entidades persistidas incluem `Usuario`, `Categoria`, `Produto`, `OpcaoPizza`, `FaixaFrete`, `Pedido` e `ItemPedido`. Opções selecionadas ficam no item como snapshots de nome, tipo e preço; o item também guarda tipo de produto, nome e preço unitário cobrado. O pedido guarda o CEP normalizado e o frete cobrado como snapshot; pedidos existentes não são recalculados se as faixas mudarem.
 
 Os dados do H2 em memória são perdidos quando a aplicação reinicia. Categorias e produtos iniciais são recriados pelo seed. Essa configuração atende ao objetivo acadêmico e demonstrativo atual, mas o H2 em memória não deve ser apresentado como banco persistente de produção.
 

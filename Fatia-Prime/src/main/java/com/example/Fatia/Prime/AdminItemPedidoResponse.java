@@ -10,21 +10,22 @@ public record AdminItemPedidoResponse(
     Integer quantidade,
     BigDecimal precoUnitario,
     BigDecimal subtotal,
+    TipoProdutoPizza tipoProduto,
     TipoPizza tipoPizza,
     Long segundoProdutoId,
     String nomeSegundoProduto,
     String borda,
     BigDecimal precoBorda,
-    List<ItemPedidoAdicionalResponse> adicionais
+    List<ItemPedidoAdicionalResponse> adicionais,
+    List<ItemPedidoAdicionalResponse> molhos
 ) {
     public static AdminItemPedidoResponse de(ItemPedido item) {
         BigDecimal preco = item.getPrecoUnitario();
         BigDecimal subtotal = preco == null || item.getQuantidade() == null
             ? BigDecimal.ZERO
             : preco.multiply(BigDecimal.valueOf(item.getQuantidade()));
-        List<ItemPedidoAdicionalResponse> adicionais = item.getAdicionais() == null
-            ? List.of()
-            : item.getAdicionais().stream().map(ItemPedidoAdicionalResponse::de).toList();
+        List<ItemPedidoAdicionalResponse> adicionais = opcoes(item, TipoOpcaoPizza.ADICIONAL);
+        List<ItemPedidoAdicionalResponse> molhos = opcoes(item, TipoOpcaoPizza.MOLHO);
         return new AdminItemPedidoResponse(
             item.getId(),
             item.getProduto() != null ? item.getProduto().getId() : null,
@@ -34,6 +35,7 @@ public record AdminItemPedidoResponse(
             item.getQuantidade(),
             preco,
             subtotal,
+            item.getTipoProdutoSnapshot(),
             item.getTipoPizza(),
             item.getSegundoProduto() != null ? item.getSegundoProduto().getId() : null,
             item.getNomeSegundoProdutoSnapshot() != null
@@ -41,7 +43,15 @@ public record AdminItemPedidoResponse(
                 : item.getSegundoProduto() != null ? item.getSegundoProduto().getNome() : null,
             item.getBordaNome(),
             item.getBordaPreco(),
-            adicionais
+            adicionais,
+            molhos
         );
+    }
+
+    private static List<ItemPedidoAdicionalResponse> opcoes(ItemPedido item, TipoOpcaoPizza tipo) {
+        return item.getAdicionais() == null ? List.of() : item.getAdicionais().stream()
+            .filter(opcao -> opcao.getTipo() == tipo)
+            .map(ItemPedidoAdicionalResponse::de)
+            .toList();
     }
 }

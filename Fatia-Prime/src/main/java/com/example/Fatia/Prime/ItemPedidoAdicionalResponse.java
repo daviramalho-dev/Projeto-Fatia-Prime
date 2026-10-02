@@ -5,13 +5,15 @@ import java.math.BigDecimal;
 public record ItemPedidoAdicionalResponse(
     Long opcaoId,
     String nome,
-    BigDecimal precoAdicional
+    BigDecimal precoAdicional,
+    TipoOpcaoPizza tipo
 ) {
     public static ItemPedidoAdicionalResponse de(ItemPedidoAdicional adicional) {
         return new ItemPedidoAdicionalResponse(
             adicional.getOpcaoId(),
             adicional.getNome(),
-            adicional.getPrecoAdicional()
+            adicional.getPrecoAdicional(),
+            adicional.getTipo()
         );
     }
 }

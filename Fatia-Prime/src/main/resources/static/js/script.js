@@ -24,6 +24,7 @@ const customizerSecondFlavor = document.querySelector('.customizer-second-flavor
 const customizerSecondField = document.querySelector('.customizer-second-field');
 const customizerBorder = document.querySelector('.customizer-border');
 const customizerAddonList = document.querySelector('.customizer-addon-list');
+const customizerSauceList = document.querySelector('.customizer-sauce-list');
 const customizerQuantityValue = document.querySelector('.customizer-quantity-value');
 const customizerAddToCart = document.querySelector('.customizer-add-to-cart');
 const confirmationPanel = document.querySelector('.confirmation-panel');
@@ -319,6 +320,7 @@ function sanitizeCart(items) {
     return items.reduce((accumulator, item) => {
         if (!item || typeof item !== 'object') return accumulator;
 
+        const itemType = item.itemType === 'BEBIDA' ? 'BEBIDA' : 'PIZZA';
         const pizzaType = item.pizzaType === 'MEIO_A_MEIO' ? 'MEIO_A_MEIO' : 'INTEIRA';
         const firstFlavor = item.firstFlavor && typeof item.firstFlavor === 'object'
             ? { id: Number(item.firstFlavor.id), name: String(item.firstFlavor.name || '').trim() }
@@ -332,30 +334,36 @@ function sanitizeCart(items) {
         if (!firstFlavor.name || !Number.isFinite(price) || price <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
             return accumulator;
         }
-        if (pizzaType === 'MEIO_A_MEIO'
+        if (itemType === 'PIZZA' && pizzaType === 'MEIO_A_MEIO'
             && (!Number.isInteger(secondFlavor?.id) || secondFlavor.id <= 0 || !secondFlavor.name)) return accumulator;
 
-        const border = item.border && Number.isInteger(Number(item.border.id)) && String(item.border.name || '').trim()
+        const border = itemType === 'PIZZA' && item.border && Number.isInteger(Number(item.border.id)) && String(item.border.name || '').trim()
             ? { id: Number(item.border.id), name: String(item.border.name).trim(), price: Math.max(0, Number(item.border.price) || 0) }
             : null;
-        const addons = Array.isArray(item.addons) ? item.addons
+        const normalizeOptions = (options) => Array.isArray(options) ? options
             .filter((addon) => addon && Number.isInteger(Number(addon.id)) && String(addon.name || '').trim())
             .map((addon) => ({
                 id: Number(addon.id),
                 name: String(addon.name).trim(),
                 price: Math.max(0, Number(addon.price) || 0),
             })) : [];
+        const addons = itemType === 'PIZZA' ? normalizeOptions(item.addons) : [];
+        const sauces = itemType === 'PIZZA' ? normalizeOptions(item.sauces) : [];
         const productId = Number(item.productId ?? firstFlavor.id);
         const normalized = {
-            name: pizzaType === 'MEIO_A_MEIO' ? 'Pizza meio a meio' : 'Pizza inteira',
+            itemType,
+            name: itemType === 'BEBIDA'
+                ? String(item.name || firstFlavor.name).trim()
+                : pizzaType === 'MEIO_A_MEIO' ? 'Pizza meio a meio' : 'Pizza inteira',
             price,
             quantity,
             productId: Number.isInteger(productId) && productId > 0 ? productId : null,
-            pizzaType,
+            pizzaType: itemType === 'BEBIDA' ? 'INTEIRA' : pizzaType,
             firstFlavor,
-            secondFlavor: pizzaType === 'MEIO_A_MEIO' ? secondFlavor : null,
+            secondFlavor: itemType === 'PIZZA' && pizzaType === 'MEIO_A_MEIO' ? secondFlavor : null,
             border,
             addons,
+            sauces,
         };
         normalized.key = getCartItemKey(normalized);
 
@@ -372,12 +380,23 @@ function sanitizeCart(items) {
 
 function getCartItemKey(item) {
     return [
+        item.itemType || 'PIZZA',
         item.pizzaType,
         item.firstFlavor?.id,
         item.secondFlavor?.id || '',
         item.border?.id || '',
         ...(item.addons || []).map((addon) => addon.id).sort((first, second) => first - second),
+        ...(item.sauces || []).map((sauce) => sauce.id).sort((first, second) => first - second),
     ].join(':');
+}
+
+function addCartItem(item) {
+    item.key = getCartItemKey(item);
+    const existing = window.cart.find((entry) => entry.key === item.key);
+    if (existing) existing.quantity = Math.min(50, existing.quantity + item.quantity);
+    else window.cart.push(item);
+    updateCart();
+    openCart();
 }
 
 function loadCart() {
@@ -406,14 +425,14 @@ function getProductCategoryLabel(category) {
 }
 
 function normalizeApiProduct(product, categories) {
-    if (!product || typeof product !== 'object' || product.ativo === false) return null;
+    if (!product || typeof product !== 'object') return null;
     const price = Number(product.preco);
     if (!Number.isInteger(Number(product.id)) || !product.nome || !Number.isFinite(price) || price <= 0) return null;
     const category = categories.find((item) => String(item.id) === String(product.categoriaId));
     return {
         id: Number(product.id),
         name: String(product.nome).trim(),
-        type: product.tipo === 'DOCE' ? 'DOCE' : 'SALGADA',
+        type: ['SALGADA', 'DOCE', 'BEBIDA'].includes(product.tipo) ? product.tipo : 'SALGADA',
         description: String(product.descricao || '').trim(),
         categoryId: product.categoriaId == null ? '' : String(product.categoriaId),
         categoryName: category?.name || String(product.categoriaNome || '').trim(),
@@ -583,28 +602,40 @@ function normalizeOrderItem(item) {
     const price = Number(item?.precoUnitario);
     const quantity = Number(item?.quantidade);
     const pizzaType = item?.tipoPizza === 'MEIO_A_MEIO' ? 'MEIO_A_MEIO' : 'INTEIRA';
+    const itemType = item?.tipoProduto === 'BEBIDA' ? 'BEBIDA' : 'PIZZA';
+    const productName = String(item?.nomeProduto || 'Produto não informado');
     const addons = Array.isArray(item?.adicionais) ? item.adicionais.map((addon) => ({
         id: addon.opcaoId,
         name: String(addon.nome || '').trim(),
         price: Number(addon.precoAdicional) || 0,
     })) : [];
+    const sauces = Array.isArray(item?.molhos) ? item.molhos.map((sauce) => ({
+        id: sauce.opcaoId,
+        name: String(sauce.nome || '').trim(),
+        price: Number(sauce.precoAdicional) || 0,
+    })) : [];
     return {
+        itemType,
         productId: item?.produtoId,
-        name: pizzaType === 'MEIO_A_MEIO' ? 'Pizza meio a meio' : 'Pizza inteira',
+        name: itemType === 'BEBIDA' ? productName : pizzaType === 'MEIO_A_MEIO' ? 'Pizza meio a meio' : 'Pizza inteira',
         quantity,
         price,
         subtotal: Number(item?.subtotal) || price * quantity,
         pizzaType,
-        firstFlavor: { id: item?.produtoId, name: String(item?.nomeProduto || 'Sabor não informado') },
+        firstFlavor: { id: item?.produtoId, name: itemType === 'BEBIDA' ? productName : String(item?.nomeProduto || 'Sabor não informado') },
         secondFlavor: item?.nomeSegundoProduto
             ? { id: item.segundoProdutoId, name: String(item.nomeSegundoProduto) }
             : null,
         border: item?.borda ? { id: item.bordaId, name: String(item.borda), price: Number(item.precoBorda) || 0 } : null,
         addons,
+        sauces,
     };
 }
 
 function getPizzaPresentation(item) {
+    if (item?.itemType === 'BEBIDA') {
+        return { title: item.name || item.firstFlavor?.name || 'Bebida', flavors: 'Bebida', border: '', addons: '', sauces: '' };
+    }
     const pizzaType = item?.pizzaType === 'MEIO_A_MEIO' ? 'MEIO_A_MEIO' : 'INTEIRA';
     const firstName = item?.firstFlavor?.name || item?.name || 'Sabor não informado';
     const secondName = item?.secondFlavor?.name;
@@ -617,20 +648,26 @@ function getPizzaPresentation(item) {
         addons: item?.addons?.length
             ? `Adicionais: ${item.addons.map((addon) => addon.name).join(', ')}`
             : 'Sem adicionais',
+        sauces: item?.sauces?.length
+            ? `Molhos: ${item.sauces.map((sauce) => sauce.name).join(', ')}`
+            : 'Sem molhos adicionais',
     };
 }
 
 function pizzaDetailsMarkup(item) {
     const presentation = getPizzaPresentation(item);
-    return `<strong>${escapeHtml(presentation.title)}</strong>
-        <small>${escapeHtml(presentation.flavors)}</small>
-        <small>${escapeHtml(presentation.border)}</small>
-        <small>${escapeHtml(presentation.addons)}</small>`;
+    const details = [presentation.flavors, presentation.border, presentation.addons, presentation.sauces]
+        .filter(Boolean)
+        .map((detail) => `<small>${escapeHtml(detail)}</small>`)
+        .join('');
+    return `<strong>${escapeHtml(presentation.title)}</strong>${details}`;
 }
 
 function pizzaWhatsAppDescription(item) {
     const presentation = getPizzaPresentation(item);
-    return `${presentation.title} | ${presentation.flavors} | ${presentation.border} | ${presentation.addons}`;
+    return [presentation.title, presentation.flavors, presentation.border, presentation.addons, presentation.sauces]
+        .filter(Boolean)
+        .join(' | ');
 }
 
 function getOrderStatusClass(status) {
@@ -666,7 +703,7 @@ function normalizeAdminProduct(product, categories) {
 function normalizeAdminPizzaOption(option) {
     const price = Number(option?.precoAdicional);
     if (!option || !Number.isInteger(Number(option.id)) || !option.nome
-        || !['BORDA', 'ADICIONAL'].includes(option.tipo)
+        || !['BORDA', 'ADICIONAL', 'MOLHO'].includes(option.tipo)
         || !['SALGADA', 'DOCE'].includes(option.tipoProduto)
         || !Number.isFinite(price) || price < 0) return null;
     return {
@@ -679,13 +716,18 @@ function normalizeAdminPizzaOption(option) {
     };
 }
 
+function getProductTypeLabel(type) {
+    if (type === 'BEBIDA') return 'Bebida';
+    return type === 'DOCE' ? 'Doce' : 'Salgada';
+}
+
 function renderAdminPizzaOptions() {
     if (!adminPizzaOptionList || !adminPizzaOptionsEmpty) return;
     adminPizzaOptionList.innerHTML = adminPizzaOptions.map((option) => `
         <article class="admin-pizza-option ${option.active ? '' : 'is-inactive'}">
             <div>
                 <strong>${escapeHtml(option.name)}</strong>
-                <small>${option.kind === 'BORDA' ? 'Borda' : 'Adicional'} · ${option.productType === 'DOCE' ? 'Doces' : 'Salgadas'} · ${money.format(option.price)}</small>
+                <small>${option.kind === 'BORDA' ? 'Borda' : option.kind === 'MOLHO' ? 'Molho' : 'Adicional'} · ${option.productType === 'DOCE' ? 'Doces' : 'Salgadas'} · ${money.format(option.price)}</small>
                 <small>${option.active ? 'Disponível' : 'Desativada'}</small>
             </div>
             <div class="admin-pizza-option-actions">
@@ -705,7 +747,7 @@ function renderAdminProducts() {
                     <strong>${escapeHtml(product.name)}</strong>
                     <span class="admin-product-state ${product.active ? 'is-active' : 'is-inactive'}">${product.active ? 'Ativa' : 'Desativada'}</span>
                 </div>
-                <span>${escapeHtml(product.categoryName || 'Sem categoria')} · ${product.type === 'DOCE' ? 'Doce' : 'Salgada'} · ${money.format(product.price)}</span>
+                <span>${escapeHtml(product.categoryName || 'Sem categoria')} · ${getProductTypeLabel(product.type)} · ${money.format(product.price)}</span>
                 <small>${escapeHtml(product.description || 'Sem descrição')}</small>
             </div>
             <div class="admin-product-card-actions">
@@ -849,7 +891,7 @@ function resetAdminProductForm() {
     adminProductForm.reset();
     editingProductId = null;
     if (adminProductFormTitle) adminProductFormTitle.textContent = 'Adicionar ao cardápio';
-    if (adminProductFormLabel) adminProductFormLabel.textContent = 'NOVA PIZZA';
+    if (adminProductFormLabel) adminProductFormLabel.textContent = 'NOVO PRODUTO';
     if (adminProductCancel) adminProductCancel.hidden = true;
     showAdminProductMessage('');
 }
@@ -863,8 +905,8 @@ function editAdminProduct(product) {
     adminProductForm.elements.namedItem('productType').value = product.type;
     adminProductForm.elements.namedItem('productPrice').value = product.price;
     adminProductForm.elements.namedItem('productImage').value = product.image;
-    if (adminProductFormTitle) adminProductFormTitle.textContent = 'Editar pizza';
-    if (adminProductFormLabel) adminProductFormLabel.textContent = 'EDIÇÃO DE PIZZA';
+    if (adminProductFormTitle) adminProductFormTitle.textContent = 'Editar produto';
+    if (adminProductFormLabel) adminProductFormLabel.textContent = `EDIÇÃO DE ${getProductTypeLabel(product.type).toUpperCase()}`;
     if (adminProductCancel) adminProductCancel.hidden = false;
     showAdminProductMessage('');
     adminProductForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -873,7 +915,7 @@ function editAdminProduct(product) {
 async function toggleAdminProduct(productIdValue) {
     const product = adminProducts.find((item) => String(item.id) === String(productIdValue));
     if (!product) return;
-    if (product.active && !window.confirm(`Deseja realmente desativar a pizza "${product.name}"?`)) return;
+    if (product.active && !window.confirm(`Deseja realmente desativar o produto "${product.name}"?`)) return;
     try {
         const csrfToken = await getCsrfToken();
         const updated = await fetchApiJson(`/api/admin/produtos/${encodeURIComponent(product.id)}/status`, {
@@ -885,7 +927,7 @@ async function toggleAdminProduct(productIdValue) {
         adminProducts = adminProducts.map((item) => item.id === normalized.id ? normalized : item);
         renderAdminProducts();
         await loadPublicCatalog();
-        showAdminProductMessage(normalized.active ? 'Pizza reativada com sucesso.' : 'Pizza desativada com sucesso.', 'success');
+        showAdminProductMessage(normalized.active ? 'Produto reativado com sucesso.' : 'Produto desativado com sucesso.', 'success');
     } catch (error) {
         showAdminProductMessage(error.message || 'Não foi possível atualizar a disponibilidade da pizza.');
     }
@@ -902,7 +944,7 @@ async function submitAdminProduct(event) {
     const image = String(formData.get('productImage') || '').trim();
 
     if (!name) {
-        showAdminProductMessage('Informe o nome da pizza.');
+        showAdminProductMessage('Informe o nome do produto.');
         adminProductForm.elements.namedItem('productName').focus();
         return;
     }
@@ -918,7 +960,7 @@ async function submitAdminProduct(event) {
     }
 
     if (editingProductId && !adminProducts.some((product) => String(product.id) === String(editingProductId))) {
-        showAdminProductMessage('A pizza selecionada não foi encontrada.');
+        showAdminProductMessage('O produto selecionado não foi encontrado.');
         return;
     }
     const payload = {
@@ -949,7 +991,7 @@ async function submitAdminProduct(event) {
             : [...adminProducts, normalized];
         renderAdminProducts();
         await loadPublicCatalog();
-        showAdminProductMessage(editingProductId ? 'Pizza atualizada com sucesso.' : 'Pizza cadastrada com sucesso.', 'success');
+        showAdminProductMessage(editingProductId ? 'Produto atualizado com sucesso.' : 'Produto cadastrado com sucesso.', 'success');
         adminProductForm.reset();
         editingProductId = null;
         if (adminProductFormTitle) adminProductFormTitle.textContent = 'Adicionar ao cardápio';
@@ -1210,6 +1252,10 @@ async function refreshDeliveryQuote(cep, form, force = false) {
             frete: freight,
         };
         renderDeliveryBreakdown();
+        if (checkoutMessage?.classList.contains('error')) {
+            checkoutMessage.textContent = '';
+            checkoutMessage.classList.remove('error');
+        }
         setDeliveryQuoteMessage(
             form,
             `Entrega para ${currentDeliveryQuote.regiao}: ${money.format(freight)}.`,
@@ -1433,7 +1479,9 @@ function cartItemsAreValid() {
                 || item.secondFlavor?.id != null && item.secondFlavor?.name)
             && (!item.border || Number.isInteger(Number(item.border.id)))
             && Array.isArray(item.addons)
-            && item.addons.every((addon) => Number.isInteger(Number(addon.id))));
+            && item.addons.every((addon) => Number.isInteger(Number(addon.id)))
+            && Array.isArray(item.sauces)
+            && item.sauces.every((sauce) => Number.isInteger(Number(sauce.id))));
 }
 
 function cartItemsHaveProductIds() {
@@ -1557,12 +1605,30 @@ function updateCart() {
 async function addProduct(element) {
     const productId = Number(element.dataset.productId);
     const product = publicProducts.find((item) => item.id === productId);
-    if (!product || !pizzaCustomizer) return;
+    if (!product) return;
 
     if (catalogFeedback) {
         catalogFeedback.textContent = '';
         catalogFeedback.hidden = true;
     }
+
+    if (product.type === 'BEBIDA') {
+        addCartItem({
+            itemType: 'BEBIDA',
+            name: product.name,
+            productId: product.id,
+            price: product.price,
+            quantity: 1,
+            pizzaType: 'INTEIRA',
+            firstFlavor: { id: product.id, name: product.name },
+            secondFlavor: null,
+            border: null,
+            addons: [],
+            sauces: [],
+        });
+        return;
+    }
+    if (!pizzaCustomizer) return;
 
     try {
         customizerOptions = await fetchApiJson(`/api/opcoes-pizza?tipoProduto=${encodeURIComponent(product.type)}`);
@@ -1583,6 +1649,14 @@ async function addProduct(element) {
                     <strong>+ ${money.format(Number(option.precoAdicional))}</strong>
                 </label>`).join('')
             : '<p class="customizer-no-addons">Nenhum adicional disponível.</p>';
+        customizerSauceList.innerHTML = customizerOptions.filter((option) => option.tipo === 'MOLHO').length
+            ? customizerOptions.filter((option) => option.tipo === 'MOLHO').map((option) => `
+                <label class="customizer-addon-option">
+                    <input type="checkbox" value="${escapeHtml(option.id)}">
+                    <span>${escapeHtml(option.nome)}</span>
+                    <strong>+ ${money.format(Number(option.precoAdicional))}</strong>
+                </label>`).join('')
+            : '<p class="customizer-no-addons">Nenhum molho disponível.</p>';
         customizerFirstFlavor.value = String(product.id);
         customizerSecondFlavor.value = '';
         customizerBorder.value = '';
@@ -1616,8 +1690,12 @@ function renderPizzaCustomizerSummary() {
     const selectedAddons = [...customizerAddonList.querySelectorAll('input:checked')]
         .map((input) => customizerOptions.find((option) => String(option.id) === input.value))
         .filter(Boolean);
+    const selectedSauces = [...customizerSauceList.querySelectorAll('input:checked')]
+        .map((input) => customizerOptions.find((option) => String(option.id) === input.value))
+        .filter(Boolean);
     const extrasPrice = (selectedBorder ? Number(selectedBorder.precoAdicional) : 0)
-        + selectedAddons.reduce((total, option) => total + Number(option.precoAdicional), 0);
+        + selectedAddons.reduce((total, option) => total + Number(option.precoAdicional), 0)
+        + selectedSauces.reduce((total, option) => total + Number(option.precoAdicional), 0);
     const unitPrice = basePrice + extrasPrice;
     const flavorLabel = !firstProduct
         ? 'Escolha um sabor'
@@ -1635,6 +1713,9 @@ function renderPizzaCustomizerSummary() {
     pizzaCustomizer.querySelector('.customizer-summary-addons').textContent = selectedAddons.length
         ? `Adicionais: ${selectedAddons.map((option) => `${option.nome} (+ ${money.format(Number(option.precoAdicional))})`).join(', ')}`
         : 'Sem adicionais';
+    pizzaCustomizer.querySelector('.customizer-summary-sauces').textContent = selectedSauces.length
+        ? `Molhos: ${selectedSauces.map((option) => `${option.nome} (+ ${money.format(Number(option.precoAdicional))})`).join(', ')}`
+        : 'Sem molhos adicionais';
     customizerQuantityValue.textContent = customizerQuantity;
     pizzaCustomizer.querySelector('.customizer-summary-price-label').textContent = `Total · ${customizerQuantity} ${customizerQuantity === 1 ? 'pizza' : 'pizzas'}`;
     pizzaCustomizer.querySelector('.customizer-summary-price').textContent = money.format(unitPrice * customizerQuantity);
@@ -1653,6 +1734,9 @@ function addCustomizedPizza() {
     const addons = [...customizerAddonList.querySelectorAll('input:checked')]
         .map((input) => customizerOptions.find((option) => String(option.id) === input.value))
         .filter(Boolean);
+    const sauces = [...customizerSauceList.querySelectorAll('input:checked')]
+        .map((input) => customizerOptions.find((option) => String(option.id) === input.value))
+        .filter(Boolean);
     const basePrice = secondProduct ? Math.max(firstProduct.price, secondProduct.price) : firstProduct.price;
     const border = borderOption
         ? { id: Number(borderOption.id), name: borderOption.nome, price: Number(borderOption.precoAdicional) }
@@ -1660,7 +1744,11 @@ function addCustomizedPizza() {
     const normalizedAddons = addons.map((option) => ({
         id: Number(option.id), name: option.nome, price: Number(option.precoAdicional),
     }));
+    const normalizedSauces = sauces.map((option) => ({
+        id: Number(option.id), name: option.nome, price: Number(option.precoAdicional),
+    }));
     const pizza = {
+        itemType: 'PIZZA',
         name: pizzaType === 'MEIO_A_MEIO' ? 'Pizza meio a meio' : 'Pizza inteira',
         productId: firstProduct.id,
         pizzaType,
@@ -1668,16 +1756,14 @@ function addCustomizedPizza() {
         secondFlavor: secondProduct ? { id: secondProduct.id, name: secondProduct.name } : null,
         border,
         addons: normalizedAddons,
-        price: basePrice + (border?.price || 0) + normalizedAddons.reduce((total, addon) => total + addon.price, 0),
+        sauces: normalizedSauces,
+        price: basePrice + (border?.price || 0)
+            + normalizedAddons.reduce((total, addon) => total + addon.price, 0)
+            + normalizedSauces.reduce((total, sauce) => total + sauce.price, 0),
         quantity: customizerQuantity,
     };
-    pizza.key = getCartItemKey(pizza);
-    const existing = window.cart.find((item) => item.key === pizza.key);
-    if (existing) existing.quantity = Math.min(50, existing.quantity + pizza.quantity);
-    else window.cart.push(pizza);
     pizzaCustomizer.close();
-    updateCart();
-    openCart();
+    addCartItem(pizza);
 }
 
 function applyCategoryFilter(category) {
@@ -1706,7 +1792,7 @@ pizzaCustomizer?.addEventListener('click', (event) => {
     if (event.target === pizzaCustomizer) pizzaCustomizer.close();
 });
 pizzaCustomizer?.addEventListener('change', (event) => {
-    if (event.target.matches('input[name="pizzaType"], .customizer-first-flavor, .customizer-second-flavor, .customizer-border, .customizer-addon-list input')) {
+    if (event.target.matches('input[name="pizzaType"], .customizer-first-flavor, .customizer-second-flavor, .customizer-border, .customizer-addon-list input, .customizer-sauce-list input')) {
         renderPizzaCustomizerSummary();
     }
 });
@@ -2080,6 +2166,7 @@ if (checkoutForm) {
                 segundoProdutoId: item.pizzaType === 'MEIO_A_MEIO' ? Number(item.secondFlavor.id) : null,
                 bordaId: item.border ? Number(item.border.id) : null,
                 adicionalIds: item.addons.map((addon) => Number(addon.id)),
+                molhoIds: item.sauces.map((sauce) => Number(sauce.id)),
             })),
         };
         const submitButton = checkoutForm.querySelector('.checkout-submit');
