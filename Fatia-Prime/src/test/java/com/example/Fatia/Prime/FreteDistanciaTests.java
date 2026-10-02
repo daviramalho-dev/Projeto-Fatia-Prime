@@ -52,7 +52,10 @@ class FreteDistanciaTests {
         );
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
-        assertEquals("Ainda não entregamos nessa região.", exception.getReason());
+        assertEquals(
+            "Ainda não entregamos nessa região. Em breve abriremos novas unidades mais perto de você!",
+            exception.getReason()
+        );
     }
 
     @Test
@@ -77,8 +80,11 @@ class FreteDistanciaTests {
         semCoordenadas.setLojaLat(null);
         FreteController naoConfigurado = new FreteController(cep -> coordenadaParaDistancia(5), semCoordenadas);
 
-        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, assertThrows(
-            ResponseStatusException.class, () -> indisponivel.consultar("72500100")).getStatusCode());
+        ResponseStatusException indisponibilidade = assertThrows(
+            ResponseStatusException.class, () -> indisponivel.consultar("72500100"));
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, indisponibilidade.getStatusCode());
+        assertEquals("Não foi possível calcular a entrega no momento. Tente novamente.",
+            indisponibilidade.getReason());
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, assertThrows(
             ResponseStatusException.class, () -> naoConfigurado.consultar("72500100")).getStatusCode());
     }

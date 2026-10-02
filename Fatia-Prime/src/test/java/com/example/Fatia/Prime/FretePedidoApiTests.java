@@ -114,7 +114,20 @@ class FretePedidoApiTests {
             .andExpect(status().isBadRequest());
         mockMvc.perform(get("/api/frete/consulta").param("cep", "99990300"))
             .andExpect(status().isNotFound())
-            .andExpect(jsonPath("$.message").value("Ainda não entregamos nessa região."));
+            .andExpect(jsonPath("$.message").value(
+                "Ainda não entregamos nessa região. Em breve abriremos novas unidades mais perto de você!"
+            ));
+    }
+
+    @Test
+    void falhaDeGeocodificacaoRetorna503SemMensagemDeForaDaArea() throws Exception {
+        when(cepGeocoder.geocodificar("72500107"))
+            .thenThrow(new CepGeocoder.GeocodificacaoIndisponivelException());
+
+        mockMvc.perform(get("/api/frete/consulta").param("cep", "72500107"))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.message")
+                .value("Não foi possível calcular a entrega no momento. Tente novamente."));
     }
 
     @Test
@@ -181,7 +194,9 @@ class FretePedidoApiTests {
                     {"produtoId":%d,"quantidade":1}
                     """.formatted(saborEconomico.getId()), "")))
             .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.message").value("Ainda não entregamos nessa região."));
+            .andExpect(jsonPath("$.message").value(
+                "Ainda não entregamos nessa região. Em breve abriremos novas unidades mais perto de você!"
+            ));
 
         mockMvc.perform(post("/api/pedidos")
                 .with(csrf())

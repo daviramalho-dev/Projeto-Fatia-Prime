@@ -67,6 +67,62 @@ class ExternalCepGeocoderTests {
     }
 
     @Test
+    void cepComLogradouroNaoMapeadoNoOpenStreetMapUsaFallbackValidadoPeloBairro() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://brasilapi.test/72500107"))
+            .andRespond(withSuccess("""
+                {"service":"open-cep","location":{"type":"Point","coordinates":{"longitude":"-47.92972","latitude":"-15.77972"}}}
+                """, MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://viacep.test/ws/72500107/json/"))
+            .andRespond(withSuccess("""
+                {"cep":"72500107","logradouro":"Quadra AC 200 Bloco G","bairro":"Santa Maria","localidade":"Brasília","uf":"DF"}
+                """, MediaType.APPLICATION_JSON));
+        server.expect(requestTo(org.hamcrest.Matchers.containsString("https://nominatim.test/search?q=Quadra%20AC%20200%20Bloco%20G")))
+            .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(org.hamcrest.Matchers.containsString("https://nominatim.test/search?q=Santa%20Maria")))
+            .andRespond(withSuccess("""
+                [{"lat":"-16.0171229","lon":"-48.0131328","address":{"city":"Santa Maria"}}]
+                """, MediaType.APPLICATION_JSON));
+        ExternalCepGeocoder geocoder = new ExternalCepGeocoder(properties(), builder.build());
+
+        CepGeocoder.Coordenadas coordenadas = geocoder.geocodificar("72500107");
+
+        assertEquals(-16.0171229, coordenadas.latitude(), 0.000001);
+        assertEquals(-48.0131328, coordenadas.longitude(), 0.000001);
+        assertEquals("OpenStreetMap", coordenadas.fonte());
+        server.verify();
+    }
+
+    @Test
+    void outroCepValidoDoMesmoBairroTambemUsaFallbackDeLocalidade() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://brasilapi.test/72500101"))
+            .andRespond(withSuccess("""
+                {"service":"open-cep","location":{"type":"Point","coordinates":{"longitude":"-47.92972","latitude":"-15.77972"}}}
+                """, MediaType.APPLICATION_JSON));
+        server.expect(requestTo("https://viacep.test/ws/72500101/json/"))
+            .andRespond(withSuccess("""
+                {"cep":"72500101","logradouro":"Quadra AC 200 Bloco A","bairro":"Santa Maria","localidade":"Brasília","uf":"DF"}
+                """, MediaType.APPLICATION_JSON));
+        server.expect(requestTo(org.hamcrest.Matchers.containsString("https://nominatim.test/search?q=Quadra%20AC%20200%20Bloco%20A")))
+            .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+        server.expect(requestTo(org.hamcrest.Matchers.containsString("https://nominatim.test/search?q=Santa%20Maria")))
+            .andRespond(withSuccess("""
+                [{"lat":"-16.0171229","lon":"-48.0131328","address":{"city":"Santa Maria"}}]
+                """, MediaType.APPLICATION_JSON));
+        ExternalCepGeocoder geocoder = new ExternalCepGeocoder(properties(), builder.build());
+
+        CepGeocoder.Coordenadas coordenadas = geocoder.geocodificar("72500101");
+
+        assertEquals(-16.0171229, coordenadas.latitude(), 0.000001);
+        assertEquals(-48.0131328, coordenadas.longitude(), 0.000001);
+        assertEquals("OpenStreetMap", coordenadas.fonte());
+        server.verify();
+    }
+
+    @Test
     void cepInexistenteEIdentificadoPeloViaCep() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();

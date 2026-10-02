@@ -59,7 +59,10 @@ public class FreteController {
             coordenadas.latitude(), coordenadas.longitude()
         );
         if (distanciaKm > properties.getRaioKm()) {
-            throw new ResponseStatusException(statusForaDaArea, "Ainda não entregamos nessa região.");
+            throw new ResponseStatusException(
+                statusForaDaArea,
+                "Ainda não entregamos nessa região. Em breve abriremos novas unidades mais perto de você!"
+            );
         }
 
         FreteProperties.Faixa faixa = properties.getFaixas().stream()
