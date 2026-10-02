@@ -446,7 +446,11 @@ function normalizeApiProduct(product, categories) {
 async function fetchApiJson(url, options = {}) {
     const response = await fetch(url, { credentials: 'same-origin', ...options });
     const data = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(data?.message || 'Não foi possível comunicar com a API.');
+    if (!response.ok) {
+        const error = new Error(data?.message || 'Não foi possível comunicar com a API.');
+        error.status = response.status;
+        throw error;
+    }
     return data;
 }
 
@@ -1275,9 +1279,15 @@ async function refreshDeliveryQuote(cep, form, force = false) {
         if (requestId !== deliveryQuoteRequestId) return false;
         currentDeliveryQuote = null;
         renderDeliveryBreakdown();
+        const mensagemForaDaArea = 'Ainda não entregamos nessa região. Em breve abriremos novas unidades mais perto de você!';
+        const mensagem = error?.status === 404 && error.message === mensagemForaDaArea
+            ? mensagemForaDaArea
+            : error?.message === mensagemForaDaArea
+                ? 'Não foi possível calcular a entrega. Tente novamente.'
+                : error.message || 'Não foi possível calcular a entrega. Tente novamente.';
         setDeliveryQuoteMessage(
             form,
-            error.message || 'Não foi possível calcular a entrega. Tente novamente.',
+            mensagem,
             'error'
         );
         return false;

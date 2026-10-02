@@ -102,9 +102,24 @@ public class ExternalCepGeocoder implements CepGeocoder {
     }
 
     private Coordenadas geocodificarEndereco(EnderecoCep endereco) {
-        String query = String.join(", ", List.of(
+        Coordenadas coordenadas = buscarNoNominatim(
+            String.join(", ", List.of(
                 endereco.logradouro(), endereco.bairro(), endereco.localidade(), endereco.uf(), "Brasil")
-            .stream().filter(value -> !value.isBlank()).toList());
+                .stream().filter(value -> !value.isBlank()).toList()),
+            endereco
+        );
+        if (coordenadas != null) return coordenadas;
+
+        String consultaLocalidade = String.join(", ", List.of(
+            endereco.bairro(), endereco.localidade(), endereco.uf(), "Brasil"
+        ).stream().filter(value -> !value.isBlank()).toList());
+        coordenadas = buscarNoNominatim(consultaLocalidade, endereco);
+        if (coordenadas != null) return coordenadas;
+
+        throw new GeocodificacaoIndisponivelException();
+    }
+
+    private Coordenadas buscarNoNominatim(String query, EnderecoCep endereco) {
         String url = UriComponentsBuilder.fromUriString(properties.getNominatimUrl())
             .queryParam("q", query)
             .queryParam("format", "jsonv2")
@@ -122,13 +137,13 @@ public class ExternalCepGeocoder implements CepGeocoder {
                 .retrieve()
                 .body(JsonNode.class);
             if (respostas == null || !respostas.isArray() || respostas.isEmpty()) {
-                throw new GeocodificacaoIndisponivelException();
+                return null;
             }
             JsonNode resultado = respostas.get(0);
             double latitude = coordenada(resultado.path("lat"));
             double longitude = coordenada(resultado.path("lon"));
             if (!coordenadasValidas(latitude, longitude) || !localidadeCompativel(endereco, resultado.path("address"))) {
-                throw new GeocodificacaoIndisponivelException();
+                return null;
             }
             return new Coordenadas(latitude, longitude, "OpenStreetMap");
         } catch (RestClientException exception) {
