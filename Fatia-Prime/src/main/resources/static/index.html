@@ -870,20 +870,20 @@
                 <label><input type="radio" name="pizzaType" value="INTEIRA" checked> Inteira</label>
                 <label><input type="radio" name="pizzaType" value="MEIO_A_MEIO"> Meio a meio</label>
             </fieldset>
-            <label class="pizza-customizer-field">
-                <span class="customizer-first-label">Sabor</span>
-                <select class="customizer-first-flavor" required></select>
-            </label>
-            <label class="pizza-customizer-field customizer-second-field" hidden>
-                2º sabor
-                <select class="customizer-second-flavor"></select>
-            </label>
-            <label class="pizza-customizer-field">
-                Borda recheada
-                <select class="customizer-border">
+            <div class="pizza-customizer-field">
+                <span id="customizer-first-label" class="customizer-first-label">Sabor</span>
+                <select class="customizer-first-flavor" aria-labelledby="customizer-first-label" required></select>
+            </div>
+            <div class="pizza-customizer-field customizer-second-field" hidden>
+                <span id="customizer-second-label">2º sabor</span>
+                <select class="customizer-second-flavor" aria-labelledby="customizer-second-label"></select>
+            </div>
+            <div class="pizza-customizer-field">
+                <span id="customizer-border-label">Borda recheada</span>
+                <select class="customizer-border" aria-labelledby="customizer-border-label">
                     <option value="">Sem borda recheada · R$ 0,00</option>
                 </select>
-            </label>
+            </div>
             <fieldset class="pizza-customizer-addons">
                 <legend>Adicionais</legend>
                 <div class="customizer-addon-list"></div>
@@ -919,19 +919,22 @@
         <div class="cart-footer">
             <div class="delivery-breakdown cart-delivery-breakdown">
                 <div><span>Subtotal</span><strong class="cart-subtotal">R$ 0,00</strong></div>
-                <div><span>Entrega</span><strong class="cart-freight">Informe o CEP no checkout</strong></div>
+                <div><span>Entrega</span><strong class="cart-freight">Informe o CEP para calcular</strong></div>
             </div>
             <div class="cart-total"><span>Total</span><strong>R$ 0,00</strong></div>
+            <label class="cart-cep-field">CEP para calcular a entrega<input class="cart-delivery-cep" type="text" autocomplete="postal-code" inputmode="numeric" maxlength="9" placeholder="00000-000"></label>
+            <button class="btn-secondary cart-quote-button" type="button">CALCULAR FRETE</button>
+            <p class="delivery-quote-message cart-delivery-quote-message" aria-live="polite"></p>
             <label>Seu nome<input id="customer-name" type="text" autocomplete="name" placeholder="Como podemos chamar você?"></label>
             <label>Observações<textarea id="order-notes" rows="3" placeholder="Ex.: sem cebola"></textarea></label>
             <button class="btn-secondary cart-continue" type="button">CONTINUAR COMPRANDO</button>
-            <button class="btn-primary checkout-button" type="button">IR PARA CHECKOUT</button>
+            <button class="btn-primary checkout-button" type="button">CONTINUAR PARA ENTREGA</button>
         </div>
     </aside>
 
     <aside class="checkout-panel" aria-label="Checkout do pedido" aria-hidden="true">
         <div class="checkout-header">
-            <h2>CHECKOUT</h2>
+            <h2>ENTREGA E PAGAMENTO</h2>
             <button class="checkout-close" type="button" aria-label="Fechar checkout">×</button>
         </div>
 
