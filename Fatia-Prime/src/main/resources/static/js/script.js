@@ -74,6 +74,12 @@ const adminCatalogSearch = document.querySelector('#admin-product-search');
 const adminCatalogStatus = document.querySelector('#admin-product-status');
 const adminCatalogResults = document.querySelector('.admin-catalog-results');
 const adminCatalogMessage = document.querySelector('.admin-catalog-message');
+const adminCategoryForm = document.querySelector('#admin-category-form');
+const adminCategoryFormTitle = document.querySelector('#admin-category-form-title');
+const adminCategoryCancel = document.querySelector('.admin-category-cancel');
+const adminCategoryList = document.querySelector('.admin-category-list');
+const adminCategoryEmpty = document.querySelector('.admin-category-empty');
+const adminCategoryMessage = document.querySelector('.admin-category-message');
 const adminProductFormMessage = document.querySelector('.admin-product-form-message');
 const adminProductFormTitle = document.querySelector('#admin-product-form-title');
 const adminProductFormLabel = document.querySelector('#admin-product-form-label');
@@ -104,6 +110,7 @@ const totalElement = document.querySelector('.cart-total strong');
 let deliveryQuoteRequestId = 0;
 let currentDeliveryQuote = null;
 let editingProductId = null;
+let editingCategoryId = null;
 let editingOptionId = null;
 let customizerQuantity = 1;
 let customizerOptions = [];
@@ -824,6 +831,113 @@ function getProductTypeLabel(type) {
     return type === 'DOCE' ? 'Doce' : 'Salgada';
 }
 
+function showAdminCategoryMessage(message, type = 'error') {
+    if (!adminCategoryMessage) return;
+    adminCategoryMessage.textContent = message;
+    adminCategoryMessage.className = `admin-category-message ${type}`.trim();
+}
+
+function renderAdminCategories() {
+    if (!adminCategoryList || !adminCategoryEmpty) return;
+    adminCategoryList.innerHTML = adminCategories.map((category) => `
+        <article class="admin-category-card">
+            <strong>${escapeHtml(category.name)}</strong>
+            <div>
+                <button class="btn-secondary" type="button" data-edit-category="${escapeHtml(category.id)}">EDITAR</button>
+                <button class="btn-danger" type="button" data-delete-category="${escapeHtml(category.id)}">EXCLUIR</button>
+            </div>
+        </article>`).join('');
+    adminCategoryEmpty.hidden = adminCategories.length > 0;
+}
+
+function resetAdminCategoryForm() {
+    if (!adminCategoryForm) return;
+    adminCategoryForm.reset();
+    editingCategoryId = null;
+    if (adminCategoryFormTitle) adminCategoryFormTitle.textContent = 'Nova categoria';
+    if (adminCategoryCancel) adminCategoryCancel.hidden = true;
+    showAdminCategoryMessage('');
+}
+
+function editAdminCategory(categoryId) {
+    const category = adminCategories.find((item) => String(item.id) === String(categoryId));
+    if (!category || !adminCategoryForm) return;
+    editingCategoryId = category.id;
+    adminCategoryForm.elements.namedItem('categoryName').value = category.name;
+    if (adminCategoryFormTitle) adminCategoryFormTitle.textContent = `Editando: ${category.name}`;
+    if (adminCategoryCancel) adminCategoryCancel.hidden = false;
+    showAdminCategoryMessage('');
+    adminCategoryForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    adminCategoryForm.elements.namedItem('categoryName').focus();
+}
+
+async function refreshAdminCategoryData() {
+    await Promise.all([loadAdminProducts(), loadPublicCatalog()]);
+}
+
+async function submitAdminCategory(event) {
+    event.preventDefault();
+    if (!adminCategoryForm) return;
+    const nameField = adminCategoryForm.elements.namedItem('categoryName');
+    const name = String(nameField.value || '').trim();
+    if (!name) {
+        showAdminCategoryMessage('Informe o nome da categoria.');
+        nameField.focus();
+        return;
+    }
+    if (name.length > 100) {
+        showAdminCategoryMessage('O nome da categoria não pode exceder 100 caracteres.');
+        nameField.focus();
+        return;
+    }
+    if (editingCategoryId && !adminCategories.some((category) => String(category.id) === String(editingCategoryId))) {
+        showAdminCategoryMessage('A categoria selecionada não foi encontrada.');
+        return;
+    }
+
+    const editingId = editingCategoryId;
+    const url = editingId
+        ? `/api/admin/categorias/${encodeURIComponent(editingId)}`
+        : '/api/admin/categorias';
+    const method = editingId ? 'PUT' : 'POST';
+    const submitButton = adminCategoryForm.querySelector('[type="submit"]');
+    submitButton.disabled = true;
+    showAdminCategoryMessage(editingId ? 'Atualizando categoria...' : 'Criando categoria.', 'info');
+    try {
+        const csrfToken = await getCsrfToken();
+        await fetchApiJson(url, {
+            method,
+            headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken },
+            body: JSON.stringify({ nome: name }),
+        });
+        resetAdminCategoryForm();
+        await refreshAdminCategoryData();
+        showAdminCategoryMessage(editingId ? 'Categoria atualizada com sucesso.' : 'Categoria criada com sucesso.', 'success');
+    } catch (error) {
+        showAdminCategoryMessage(error.message || 'Não foi possível salvar a categoria.');
+    } finally {
+        submitButton.disabled = false;
+    }
+}
+
+async function deleteAdminCategory(categoryId) {
+    const category = adminCategories.find((item) => String(item.id) === String(categoryId));
+    if (!category || !window.confirm(`Deseja excluir a categoria "${category.name}"?`)) return;
+    showAdminCategoryMessage('Excluindo categoria...', 'info');
+    try {
+        const csrfToken = await getCsrfToken();
+        await fetchApiJson(`/api/admin/categorias/${encodeURIComponent(category.id)}`, {
+            method: 'DELETE',
+            headers: { 'X-XSRF-TOKEN': csrfToken },
+        });
+        if (String(editingCategoryId) === String(category.id)) resetAdminCategoryForm();
+        await refreshAdminCategoryData();
+        showAdminCategoryMessage('Categoria excluída com sucesso.', 'success');
+    } catch (error) {
+        showAdminCategoryMessage(error.message || 'Não foi possível excluir a categoria.');
+    }
+}
+
 function renderAdminPizzaOptions() {
     if (!adminPizzaOptionList || !adminPizzaOptionsEmpty) return;
     adminPizzaOptionList.innerHTML = adminPizzaOptions.map((option) => `
@@ -887,12 +1001,14 @@ async function loadAdminProducts() {
         adminCatalogMessage.className = 'admin-catalog-message';
     }
     adminCatalogList.setAttribute('aria-busy', 'true');
+    adminCategoryList?.setAttribute('aria-busy', 'true');
+    showAdminCategoryMessage('Carregando categorias...', 'info');
     adminCatalogEmpty.hidden = true;
     if (adminCatalogResults) adminCatalogResults.textContent = '';
     try {
         const [products, categories, options] = await Promise.all([
             fetchApiJson('/api/admin/produtos'),
-            fetchApiJson('/api/categorias'),
+            fetchApiJson('/api/admin/categorias'),
             fetchApiJson('/api/admin/opcoes-pizza'),
         ]);
         if (!Array.isArray(products) || !Array.isArray(categories) || !Array.isArray(options)) throw new Error('Resposta inválida do catálogo.');
@@ -908,18 +1024,26 @@ async function loadAdminProducts() {
                 + adminCategories.map((category) => `<option value="${escapeHtml(category.id)}">${escapeHtml(category.name)}</option>`).join('');
         }
         renderAdminProducts();
+        renderAdminCategories();
         renderAdminPizzaOptions();
         adminCatalogList.setAttribute('aria-busy', 'false');
+        adminCategoryList?.setAttribute('aria-busy', 'false');
+        showAdminCategoryMessage('');
         if (adminCatalogMessage) adminCatalogMessage.textContent = '';
     } catch (error) {
         if (requestId !== adminCatalogRequestId) return;
         adminProducts = [];
+        adminCategories = [];
         adminPizzaOptions = [];
         renderAdminProducts();
+        renderAdminCategories();
         renderAdminPizzaOptions();
         adminCatalogEmpty.hidden = true;
+        if (adminCategoryEmpty) adminCategoryEmpty.hidden = true;
         if (adminCatalogResults) adminCatalogResults.textContent = '';
         adminCatalogList.setAttribute('aria-busy', 'false');
+        adminCategoryList?.setAttribute('aria-busy', 'false');
+        showAdminCategoryMessage(error.message || 'Não foi possível carregar as categorias.');
         if (adminCatalogMessage) {
             adminCatalogMessage.textContent = error.message || 'Não foi possível carregar o catálogo.';
             adminCatalogMessage.className = 'admin-catalog-message error';
@@ -2304,6 +2428,16 @@ if (adminCatalogList) {
         }
     });
 }
+
+adminCategoryList?.addEventListener('click', (event) => {
+    const editButton = event.target.closest('[data-edit-category]');
+    const deleteButton = event.target.closest('[data-delete-category]');
+    if (editButton) editAdminCategory(editButton.dataset.editCategory);
+    if (deleteButton) deleteAdminCategory(deleteButton.dataset.deleteCategory);
+});
+
+adminCategoryForm?.addEventListener('submit', submitAdminCategory);
+adminCategoryCancel?.addEventListener('click', resetAdminCategoryForm);
 
 adminProductForm?.addEventListener('submit', submitAdminProduct);
 adminProductCancel?.addEventListener('click', resetAdminProductForm);

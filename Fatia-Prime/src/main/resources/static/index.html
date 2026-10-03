@@ -681,6 +681,26 @@
                     </div>
                 </div>
 
+                <div class="admin-catalog-panel admin-categories-panel">
+                    <div class="admin-catalog-panel-heading">
+                        <span>ORGANIZAÇÃO</span>
+                        <h3>Gerenciar categorias</h3>
+                    </div>
+                    <p class="admin-category-message" aria-live="polite"></p>
+                    <div class="admin-category-list" aria-live="polite"></div>
+                    <p class="admin-category-empty" hidden>Nenhuma categoria cadastrada.</p>
+                    <form id="admin-category-form" novalidate>
+                        <label>
+                            <span id="admin-category-form-title">Nova categoria</span>
+                            <input name="categoryName" type="text" maxlength="100" placeholder="Ex.: Clássicas" required>
+                        </label>
+                        <div class="admin-product-form-actions">
+                            <button class="btn-primary" type="submit">SALVAR CATEGORIA</button>
+                            <button class="btn-secondary admin-category-cancel" type="button" hidden>CANCELAR EDIÇÃO</button>
+                        </div>
+                    </form>
+                </div>
+
                 <div class="admin-catalog-panel">
                     <div class="admin-catalog-panel-heading">
                         <span id="admin-product-form-label">NOVO PRODUTO</span>
