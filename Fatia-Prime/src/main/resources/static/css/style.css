@@ -1175,9 +1175,25 @@ button:disabled {
 
 .admin-summary {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 24px;
+}
+
+.admin-dashboard-message,
+.admin-catalog-message {
+    min-height: 18px;
+    color: #999;
+    font-size: 11px;
+}
+
+.admin-dashboard-message.error,
+.admin-catalog-message.error {
+    color: #e57373;
+}
+
+.admin-dashboard-message {
+    margin: -12px 0 16px;
 }
 
 .admin-summary-card {
@@ -1281,6 +1297,20 @@ button:disabled {
 .admin-order-card:hover {
     border-color: #f5c400;
     transform: translateY(-2px);
+}
+
+.admin-order-card.is-latest {
+    border-left: 3px solid #f5c400;
+}
+
+.admin-order-latest {
+    padding: 5px 7px;
+    background: rgba(245, 196, 0, .12);
+    color: #f5c400;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    text-transform: uppercase;
 }
 
 .admin-order-card-main {
@@ -1617,6 +1647,48 @@ button:disabled {
     font-size: 18px;
 }
 
+.admin-product-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 170px;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.admin-product-toolbar label {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 7px;
+    color: #ddd;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.admin-product-toolbar input,
+.admin-product-toolbar select {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+    padding: 10px 12px;
+    border: 1px solid #444;
+    background: #0c0c0c;
+    color: #fff;
+    font: inherit;
+}
+
+.admin-product-toolbar :is(input, select):focus-visible {
+    border-color: #f5c400;
+    outline: 2px solid #f5c400;
+    outline-offset: 2px;
+}
+
+.admin-catalog-results {
+    min-height: 18px;
+    margin-bottom: 8px;
+    color: #999;
+    font-size: 11px;
+}
+
 .admin-catalog-list {
     display: flex;
     flex-direction: column;
@@ -1639,6 +1711,7 @@ button:disabled {
 
 .admin-product-card-info {
     min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .admin-product-card-title {
@@ -2778,6 +2851,10 @@ footer p {
         grid-template-columns: 1fr;
     }
 
+    .admin-summary {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
 }
 
 
@@ -2973,6 +3050,10 @@ footer p {
 
     .admin-summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-product-toolbar {
+        grid-template-columns: 1fr;
     }
 
     .admin-order-card {

@@ -88,6 +88,54 @@ class AdminPedidoApiTests {
     void listaPedidosSemAutenticacao() throws Exception {
         mockMvc.perform(get("/api/admin/pedidos"))
             .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/admin/pedidos/dashboard"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void dashboardRetornaContagensReaisDePedidosEProdutos() throws Exception {
+        Pedido pedidoEmAndamento = new Pedido();
+        pedidoEmAndamento.setUsuario(admin);
+        pedidoEmAndamento.setCodigo("FP-TESTE-002");
+        pedidoEmAndamento.setStatus("Pedido em andamento");
+        pedidoEmAndamento.setCep("99990000");
+        pedidoEmAndamento.setValorTotal(new BigDecimal("25.00"));
+        pedidoRepository.saveAndFlush(pedidoEmAndamento);
+
+        Produto produtoInativo = new Produto(
+            "Produto indisponível",
+            "Fora do cardápio público",
+            new BigDecimal("30.00"),
+            null,
+            categoriaRepository.findAll().get(0)
+        );
+        produtoInativo.setAtivo(false);
+        produtoRepository.saveAndFlush(produtoInativo);
+
+        mockMvc.perform(get("/api/admin/pedidos/dashboard").session(adminSession()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalPedidos").value(2))
+            .andExpect(jsonPath("$.pedidosRecebidos").value(1))
+            .andExpect(jsonPath("$.pedidosEmAndamento").value(1))
+            .andExpect(jsonPath("$.pedidosConcluidos").value(0))
+            .andExpect(jsonPath("$.produtosAtivos").value(1))
+            .andExpect(jsonPath("$.produtosCadastrados").value(2))
+            .andExpect(jsonPath("$.valorTotalPedidos").value(124.80));
+    }
+
+    @Test
+    void listaPedidosMaisRecentesPrimeiro() throws Exception {
+        Pedido pedidoMaisNovo = new Pedido();
+        pedidoMaisNovo.setUsuario(admin);
+        pedidoMaisNovo.setCodigo("FP-TESTE-RECENTE");
+        pedidoMaisNovo.setStatus("Pedido recebido");
+        pedidoMaisNovo.setCep("99990000");
+        pedidoMaisNovo.setValorTotal(new BigDecimal("10.00"));
+        pedidoRepository.saveAndFlush(pedidoMaisNovo);
+
+        mockMvc.perform(get("/api/admin/pedidos").session(adminSession()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].codigo").value("FP-TESTE-RECENTE"));
     }
 
     @Test
@@ -110,6 +158,8 @@ class AdminPedidoApiTests {
             .getSession();
 
         mockMvc.perform(get("/api/admin/pedidos").session(session))
+            .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/admin/pedidos/dashboard").session(session))
             .andExpect(status().isForbidden());
         mockMvc.perform(patch("/api/admin/pedidos/{id}/status", pedido.getId())
                 .session(session)

@@ -53,10 +53,14 @@ const adminOrderStatus = document.querySelector('#admin-order-status');
 const adminOrderList = document.querySelector('.admin-order-list');
 const adminOrdersMessage = document.querySelector('.admin-orders-message');
 const adminOrdersEmpty = document.querySelector('.admin-orders-empty');
+const adminDashboardMessage = document.querySelector('.admin-dashboard-message');
 const adminSummaryTotal = document.querySelector('#admin-summary-total');
 const adminSummaryReceived = document.querySelector('#admin-summary-received');
 const adminSummaryProgress = document.querySelector('#admin-summary-progress');
 const adminSummaryFinished = document.querySelector('#admin-summary-finished');
+const adminSummaryProductsActive = document.querySelector('#admin-summary-products-active');
+const adminSummaryProductsTotal = document.querySelector('#admin-summary-products-total');
+const adminSummaryOrdersValue = document.querySelector('#admin-summary-orders-value');
 const adminOrderDetails = document.querySelector('.admin-order-details');
 const adminOrderSubtotalElement = document.querySelector('.admin-order-subtotal strong');
 const adminOrderFreightElement = document.querySelector('.admin-order-freight strong');
@@ -66,6 +70,10 @@ const adminStatusSave = document.querySelector('.admin-status-save');
 const adminProductForm = document.querySelector('#admin-product-form');
 const adminCatalogList = document.querySelector('.admin-catalog-list');
 const adminCatalogEmpty = document.querySelector('.admin-catalog-empty');
+const adminCatalogSearch = document.querySelector('#admin-product-search');
+const adminCatalogStatus = document.querySelector('#admin-product-status');
+const adminCatalogResults = document.querySelector('.admin-catalog-results');
+const adminCatalogMessage = document.querySelector('.admin-catalog-message');
 const adminProductFormMessage = document.querySelector('.admin-product-form-message');
 const adminProductFormTitle = document.querySelector('#admin-product-form-title');
 const adminProductFormLabel = document.querySelector('#admin-product-form-label');
@@ -102,6 +110,7 @@ let customizerOptions = [];
 let selectedAdminOrderId = null;
 let adminOrders = [];
 let adminOrdersRequestId = 0;
+let adminDashboardRequestId = 0;
 let publicProducts = [];
 let publicCategories = [];
 let selectedCatalogCategory = 'all';
@@ -150,6 +159,7 @@ function openAdminWorkspace() {
     setInterfaceMode('admin-workspace');
     window.location.hash = 'painel-pedidos';
     adminOrdersSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    loadAdminDashboard();
     loadAdminOrders();
     loadAdminProducts();
 }
@@ -208,25 +218,66 @@ function showAdminApiError(message) {
     }
 }
 
-function renderAdminSummary() {
-    const counts = adminOrders.reduce((summary, order) => {
-        summary.total += 1;
-        if (order.status === ORDER_STATUSES[0]) summary.received += 1;
-        if (order.status === ORDER_STATUSES[1]) summary.progress += 1;
-        if (order.status === ORDER_STATUSES[2]) summary.finished += 1;
-        return summary;
-    }, { total: 0, received: 0, progress: 0, finished: 0 });
+function renderAdminSummary(dashboard) {
+    if (adminSummaryTotal) adminSummaryTotal.textContent = dashboard ? dashboard.totalPedidos : '—';
+    if (adminSummaryReceived) adminSummaryReceived.textContent = dashboard ? dashboard.pedidosRecebidos : '—';
+    if (adminSummaryProgress) adminSummaryProgress.textContent = dashboard ? dashboard.pedidosEmAndamento : '—';
+    if (adminSummaryFinished) adminSummaryFinished.textContent = dashboard ? dashboard.pedidosConcluidos : '—';
+    if (adminSummaryProductsActive) adminSummaryProductsActive.textContent = dashboard ? dashboard.produtosAtivos : '—';
+    if (adminSummaryProductsTotal) adminSummaryProductsTotal.textContent = dashboard ? dashboard.produtosCadastrados : '—';
+    if (adminSummaryOrdersValue) adminSummaryOrdersValue.textContent = dashboard
+        ? money.format(Number(dashboard.valorTotalPedidos))
+        : '—';
+}
 
-    if (adminSummaryTotal) adminSummaryTotal.textContent = counts.total;
-    if (adminSummaryReceived) adminSummaryReceived.textContent = counts.received;
-    if (adminSummaryProgress) adminSummaryProgress.textContent = counts.progress;
-    if (adminSummaryFinished) adminSummaryFinished.textContent = counts.finished;
+async function loadAdminDashboard() {
+    const requestId = ++adminDashboardRequestId;
+    renderAdminSummary(null);
+    if (adminDashboardMessage) {
+        adminDashboardMessage.textContent = 'Carregando indicadores...';
+        adminDashboardMessage.className = 'admin-dashboard-message';
+    }
+
+    try {
+        const response = await fetch('/api/admin/pedidos/dashboard', { credentials: 'same-origin' });
+        if (handleAdminApiAuthorization(response.status)) return;
+        if (!response.ok) {
+            throw new Error(await readAdminApiError(response, 'Não foi possível carregar os indicadores.'));
+        }
+        const dashboard = await response.json();
+        const counts = [
+            dashboard.totalPedidos,
+            dashboard.pedidosRecebidos,
+            dashboard.pedidosEmAndamento,
+            dashboard.pedidosConcluidos,
+            dashboard.produtosAtivos,
+            dashboard.produtosCadastrados,
+        ];
+        if (counts.some((count) => !Number.isInteger(count) || count < 0)
+            || !Number.isFinite(Number(dashboard.valorTotalPedidos))
+            || Number(dashboard.valorTotalPedidos) < 0
+            || dashboard.produtosAtivos > dashboard.produtosCadastrados
+            || dashboard.pedidosRecebidos + dashboard.pedidosEmAndamento + dashboard.pedidosConcluidos > dashboard.totalPedidos) {
+            throw new Error('A resposta dos indicadores não é válida.');
+        }
+        if (requestId !== adminDashboardRequestId) return;
+        renderAdminSummary(dashboard);
+        if (adminDashboardMessage) adminDashboardMessage.textContent = '';
+    } catch (error) {
+        if (requestId !== adminDashboardRequestId) return;
+        renderAdminSummary(null);
+        if (adminDashboardMessage) {
+            adminDashboardMessage.textContent = error.message || 'Não foi possível carregar os indicadores.';
+            adminDashboardMessage.className = 'admin-dashboard-message error';
+        }
+    }
 }
 
 function handleAdminApiAuthorization(status) {
     if (status !== 401 && status !== 403) return false;
     adminOrders = [];
     renderAdminSummary();
+    if (adminOrderList) adminOrderList.setAttribute('aria-busy', 'false');
     setInterfaceMode('admin-login');
     showAdminLoginMessage(
         status === 401
@@ -292,6 +343,7 @@ async function loadAdminOrders() {
         adminOrdersMessage.textContent = 'Carregando pedidos...';
         adminOrdersMessage.className = 'admin-orders-message';
     }
+    adminOrderList.setAttribute('aria-busy', 'true');
     adminOrdersEmpty.hidden = true;
 
     try {
@@ -306,13 +358,13 @@ async function loadAdminOrders() {
         const data = await response.json();
         if (requestId !== adminOrdersRequestId) return;
         adminOrders = Array.isArray(data) ? data.map(normalizeAdminOrder) : [];
-        renderAdminSummary();
         renderAdminOrders();
+        adminOrderList.setAttribute('aria-busy', 'false');
     } catch (error) {
         if (requestId !== adminOrdersRequestId) return;
         adminOrders = [];
-        renderAdminSummary();
         adminOrderList.innerHTML = '';
+        adminOrderList.setAttribute('aria-busy', 'false');
         adminOrdersEmpty.hidden = false;
         adminOrdersEmpty.querySelector('strong').textContent = 'Não foi possível carregar os pedidos';
         adminOrdersEmpty.querySelector('span').textContent = error.message || 'Tente novamente.';
@@ -791,7 +843,13 @@ function renderAdminPizzaOptions() {
 
 function renderAdminProducts() {
     if (!adminCatalogList || !adminCatalogEmpty) return;
-    adminCatalogList.innerHTML = adminProducts.map((product) => `
+    const search = normalizeCatalogSearch(adminCatalogSearch?.value || '');
+    const status = adminCatalogStatus?.value || 'all';
+    const products = adminProducts.filter((product) => (
+        (!search || normalizeCatalogSearch(product.name).includes(search))
+        && (status === 'all' || (status === 'active' ? product.active : !product.active))
+    ));
+    adminCatalogList.innerHTML = products.map((product) => `
         <article class="admin-product-card ${product.active ? '' : 'is-inactive'}">
             <div class="admin-product-card-info">
                 <div class="admin-product-card-title">
@@ -806,12 +864,31 @@ function renderAdminProducts() {
                 <button class="${product.active ? 'btn-danger' : 'btn-secondary'}" type="button" data-toggle-product="${escapeHtml(product.id)}">${product.active ? 'DESATIVAR' : 'REATIVAR'}</button>
             </div>
         </article>`).join('');
-    adminCatalogEmpty.hidden = adminProducts.length > 0;
+    adminCatalogEmpty.hidden = products.length > 0;
+    if (products.length === 0) {
+        const hasFilters = Boolean(search || status !== 'all');
+        adminCatalogEmpty.querySelector('strong').textContent = hasFilters
+            ? 'Nenhum produto encontrado'
+            : 'Nenhum produto cadastrado';
+        adminCatalogEmpty.querySelector('span').textContent = hasFilters
+            ? 'Altere a busca ou o filtro de disponibilidade.'
+            : 'Use o formulário para adicionar um produto ao cardápio.';
+    }
+    if (adminCatalogResults) {
+        adminCatalogResults.textContent = `${products.length} de ${adminProducts.length} ${adminProducts.length === 1 ? 'produto' : 'produtos'}.`;
+    }
 }
 
 async function loadAdminProducts() {
     if (!adminCatalogList) return;
     const requestId = ++adminCatalogRequestId;
+    if (adminCatalogMessage) {
+        adminCatalogMessage.textContent = 'Carregando produtos e opções...';
+        adminCatalogMessage.className = 'admin-catalog-message';
+    }
+    adminCatalogList.setAttribute('aria-busy', 'true');
+    adminCatalogEmpty.hidden = true;
+    if (adminCatalogResults) adminCatalogResults.textContent = '';
     try {
         const [products, categories, options] = await Promise.all([
             fetchApiJson('/api/admin/produtos'),
@@ -832,12 +909,21 @@ async function loadAdminProducts() {
         }
         renderAdminProducts();
         renderAdminPizzaOptions();
+        adminCatalogList.setAttribute('aria-busy', 'false');
+        if (adminCatalogMessage) adminCatalogMessage.textContent = '';
     } catch (error) {
         if (requestId !== adminCatalogRequestId) return;
         adminProducts = [];
         adminPizzaOptions = [];
         renderAdminProducts();
         renderAdminPizzaOptions();
+        adminCatalogEmpty.hidden = true;
+        if (adminCatalogResults) adminCatalogResults.textContent = '';
+        adminCatalogList.setAttribute('aria-busy', 'false');
+        if (adminCatalogMessage) {
+            adminCatalogMessage.textContent = error.message || 'Não foi possível carregar o catálogo.';
+            adminCatalogMessage.className = 'admin-catalog-message error';
+        }
         showAdminProductMessage(error.message || 'Não foi possível carregar o catálogo.');
     }
 }
@@ -977,6 +1063,7 @@ async function toggleAdminProduct(productIdValue) {
         const normalized = normalizeAdminProduct(updated, adminCategories);
         adminProducts = adminProducts.map((item) => item.id === normalized.id ? normalized : item);
         renderAdminProducts();
+        loadAdminDashboard();
         await loadPublicCatalog();
         showAdminProductMessage(normalized.active ? 'Produto reativado com sucesso.' : 'Produto desativado com sucesso.', 'success');
     } catch (error) {
@@ -1041,6 +1128,7 @@ async function submitAdminProduct(event) {
             ? adminProducts.map((product) => product.id === normalized.id ? normalized : product)
             : [...adminProducts, normalized];
         renderAdminProducts();
+        loadAdminDashboard();
         await loadPublicCatalog();
         showAdminProductMessage(editingProductId ? 'Produto atualizado com sucesso.' : 'Produto cadastrado com sucesso.', 'success');
         adminProductForm.reset();
@@ -1106,15 +1194,16 @@ function renderAdminOrderDetails(order) {
 function renderAdminOrders() {
     if (!adminOrderList || !adminOrdersEmpty) return;
 
-    adminOrderList.innerHTML = adminOrders.map((order) => {
+    adminOrderList.innerHTML = adminOrders.map((order, index) => {
         const itemCount = Array.isArray(order.items)
             ? order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
             : 0;
         return `
-            <article class="admin-order-card">
+            <article class="admin-order-card${index === 0 ? ' is-latest' : ''}">
                 <div class="admin-order-card-main">
                     <div class="admin-order-card-title">
                         <strong>${escapeHtml(order.code)}</strong>
+                        ${index === 0 ? '<span class="admin-order-latest">Mais recente</span>' : ''}
                         <span class="admin-order-status ${getOrderStatusClass(order.status)}">${escapeHtml(order.status)}</span>
                     </div>
                     <div class="admin-order-card-meta">
@@ -2164,6 +2253,9 @@ if (adminOrderList) {
     });
 }
 
+adminCatalogSearch?.addEventListener('input', renderAdminProducts);
+adminCatalogStatus?.addEventListener('change', renderAdminProducts);
+
 adminStatusSave?.addEventListener('click', async () => {
     const status = adminOrderStatusEditor?.value;
     if (!selectedAdminOrderId || !ORDER_STATUSES.includes(status)) {
@@ -2189,7 +2281,7 @@ adminStatusSave?.addEventListener('click', async () => {
         }
         const updatedOrder = normalizeAdminOrder(await response.json());
         adminOrders = adminOrders.map((order) => order.id === updatedOrder.id ? updatedOrder : order);
-        renderAdminSummary();
+        loadAdminDashboard();
         renderAdminOrderDetails(updatedOrder);
         renderAdminOrders();
         showAdminStatusMessage('Status do pedido atualizado com sucesso.', 'success');

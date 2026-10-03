@@ -1,6 +1,7 @@
 package com.example.Fatia.Prime;
 
 import jakarta.validation.Valid;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -25,9 +26,26 @@ public class AdminPedidoController {
     );
 
     private final PedidoRepository repository;
+    private final ProdutoRepository produtoRepository;
 
-    public AdminPedidoController(PedidoRepository repository) {
+    public AdminPedidoController(PedidoRepository repository, ProdutoRepository produtoRepository) {
         this.repository = repository;
+        this.produtoRepository = produtoRepository;
+    }
+
+    @GetMapping("/dashboard")
+    @Transactional(readOnly = true)
+    public AdminDashboardResponse dashboard() {
+        BigDecimal valorTotal = repository.sumValorTotal();
+        return new AdminDashboardResponse(
+            repository.count(),
+            repository.countByStatus(STATUS_VALIDOS.get(0)),
+            repository.countByStatus(STATUS_VALIDOS.get(1)),
+            repository.countByStatus(STATUS_VALIDOS.get(2)),
+            produtoRepository.countByAtivoTrue(),
+            produtoRepository.count(),
+            valorTotal == null ? BigDecimal.ZERO : valorTotal
+        );
     }
 
     @GetMapping
