@@ -19,7 +19,8 @@ public record PedidoResponse(
     List<ItemPedidoResponse> itens,
     String cep,
     BigDecimal subtotal,
-    BigDecimal frete
+    BigDecimal frete,
+    boolean calculoAproximado
 ) {
     public static PedidoResponse de(Pedido pedido) {
         List<ItemPedidoResponse> itens = pedido.getItens() == null
@@ -41,7 +42,8 @@ public record PedidoResponse(
             itens,
             pedido.getCep(),
             pedido.calcularSubtotal(),
-            pedido.getValorFrete()
+            pedido.getValorFrete(),
+            pedido.isCalculoFreteAproximado()
         );
     }
 }

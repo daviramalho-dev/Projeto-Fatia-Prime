@@ -91,8 +91,8 @@ public class PedidoController {
         pedido.setClienteNome(request.clienteNome().trim());
         pedido.setClienteEmail(request.clienteEmail().trim());
         pedido.setClienteTelefone(normalizarTelefone(request.clienteTelefone()));
-        pedido.setEndereco(normalizarOpcional(request.endereco()));
-        pedido.setCep(cep);
+        pedido.setEndereco(request.endereco());
+        pedido.setCep(request.cep());
         pedido.setCodigo("FP-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase());
         pedido.setStatus("Pedido recebido");
         pedido.setObservacoes(request.observacoes());
@@ -200,8 +200,8 @@ public class PedidoController {
 
         FreteResponse cotacao = FreteController.calcularFrete(
             cep, cepGeocoder, freteProperties, HttpStatus.BAD_REQUEST);
-        pedido.setCep(cotacao.cep());
         pedido.setValorFrete(cotacao.valorFrete());
+        pedido.setCalculoFreteAproximado(cotacao.calculoAproximado());
         pedido.setValorTotal(subtotal.add(cotacao.valorFrete()));
         Pedido salvo = pedidoRepository.saveAndFlush(pedido);
         return PedidoResponse.de(salvo);
@@ -250,11 +250,6 @@ public class PedidoController {
 
     private String normalizarTelefone(String telefone) {
         return telefone == null ? "" : telefone.replaceAll("\\D", "");
-    }
-
-    private String normalizarOpcional(String valor) {
-        String normalizado = valor == null ? null : valor.trim();
-        return normalizado == null || normalizado.isBlank() ? null : normalizado;
     }
 
 }

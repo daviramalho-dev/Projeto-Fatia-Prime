@@ -259,6 +259,7 @@ function normalizeAdminOrder(order) {
         subtotal: Number(order.subtotal ?? order.total) || 0,
         freight: Number(order.frete) || 0,
         total: Number(order.total) || 0,
+        approximateFreight: order.calculoAproximado === true,
     };
 }
 
@@ -1049,7 +1050,9 @@ function renderAdminOrderDetails(order) {
             : '<li><span>Itens não informados.</span></li>';
     }
     if (adminOrderSubtotalElement) adminOrderSubtotalElement.textContent = money.format(Number(order.subtotal) || 0);
-    if (adminOrderFreightElement) adminOrderFreightElement.textContent = money.format(Number(order.freight) || 0);
+    if (adminOrderFreightElement) {
+        adminOrderFreightElement.textContent = `${money.format(Number(order.freight) || 0)}${order.approximateFreight ? ' (estimado)' : ''}`;
+    }
     if (totalElement) totalElement.textContent = money.format(Number(order.total) || 0);
     adminOrderDetails.hidden = false;
     adminOrderDetails.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1115,7 +1118,9 @@ function renderConfirmation(orderData) {
             <strong>${money.format(Number(item.subtotal) || Number(item.price) * Number(item.quantity))}</strong>
         </li>`).join('');
     if (confirmationSubtotalElement) confirmationSubtotalElement.textContent = money.format(Number(data.subtotal ?? data.total) || 0);
-    if (confirmationFreightElement) confirmationFreightElement.textContent = money.format(Number(data.freight) || 0);
+    if (confirmationFreightElement) {
+        confirmationFreightElement.textContent = `${money.format(Number(data.freight) || 0)}${data.approximateFreight ? ' (estimado)' : ''}`;
+    }
     confirmationTotalElement.textContent = money.format(Number(data.total));
 
     const customerInfo = [
@@ -1203,6 +1208,13 @@ function setDeliveryQuoteMessage(form, message, type = '') {
     if (type) element.classList.add(type);
 }
 
+function deliveryQuoteMessage(quote) {
+    if (quote.aproximado) {
+        return `Frete estimado: ${money.format(quote.frete)}. Valor calculado com base aproximada na região do CEP.`;
+    }
+    return `Frete: ${money.format(quote.frete)} (${quote.regiao}).`;
+}
+
 function renderDeliveryBreakdown() {
     const subtotal = cartTotal();
     const freight = currentDeliveryQuote?.frete;
@@ -1241,7 +1253,7 @@ async function refreshDeliveryQuote(cep, form, force = false) {
     if (!force && currentDeliveryQuote?.cep === normalizedCep) {
         setDeliveryQuoteMessage(
             form,
-            `Entrega para ${currentDeliveryQuote.regiao}: ${money.format(currentDeliveryQuote.frete)}.`,
+            deliveryQuoteMessage(currentDeliveryQuote),
             'success'
         );
         return true;
@@ -1263,6 +1275,7 @@ async function refreshDeliveryQuote(cep, form, force = false) {
             cep: normalizedCep,
             regiao: String(quote.regiao),
             frete: freight,
+            aproximado: quote?.calculoAproximado === true,
         };
         renderDeliveryBreakdown();
         if (checkoutMessage?.classList.contains('error')) {
@@ -1271,7 +1284,7 @@ async function refreshDeliveryQuote(cep, form, force = false) {
         }
         setDeliveryQuoteMessage(
             form,
-            `Entrega para ${currentDeliveryQuote.regiao}: ${money.format(freight)}.`,
+            deliveryQuoteMessage(currentDeliveryQuote),
             'success'
         );
         return true;
@@ -1403,6 +1416,7 @@ function normalizePublicOrder(order) {
         subtotal: Number(order.subtotal ?? order.valorTotal),
         freight: Number(order.frete) || 0,
         total: Number(order.valorTotal),
+        approximateFreight: order.calculoAproximado === true,
     };
 }
 
@@ -1461,7 +1475,9 @@ function renderOrderQueryResult(orderData) {
     const resultItems = document.querySelector('.order-query-items');
     const resultTotal = document.querySelector('.order-query-total strong');
     if (orderQuerySubtotalElement) orderQuerySubtotalElement.textContent = money.format(Number(orderData.subtotal ?? total) || 0);
-    if (orderQueryFreightElement) orderQueryFreightElement.textContent = money.format(Number(orderData.freight) || 0);
+    if (orderQueryFreightElement) {
+        orderQueryFreightElement.textContent = `${money.format(Number(orderData.freight) || 0)}${orderData.approximateFreight ? ' (estimado)' : ''}`;
+    }
     if (resultItems) {
         resultItems.innerHTML = list.length
             ? list.map((item) => `
@@ -2239,12 +2255,12 @@ if (checkoutForm) {
             return;
         }
 
-        const cep = normalizePhone(formData.get('customerCep'));
+        const cep = String(formData.get('customerCep') || '').trim();
         if (!cep) {
             markFieldInvalid('customerCep', 'Informe seu CEP.');
             return;
         }
-        if (cep.length !== 8) {
+        if (!/^[0-9]{5}-?[0-9]{3}$/.test(cep)) {
             markFieldInvalid('customerCep', 'Informe um CEP válido.');
             return;
         }
@@ -2317,7 +2333,8 @@ if (checkoutForm) {
                 ...createdOrder.items.map((item) => `• ${item.quantity}x ${pizzaWhatsAppDescription(item)} — ${money.format(item.subtotal)}`),
                 '',
                 `Subtotal: ${money.format(createdOrder.subtotal)}`,
-                `Entrega: ${money.format(createdOrder.freight)}`,
+                `${createdOrder.approximateFreight ? 'Frete estimado' : 'Frete'}: ${money.format(createdOrder.freight)}`,
+                createdOrder.approximateFreight && 'Valor calculado com base aproximada na região do CEP.',
                 `Total: ${money.format(createdOrder.total)}`,
                 `Nome: ${createdOrder.customer}`,
                 `E-mail: ${createdOrder.email}`,

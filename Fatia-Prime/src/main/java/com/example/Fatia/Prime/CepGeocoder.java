@@ -1,10 +1,20 @@
 package com.example.Fatia.Prime;
 
+import java.util.List;
+
 public interface CepGeocoder {
 
     Coordenadas geocodificar(String cep);
 
-    record Coordenadas(double latitude, double longitude, String fonte) {
+    default List<Coordenadas> geocodificarOpcoes(String cep) {
+        Coordenadas coordenada = geocodificar(cep);
+        return coordenada == null ? List.of() : List.of(coordenada);
+    }
+
+    record Coordenadas(double latitude, double longitude, String fonte, boolean aproximada) {
+        public Coordenadas(double latitude, double longitude, String fonte) {
+            this(latitude, longitude, fonte, false);
+        }
     }
 
     class CepNaoEncontradoException extends RuntimeException {

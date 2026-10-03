@@ -4,12 +4,13 @@ import com.example.Fatia.Prime.CepGeocoder.CepNaoEncontradoException;
 import com.example.Fatia.Prime.CepGeocoder.Coordenadas;
 import com.example.Fatia.Prime.CepGeocoder.GeocodificacaoIndisponivelException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
-import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,10 +25,12 @@ import tools.jackson.databind.JsonNode;
 public class ExternalCepGeocoder implements CepGeocoder {
 
     private static final long NOMINATIM_MIN_INTERVAL_NANOS = 1_000_000_000L;
+    private static final String BRASILIA_OPEN_CEP_LATITUDE = "-15.77972";
+    private static final String BRASILIA_OPEN_CEP_LONGITUDE = "-47.92972";
 
     private final FreteProperties properties;
     private final RestClient restClient;
-    private final ConcurrentMap<String, Coordenadas> cache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, List<Coordenadas>> cache = new ConcurrentHashMap<>();
     private final Object nominatimRateLimit = new Object();
     private long lastNominatimRequestNanos;
 
@@ -43,15 +46,27 @@ public class ExternalCepGeocoder implements CepGeocoder {
 
     @Override
     public Coordenadas geocodificar(String cep) {
+        return geocodificarOpcoes(cep).get(0);
+    }
+
+    @Override
+    public List<Coordenadas> geocodificarOpcoes(String cep) {
         return cache.computeIfAbsent(cep, this::consultar);
     }
 
-    private Coordenadas consultar(String cep) {
+    private List<Coordenadas> consultar(String cep) {
         Coordenadas brasilApi = buscarBrasilApi(cep);
-        if (brasilApi != null) return brasilApi;
+        if (brasilApi != null) return List.of(brasilApi);
 
-        EnderecoCep endereco = buscarViaCep(cep);
-        return geocodificarEndereco(endereco);
+        EnderecoCep endereco;
+        try {
+            endereco = buscarViaCep(cep);
+        } catch (GeocodificacaoIndisponivelException exception) {
+            List<Coordenadas> porCep = buscarNoNominatimPorCep(cep);
+            if (!porCep.isEmpty()) return porCep;
+            throw new GeocodificacaoIndisponivelException(exception);
+        }
+        return geocodificarEndereco(cep, endereco);
     }
 
     private Coordenadas buscarBrasilApi(String cep) {
@@ -60,14 +75,23 @@ public class ExternalCepGeocoder implements CepGeocoder {
                 .uri(properties.getBrasilApiUrl() + "/" + cep)
                 .retrieve()
                 .body(JsonNode.class);
-            if (resposta == null || "open-cep".equalsIgnoreCase(resposta.path("service").asText())) {
+            if (resposta == null
+                || !"correios".equalsIgnoreCase(texto(resposta, "service"))
+                || !cep.equals(normalizarCep(texto(resposta, "cep")))
+                || texto(resposta, "city").isBlank()
+                || texto(resposta, "state").isBlank()) {
                 return null;
             }
+
             JsonNode coordenadas = resposta.path("location").path("coordinates");
             double longitude = coordenada(coordenadas.path("longitude"));
             double latitude = coordenada(coordenadas.path("latitude"));
-            if (!coordenadasValidas(latitude, longitude)) return null;
-            return new Coordenadas(latitude, longitude, "BrasilAPI");
+            if (!coordenadasValidas(latitude, longitude)
+                || latitude < -34 || latitude > 6 || longitude < -74 || longitude > -34
+                || coordenadaGenericaBrasilia(latitude, longitude)) {
+                return null;
+            }
+            return new Coordenadas(latitude, longitude, "BrasilAPI/Correios", false);
         } catch (RestClientException exception) {
             return null;
         }
@@ -85,7 +109,7 @@ public class ExternalCepGeocoder implements CepGeocoder {
         }
         if (resposta == null) throw new GeocodificacaoIndisponivelException();
         JsonNode erro = resposta.path("erro");
-        if (erro.asBoolean(false) || "true".equalsIgnoreCase(erro.asText())) {
+        if (erro.asBoolean(false) || "true".equalsIgnoreCase(erro.asString(""))) {
             throw new CepNaoEncontradoException();
         }
 
@@ -95,36 +119,55 @@ public class ExternalCepGeocoder implements CepGeocoder {
             texto(resposta, "localidade"),
             texto(resposta, "uf")
         );
-        if (endereco.logradouro().isBlank() && endereco.bairro().isBlank()) {
+        if (endereco.logradouro().isBlank() && endereco.bairro().isBlank()
+            && endereco.localidade().isBlank()) {
             throw new GeocodificacaoIndisponivelException();
         }
         return endereco;
     }
 
-    private Coordenadas geocodificarEndereco(EnderecoCep endereco) {
-        Coordenadas coordenadas = buscarNoNominatim(
-            String.join(", ", List.of(
-                endereco.logradouro(), endereco.bairro(), endereco.localidade(), endereco.uf(), "Brasil")
-                .stream().filter(value -> !value.isBlank()).toList()),
-            endereco
+    private List<Coordenadas> geocodificarEndereco(String cep, EnderecoCep endereco) {
+        Map<String, Coordenadas> coordenadas = new LinkedHashMap<>();
+        GeocodificacaoIndisponivelException falhaProvedor = null;
+        List<Consulta> consultas = List.of(
+            new Consulta(
+                String.join(", ", List.of(
+                    endereco.logradouro(), endereco.bairro(), endereco.localidade(), endereco.uf(), "Brasil")
+                    .stream().filter(value -> !value.isBlank()).toList()),
+                NivelBusca.ENDERECO
+            ),
+            new Consulta(
+                String.join(", ", List.of(
+                    endereco.bairro(), endereco.localidade(), endereco.uf(), "Brasil")
+                    .stream().filter(value -> !value.isBlank()).toList()),
+                NivelBusca.BAIRRO
+            ),
+            new Consulta(
+                String.join(", ", List.of(endereco.localidade(), endereco.uf(), "Brasil")
+                    .stream().filter(value -> !value.isBlank()).toList()),
+                NivelBusca.LOCALIDADE
+            )
         );
-        if (coordenadas != null) return coordenadas;
 
-        String consultaLocalidade = String.join(", ", List.of(
-            endereco.bairro(), endereco.localidade(), endereco.uf(), "Brasil"
-        ).stream().filter(value -> !value.isBlank()).toList());
-        coordenadas = buscarNoNominatim(consultaLocalidade, endereco);
-        if (coordenadas != null) return coordenadas;
-
+        for (Consulta consulta : consultas) {
+            if (consulta.query().isBlank()) continue;
+            try {
+                adicionarUnicos(coordenadas, buscarNoNominatim(consulta, endereco));
+            } catch (GeocodificacaoIndisponivelException exception) {
+                if (falhaProvedor == null) falhaProvedor = exception;
+            }
+        }
+        if (!coordenadas.isEmpty()) return List.copyOf(coordenadas.values());
+        if (falhaProvedor != null) throw falhaProvedor;
         throw new GeocodificacaoIndisponivelException();
     }
 
-    private Coordenadas buscarNoNominatim(String query, EnderecoCep endereco) {
+    private List<Coordenadas> buscarNoNominatim(Consulta consulta, EnderecoCep endereco) {
         String url = UriComponentsBuilder.fromUriString(properties.getNominatimUrl())
-            .queryParam("q", query)
+            .queryParam("q", consulta.query())
             .queryParam("format", "jsonv2")
             .queryParam("addressdetails", "1")
-            .queryParam("limit", "1")
+            .queryParam("limit", "5")
             .build()
             .encode()
             .toUriString();
@@ -136,22 +179,123 @@ public class ExternalCepGeocoder implements CepGeocoder {
                 .header("User-Agent", properties.getNominatimUserAgent())
                 .retrieve()
                 .body(JsonNode.class);
-            if (respostas == null || !respostas.isArray() || respostas.isEmpty()) {
-                return null;
-            }
-            JsonNode resultado = respostas.get(0);
-            double latitude = coordenada(resultado.path("lat"));
-            double longitude = coordenada(resultado.path("lon"));
-            if (!coordenadasValidas(latitude, longitude) || !localidadeCompativel(endereco, resultado.path("address"))) {
-                return null;
-            }
-            return new Coordenadas(latitude, longitude, "OpenStreetMap");
+            return extrairResultados(respostas, endereco, consulta.nivel());
         } catch (RestClientException exception) {
             throw new GeocodificacaoIndisponivelException(exception);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new GeocodificacaoIndisponivelException(exception);
         }
+    }
+
+    private List<Coordenadas> buscarNoNominatimPorCep(String cep) {
+        String url = UriComponentsBuilder.fromUriString(properties.getNominatimUrl())
+            .queryParam("postalcode", cep)
+            .queryParam("country", "Brazil")
+            .queryParam("format", "jsonv2")
+            .queryParam("addressdetails", "1")
+            .queryParam("limit", "5")
+            .build()
+            .encode()
+            .toUriString();
+        try {
+            respeitarLimiteNominatim();
+            JsonNode respostas = restClient.get()
+                .uri(URI.create(url))
+                .header("User-Agent", properties.getNominatimUserAgent())
+                .retrieve()
+                .body(JsonNode.class);
+            if (respostas == null || !respostas.isArray()) return List.of();
+
+            List<Coordenadas> coordenadas = new ArrayList<>();
+            for (JsonNode resposta : respostas) {
+                JsonNode address = resposta.path("address");
+                if (!cep.equals(normalizarCep(texto(address, "postcode")))
+                    || !paisCompativel(address)
+                    || !coordenadasDoBrasil(resposta)) {
+                    continue;
+                }
+                adicionarCoordenada(coordenadas, resposta, "OpenStreetMap/CEP");
+            }
+            return List.copyOf(coordenadas);
+        } catch (RestClientException exception) {
+            throw new GeocodificacaoIndisponivelException(exception);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new GeocodificacaoIndisponivelException(exception);
+        }
+    }
+
+    private List<Coordenadas> extrairResultados(JsonNode respostas, EnderecoCep endereco, NivelBusca nivel) {
+        if (respostas == null || !respostas.isArray()) return List.of();
+        List<Coordenadas> coordenadas = new ArrayList<>();
+        for (JsonNode resposta : respostas) {
+            JsonNode address = resposta.path("address");
+            boolean compativel = switch (nivel) {
+                case ENDERECO -> logradouroCompativel(endereco.logradouro(), address)
+                    && localidadeCompativel(endereco, address);
+                case BAIRRO -> bairroCompativel(endereco.bairro(), address);
+                case LOCALIDADE -> cidadeCompativel(endereco.localidade(), address);
+            };
+            if (compativel) adicionarCoordenada(coordenadas, resposta, "OpenStreetMap");
+        }
+        return List.copyOf(coordenadas);
+    }
+
+    private void adicionarCoordenada(List<Coordenadas> destino, JsonNode resultado, String fonte) {
+        double latitude = coordenada(resultado.path("lat"));
+        double longitude = coordenada(resultado.path("lon"));
+        if (coordenadasValidas(latitude, longitude)) {
+            destino.add(new Coordenadas(latitude, longitude, fonte, true));
+        }
+    }
+
+    private void adicionarUnicos(Map<String, Coordenadas> destino, List<Coordenadas> coordenadas) {
+        for (Coordenadas coordenada : coordenadas) {
+            destino.putIfAbsent(coordenada.latitude() + "," + coordenada.longitude(), coordenada);
+        }
+    }
+
+    private boolean logradouroCompativel(String esperado, JsonNode address) {
+        String ruaEsperada = normalizar(esperado);
+        if (ruaEsperada.isBlank()) return false;
+        for (String campo : List.of("road", "residential", "pedestrian", "street")) {
+            String rua = normalizar(texto(address, campo));
+            if (!rua.isBlank() && (rua.equals(ruaEsperada)
+                || rua.contains(ruaEsperada) || ruaEsperada.contains(rua))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean localidadeCompativel(EnderecoCep endereco, JsonNode address) {
+        return bairroCompativel(endereco.bairro(), address)
+            || cidadeCompativel(endereco.localidade(), address);
+    }
+
+    private boolean bairroCompativel(String esperado, JsonNode address) {
+        return campoCompativel(esperado, address,
+            List.of("neighbourhood", "suburb", "city_district", "quarter", "town", "city", "village", "municipality"));
+    }
+
+    private boolean cidadeCompativel(String esperado, JsonNode address) {
+        return campoCompativel(esperado, address,
+            List.of("city", "town", "village", "municipality", "county"));
+    }
+
+    private boolean campoCompativel(String esperado, JsonNode address, List<String> campos) {
+        String valorEsperado = normalizar(esperado);
+        if (valorEsperado.isBlank()) return false;
+        if (!paisCompativel(address)) return false;
+        for (String campo : campos) {
+            String valor = normalizar(texto(address, campo));
+            if (!valor.isBlank()
+                && (valor.equals(valorEsperado) || valor.contains(valorEsperado) || valorEsperado.contains(valor))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void respeitarLimiteNominatim() throws InterruptedException {
@@ -167,33 +311,9 @@ public class ExternalCepGeocoder implements CepGeocoder {
         }
     }
 
-    private boolean localidadeCompativel(EnderecoCep endereco, JsonNode address) {
-        String bairroEsperado = normalizar(endereco.bairro());
-        String ruaEsperada = normalizar(endereco.logradouro());
-        if (!bairroEsperado.isBlank()) {
-            for (String campo : List.of("suburb", "city_district", "town", "city", "village", "municipality")) {
-                String localidade = normalizar(texto(address, campo));
-                if (!localidade.isBlank()
-                    && (localidade.equals(bairroEsperado) || localidade.contains(bairroEsperado) || bairroEsperado.contains(localidade))) {
-                    return true;
-                }
-            }
-        }
-        if (!ruaEsperada.isBlank()) {
-            for (String campo : List.of("road", "residential", "pedestrian")) {
-                String rua = normalizar(texto(address, campo));
-                if (!rua.isBlank() && (rua.equals(ruaEsperada) || rua.contains(ruaEsperada) || ruaEsperada.contains(rua))) {
-                    return true;
-                }
-            }
-        }
-        return bairroEsperado.isBlank() && ruaEsperada.isBlank()
-            && normalizar(texto(address, "city")).equals(normalizar(endereco.localidade()));
-    }
-
     private double coordenada(JsonNode valor) {
         try {
-            return valor.isNumber() ? valor.asDouble() : Double.parseDouble(valor.asText());
+            return valor.isNumber() ? valor.asDouble() : Double.parseDouble(valor.asString());
         } catch (RuntimeException exception) {
             return Double.NaN;
         }
@@ -204,8 +324,26 @@ public class ExternalCepGeocoder implements CepGeocoder {
             && Double.isFinite(longitude) && longitude >= -180 && longitude <= 180;
     }
 
+    private boolean coordenadasDoBrasil(JsonNode resultado) {
+        double latitude = coordenada(resultado.path("lat"));
+        double longitude = coordenada(resultado.path("lon"));
+        return coordenadasValidas(latitude, longitude)
+            && latitude >= -34 && latitude <= 6
+            && longitude >= -74 && longitude <= -34;
+    }
+
+    private boolean paisCompativel(JsonNode address) {
+        String pais = normalizar(texto(address, "country_code"));
+        return pais.isBlank() || pais.equals("br");
+    }
+
+    private boolean coordenadaGenericaBrasilia(double latitude, double longitude) {
+        return Math.abs(latitude - Double.parseDouble(BRASILIA_OPEN_CEP_LATITUDE)) < 0.0001
+            && Math.abs(longitude - Double.parseDouble(BRASILIA_OPEN_CEP_LONGITUDE)) < 0.0001;
+    }
+
     private String texto(JsonNode node, String campo) {
-        return node.path(campo).asText("").trim();
+        return node.path(campo).asString("").trim();
     }
 
     private String normalizar(String value) {
@@ -213,6 +351,10 @@ public class ExternalCepGeocoder implements CepGeocoder {
             .replaceAll("\\p{M}", "")
             .trim()
             .toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizarCep(String cep) {
+        return cep == null ? "" : cep.replaceAll("\\D", "");
     }
 
     private static RestClient criarRestClient(FreteProperties properties) {
@@ -225,5 +367,14 @@ public class ExternalCepGeocoder implements CepGeocoder {
     }
 
     private record EnderecoCep(String logradouro, String bairro, String localidade, String uf) {
+    }
+
+    private record Consulta(String query, NivelBusca nivel) {
+    }
+
+    private enum NivelBusca {
+        ENDERECO,
+        BAIRRO,
+        LOCALIDADE
     }
 }
