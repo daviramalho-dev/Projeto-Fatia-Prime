@@ -14,6 +14,7 @@
 
 html {
     scroll-behavior: smooth;
+    overflow-x: clip;
 }
 
 body {
@@ -32,6 +33,32 @@ button {
     cursor: pointer;
 }
 
+button:disabled {
+    cursor: not-allowed;
+    opacity: .65;
+}
+
+.public-header :is(a, button):focus-visible,
+.public-header ~ main :is(a, button, input, select, textarea):focus-visible,
+.cart-panel :is(a, button, input, select, textarea):focus-visible,
+.checkout-panel :is(a, button, input, select, textarea):focus-visible,
+.confirmation-panel :is(a, button, input, select, textarea):focus-visible,
+.pizza-customizer :is(a, button, input, select, textarea):focus-visible {
+    outline: 2px solid #f5c400;
+    outline-offset: 3px;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
 
 /* =========================
    HEADER
@@ -410,8 +437,7 @@ button {
 .pizza-grid {
     display: grid;
 
-    grid-template-columns:
-        repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 
     gap: 25px;
 
@@ -644,15 +670,89 @@ button {
 ========================= */
 
 .cardapio {
-    padding: 110px 7%;
+    padding: clamp(72px, 9vw, 110px) clamp(20px, 7vw, 7%);
 
     background: #101010;
 }
 
 .menu-list {
-    max-width: 900px;
+    width: min(100%, 1000px);
 
     margin: auto;
+}
+
+.catalog-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    width: min(100%, 1000px);
+    margin: 0 auto 18px;
+}
+
+.catalog-controls > label {
+    display: grid;
+    align-content: start;
+    gap: 7px;
+    min-width: 0;
+    color: #dedede;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.catalog-controls input,
+.catalog-controls select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid #454545;
+    border-radius: 3px;
+    background: #0b0b0b;
+    color: #fff;
+    font: inherit;
+}
+
+.catalog-controls input::placeholder {
+    color: #a2a2a2;
+    opacity: 1;
+}
+
+.catalog-controls input:focus-visible,
+.catalog-controls select:focus-visible {
+    border-color: #f5c400;
+}
+
+.catalog-results-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: min(100%, 1000px);
+    margin: 0 auto 14px;
+}
+
+.catalog-results {
+    min-height: 20px;
+    color: #c7c7c7;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.catalog-clear-filters {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 9px 13px;
+    border: 1px solid #777;
+    border-radius: 3px;
+    background: transparent;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.catalog-clear-filters:hover:not(:disabled) {
+    border-color: #f5c400;
+    color: #f5c400;
 }
 
 .menu-filters {
@@ -661,8 +761,8 @@ button {
     align-items: center;
     justify-content: center;
     gap: 12px;
-    max-width: 900px;
-    margin: 0 auto 28px;
+    width: min(100%, 1000px);
+    margin: 0 auto 20px;
 }
 
 .catalog-feedback {
@@ -693,6 +793,22 @@ button {
 .menu-filter-button:hover {
     background: #f5c400;
     color: #090909;
+}
+
+.menu-filter-button:focus-visible,
+.btn-menu-add:focus-visible,
+.btn-card:focus-visible,
+.catalog-clear-filters:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 3px;
+}
+
+.catalog-empty {
+    padding: 24px 0;
+    color: #c7c7c7;
+    font-size: 14px;
+    line-height: 1.6;
+    text-align: center;
 }
 
 .menu-item {
@@ -2618,6 +2734,14 @@ footer p {
         grid-template-columns: 1fr 1fr;
     }
 
+    .catalog-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .catalog-search-field {
+        grid-column: 1 / -1;
+    }
+
     .sobre {
         grid-template-columns: 1fr;
     }
@@ -2759,17 +2883,48 @@ footer p {
     }
 
     .cardapio {
-        padding: 80px 7%;
+        padding: 72px 5%;
     }
 
-    .menu-item {
+    .catalog-controls {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .catalog-search-field {
+        grid-column: auto;
+    }
+
+    .catalog-results-row {
         align-items: flex-start;
     }
 
-    .menu-actions {
-        flex-direction: column;
-        align-items: flex-end;
+    .menu-filters {
+        justify-content: flex-start;
         gap: 8px;
+    }
+
+    .menu-filter-button {
+        max-width: 100%;
+        padding: 9px 11px;
+        font-size: 10px;
+    }
+
+    .menu-item {
+        flex-direction: column;
+        gap: 12px;
+        padding: 20px 0;
+    }
+
+    .menu-text,
+    .menu-text p {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
+    .menu-actions {
+        width: 100%;
+        justify-content: space-between;
+        align-items: center;
     }
 
     .sobre-content {

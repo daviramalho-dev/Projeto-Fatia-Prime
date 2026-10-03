@@ -283,12 +283,17 @@
 
             <p class="catalog-feedback" role="alert" hidden></p>
 
-            <div class="menu-filters" aria-label="Filtros do cardápio">
-                <button class="menu-filter-button is-active" type="button" data-filter="all" aria-pressed="true">Todos</button>
-                <button class="menu-filter-button" type="button" data-filter="classicas" aria-pressed="false">Clássicas</button>
-                <button class="menu-filter-button" type="button" data-filter="carnes" aria-pressed="false">Carnes</button>
-                <button class="menu-filter-button" type="button" data-filter="frango" aria-pressed="false">Frango</button>
-                <button class="menu-filter-button" type="button" data-filter="queijos" aria-pressed="false">Queijos</button>
+            <div class="catalog-controls" aria-label="Busca e filtros do cardápio">
+                <label class="catalog-search-field" for="catalog-search">
+                    Buscar produto
+                    <input id="catalog-search" type="search" autocomplete="off" placeholder="Digite o nome do produto">
+                </label>
+            </div>
+
+            <div class="menu-filters" role="group" aria-label="Filtrar por categoria"></div>
+            <div class="catalog-results-row">
+                <p class="catalog-results" role="status" aria-live="polite">Carregando cardápio...</p>
+                <button class="catalog-clear-filters" type="button">Limpar filtros</button>
             </div>
 
             <div class="menu-list">
