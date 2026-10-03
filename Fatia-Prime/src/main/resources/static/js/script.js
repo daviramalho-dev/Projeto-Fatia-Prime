@@ -87,6 +87,9 @@ const publicOrderTracking = document.querySelector('.order-tracking');
 const publicWhatsapp = document.querySelector('.whatsapp-float');
 const publicMenuFilters = document.querySelector('.menu-filters');
 const catalogFeedback = document.querySelector('.catalog-feedback');
+const catalogSearch = document.querySelector('#catalog-search');
+const catalogResults = document.querySelector('.catalog-results');
+const catalogClearFilters = document.querySelector('.catalog-clear-filters');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
@@ -101,6 +104,7 @@ let adminOrders = [];
 let adminOrdersRequestId = 0;
 let publicProducts = [];
 let publicCategories = [];
+let selectedCatalogCategory = 'all';
 let adminProducts = [];
 let adminCategories = [];
 let adminPizzaOptions = [];
@@ -456,6 +460,16 @@ async function fetchApiJson(url, options = {}) {
 }
 
 async function loadPublicCatalog() {
+    const menuList = document.querySelector('.menu-list');
+    const pizzaGrid = document.querySelector('.pizza-grid');
+    const featuredSection = pizzaGrid?.closest('.destaques');
+    if (menuList) {
+        menuList.setAttribute('aria-busy', 'true');
+        menuList.innerHTML = '<p class="catalog-empty">Carregando cardápio...</p>';
+    }
+    if (pizzaGrid) pizzaGrid.replaceChildren();
+    if (featuredSection) featuredSection.hidden = true;
+    if (catalogResults) catalogResults.textContent = 'Carregando cardápio...';
     try {
         const [products, categories] = await Promise.all([
             fetchApiJson('/api/produtos'),
@@ -467,21 +481,27 @@ async function loadPublicCatalog() {
             .map((category) => ({ id: category.id, name: String(category.nome).trim() }));
         publicProducts = products.map((product) => normalizeApiProduct(product, publicCategories)).filter(Boolean);
         renderCategoryFilters(publicCategories, 'public');
+        if (catalogFeedback) {
+            catalogFeedback.textContent = '';
+            catalogFeedback.hidden = true;
+        }
         renderPublicCatalog();
     } catch (error) {
         publicProducts = [];
         publicCategories = [];
         renderCategoryFilters([], 'public');
-        renderPublicCatalog();
         showCatalogMessage(error.message || 'Não foi possível carregar o cardápio.');
+        renderPublicCatalog();
+    } finally {
+        if (menuList) menuList.setAttribute('aria-busy', 'false');
     }
 }
 
 function renderCategoryFilters(categories, mode) {
     if (!publicMenuFilters || mode !== 'public') return;
     publicMenuFilters.innerHTML = [
-        '<button class="menu-filter-button is-active" type="button" data-filter="all" aria-pressed="true">Todos</button>',
-        ...categories.map((category) => `<button class="menu-filter-button" type="button" data-filter="${escapeHtml(category.id)}" aria-pressed="false">${escapeHtml(category.name)}</button>`),
+        `<button class="menu-filter-button${selectedCatalogCategory === 'all' ? ' is-active' : ''}" type="button" data-filter="all" aria-pressed="${selectedCatalogCategory === 'all'}">Todas</button>`,
+        ...categories.map((category) => `<button class="menu-filter-button${String(category.id) === selectedCatalogCategory ? ' is-active' : ''}" type="button" data-filter="${escapeHtml(category.id)}" aria-pressed="${String(category.id) === selectedCatalogCategory}">${escapeHtml(category.name)}</button>`),
     ].join('');
 }
 
@@ -493,12 +513,24 @@ function showCatalogMessage(message) {
 function renderPublicCatalog() {
     const pizzaGrid = document.querySelector('.pizza-grid');
     const menuList = document.querySelector('.menu-list');
-    const products = publicProducts.filter((product) => product.active);
+    const featuredSection = pizzaGrid?.closest('.destaques');
+    const search = normalizeCatalogSearch(catalogSearch?.value || '');
+    const filtersActive = Boolean(search || selectedCatalogCategory !== 'all');
+    if (catalogClearFilters) catalogClearFilters.disabled = !filtersActive;
+    const products = publicProducts.filter((product) => (
+        product.active
+        && (selectedCatalogCategory === 'all' || String(product.categoryId) === selectedCatalogCategory)
+        && (!search || normalizeCatalogSearch(product.name).includes(search))
+    ));
     const featuredNames = ['Calabresa Prime', 'Havaiana de Frango', 'Costela com Catupiry'];
-    const featuredProducts = featuredNames
+    const featuredProducts = filtersActive ? [] : featuredNames
         .map((name) => products.find((product) => product.name === name))
         .filter(Boolean);
-    const menuProducts = products.filter((product) => !featuredNames.includes(product.name));
+    const menuProducts = filtersActive ? products : products.filter((product) => !featuredNames.includes(product.name));
+    if (featuredSection) featuredSection.hidden = filtersActive || products.length === 0;
+    if (catalogResults) {
+        catalogResults.textContent = `${products.length} ${products.length === 1 ? 'produto encontrado' : 'produtos encontrados'}.`;
+    }
     if (pizzaGrid) {
         pizzaGrid.innerHTML = featuredProducts.map((product) => `
             <article class="pizza-card" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">
@@ -510,14 +542,27 @@ function renderPublicCatalog() {
             </article>`).join('');
     }
     if (menuList) {
-        menuList.innerHTML = menuProducts.map((product) => `
+        menuList.innerHTML = menuProducts.length ? menuProducts.map((product) => `
             <div class="menu-item" data-category="${escapeHtml(product.categoryId)}">
                 <div class="menu-text"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div>
                 <div class="menu-actions"><strong>${money.format(product.price)}</strong><button class="btn-menu-add" type="button" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">ADICIONAR</button></div>
-            </div>`).join('');
+            </div>`).join('')
+            : `<p class="catalog-empty" role="status">${filtersActive
+                ? 'Nenhum produto encontrado com esses filtros.'
+                : catalogFeedback?.textContent || 'Nenhum produto disponível no momento.'}</p>`;
     }
 }
 
+function normalizeCatalogSearch(value) {
+    return String(value || '').trim().normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('pt-BR');
+}
+
+function resetCatalogFilters() {
+    if (catalogSearch) catalogSearch.value = '';
+    selectedCatalogCategory = 'all';
+    renderCategoryFilters(publicCategories, 'public');
+    renderPublicCatalog();
+}
 function openCart() {
     if (!panel || !backdrop) return;
     panel.classList.add('is-open');
@@ -1638,6 +1683,7 @@ function updateCart() {
 }
 
 async function addProduct(element) {
+    if (!element || element.disabled) return;
     const productId = Number(element.dataset.productId);
     const product = publicProducts.find((item) => item.id === productId);
     if (!product) return;
@@ -1665,6 +1711,10 @@ async function addProduct(element) {
     }
     if (!pizzaCustomizer) return;
 
+    const originalLabel = element.textContent;
+    element.disabled = true;
+    element.setAttribute('aria-busy', 'true');
+    element.textContent = 'CARREGANDO...';
     try {
         customizerOptions = await fetchApiJson(`/api/opcoes-pizza?tipoProduto=${encodeURIComponent(product.type)}`);
         if (!Array.isArray(customizerOptions)) throw new Error('Não foi possível carregar as opções da pizza.');
@@ -1705,6 +1755,10 @@ async function addProduct(element) {
             catalogFeedback.textContent = 'Não foi possível carregar as opções da pizza. Tente novamente.';
             catalogFeedback.hidden = false;
         }
+    } finally {
+        element.disabled = false;
+        element.removeAttribute('aria-busy');
+        element.textContent = originalLabel;
     }
 }
 
@@ -1896,17 +1950,9 @@ function addCustomizedPizza() {
 }
 
 function applyCategoryFilter(category) {
-    const menuItems = document.querySelectorAll('.menu-item');
-    menuItems.forEach((item) => {
-        const matches = category === 'all' || item.dataset.category === category;
-        item.style.display = matches ? '' : 'none';
-    });
-
-    document.querySelectorAll('.menu-filter-button').forEach((button) => {
-        const isActive = button.dataset.filter === category;
-        button.classList.toggle('is-active', isActive);
-        button.setAttribute('aria-pressed', String(isActive));
-    });
+    selectedCatalogCategory = category;
+    renderCategoryFilters(publicCategories, 'public');
+    renderPublicCatalog();
 }
 
 loadPublicCatalog();
@@ -1916,6 +1962,8 @@ publicMenuFilters?.addEventListener('click', (event) => {
     const button = event.target.closest('.menu-filter-button');
     if (button) applyCategoryFilter(button.dataset.filter);
 });
+catalogSearch?.addEventListener('input', renderPublicCatalog);
+catalogClearFilters?.addEventListener('click', resetCatalogFilters);
 
 pizzaCustomizer?.querySelector('.pizza-customizer-close')?.addEventListener('click', () => pizzaCustomizer.close());
 pizzaCustomizer?.addEventListener('click', (event) => {
@@ -1939,7 +1987,7 @@ customizerAddToCart?.addEventListener('click', addCustomizedPizza);
 
 document.querySelector('.pizza-grid')?.addEventListener('click', (event) => {
     const button = event.target.closest('.btn-card');
-    if (button) addProduct(button.closest('[data-product]'));
+    if (button) addProduct(button);
 });
 
 document.querySelector('.menu-list')?.addEventListener('click', (event) => {
