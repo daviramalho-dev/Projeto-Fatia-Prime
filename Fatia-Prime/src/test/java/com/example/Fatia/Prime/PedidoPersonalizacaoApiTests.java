@@ -248,7 +248,7 @@ class PedidoPersonalizacaoApiTests {
             .andReturn().getResponse().getContentAsString();
         String codigo = resposta.replaceAll(".*\\\"codigo\\\":\\\"([^\\\"]+)\\\".*", "$1");
 
-        mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo))
+        mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo).param("telefone", "61999998888"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].subtotal").value(61.00))
             .andExpect(jsonPath("$[0].frete").value(5.00))
@@ -299,7 +299,6 @@ class PedidoPersonalizacaoApiTests {
         String corpo = """
             {
               "clienteNome":"Cliente BL48",
-              "clienteEmail":"cliente-bl48@fatiaprime.test",
               "clienteTelefone":"61999998888",
               "cep":"99990000",
               "endereco":"Rua da Pizza, 10",

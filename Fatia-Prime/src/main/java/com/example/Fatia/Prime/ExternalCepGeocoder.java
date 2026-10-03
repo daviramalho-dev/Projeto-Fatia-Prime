@@ -11,8 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -20,6 +19,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriComponentsBuilder;
 import tools.jackson.databind.JsonNode;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 @Component
 public class ExternalCepGeocoder implements CepGeocoder {
@@ -30,7 +31,14 @@ public class ExternalCepGeocoder implements CepGeocoder {
 
     private final FreteProperties properties;
     private final RestClient restClient;
-    private final ConcurrentMap<String, List<Coordenadas>> cache = new ConcurrentHashMap<>();
+    private final Cache<String, List<Coordenadas>> cache = Caffeine.newBuilder()
+        .maximumSize(5_000)
+        .expireAfterWrite(24, TimeUnit.HOURS)
+        .build();
+    private final Cache<String, Endereco> enderecoCache = Caffeine.newBuilder()
+        .maximumSize(5_000)
+        .expireAfterWrite(24, TimeUnit.HOURS)
+        .build();
     private final Object nominatimRateLimit = new Object();
     private long lastNominatimRequestNanos;
 
@@ -51,16 +59,21 @@ public class ExternalCepGeocoder implements CepGeocoder {
 
     @Override
     public List<Coordenadas> geocodificarOpcoes(String cep) {
-        return cache.computeIfAbsent(cep, this::consultar);
+        return cache.get(cep, this::consultar);
+    }
+
+    @Override
+    public Endereco buscarEndereco(String cep) {
+        return enderecoCache.get(cep, this::consultarViaCep);
     }
 
     private List<Coordenadas> consultar(String cep) {
         Coordenadas brasilApi = buscarBrasilApi(cep);
         if (brasilApi != null) return List.of(brasilApi);
 
-        EnderecoCep endereco;
+        Endereco endereco;
         try {
-            endereco = buscarViaCep(cep);
+            endereco = buscarEndereco(cep);
         } catch (GeocodificacaoIndisponivelException exception) {
             List<Coordenadas> porCep = buscarNoNominatimPorCep(cep);
             if (!porCep.isEmpty()) return porCep;
@@ -97,7 +110,7 @@ public class ExternalCepGeocoder implements CepGeocoder {
         }
     }
 
-    private EnderecoCep buscarViaCep(String cep) {
+    private Endereco consultarViaCep(String cep) {
         JsonNode resposta;
         try {
             resposta = restClient.get()
@@ -113,7 +126,8 @@ public class ExternalCepGeocoder implements CepGeocoder {
             throw new CepNaoEncontradoException();
         }
 
-        EnderecoCep endereco = new EnderecoCep(
+        Endereco endereco = new Endereco(
+            cep,
             texto(resposta, "logradouro"),
             texto(resposta, "bairro"),
             texto(resposta, "localidade"),
@@ -126,7 +140,7 @@ public class ExternalCepGeocoder implements CepGeocoder {
         return endereco;
     }
 
-    private List<Coordenadas> geocodificarEndereco(String cep, EnderecoCep endereco) {
+    private List<Coordenadas> geocodificarEndereco(String cep, Endereco endereco) {
         Map<String, Coordenadas> coordenadas = new LinkedHashMap<>();
         GeocodificacaoIndisponivelException falhaProvedor = null;
         List<Consulta> consultas = List.of(
@@ -162,7 +176,7 @@ public class ExternalCepGeocoder implements CepGeocoder {
         throw new GeocodificacaoIndisponivelException();
     }
 
-    private List<Coordenadas> buscarNoNominatim(Consulta consulta, EnderecoCep endereco) {
+    private List<Coordenadas> buscarNoNominatim(Consulta consulta, Endereco endereco) {
         String url = UriComponentsBuilder.fromUriString(properties.getNominatimUrl())
             .queryParam("q", consulta.query())
             .queryParam("format", "jsonv2")
@@ -226,7 +240,7 @@ public class ExternalCepGeocoder implements CepGeocoder {
         }
     }
 
-    private List<Coordenadas> extrairResultados(JsonNode respostas, EnderecoCep endereco, NivelBusca nivel) {
+    private List<Coordenadas> extrairResultados(JsonNode respostas, Endereco endereco, NivelBusca nivel) {
         if (respostas == null || !respostas.isArray()) return List.of();
         List<Coordenadas> coordenadas = new ArrayList<>();
         for (JsonNode resposta : respostas) {
@@ -269,7 +283,7 @@ public class ExternalCepGeocoder implements CepGeocoder {
         return false;
     }
 
-    private boolean localidadeCompativel(EnderecoCep endereco, JsonNode address) {
+    private boolean localidadeCompativel(Endereco endereco, JsonNode address) {
         return bairroCompativel(endereco.bairro(), address)
             || cidadeCompativel(endereco.localidade(), address);
     }
@@ -364,9 +378,6 @@ public class ExternalCepGeocoder implements CepGeocoder {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
         requestFactory.setReadTimeout(properties.getReadTimeout());
         return RestClient.builder().requestFactory(requestFactory).build();
-    }
-
-    private record EnderecoCep(String logradouro, String bairro, String localidade, String uf) {
     }
 
     private record Consulta(String query, NivelBusca nivel) {

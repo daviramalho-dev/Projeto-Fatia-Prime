@@ -151,14 +151,13 @@ class PedidoCatalogoApiTests {
             .andReturn().getResponse().getContentAsString();
         String codigo = resposta.replaceAll(".*\\\"codigo\\\":\\\"([^\\\"]+)\\\".*", "$1");
 
-        mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo))
+        mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo).param("telefone", "61999998888"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].subtotal").value(88.50))
             .andExpect(jsonPath("$[0].frete").value(8.00))
             .andExpect(jsonPath("$[0].valorTotal").value(96.50))
             .andExpect(jsonPath("$[0].itens[0].molhos[0].nome").value("Molho BL50"))
-            .andExpect(jsonPath("$[0].itens[1].nomeProduto").value("Bebida BL50"))
-            .andExpect(jsonPath("$[0].clienteEmail").doesNotExist());
+            .andExpect(jsonPath("$[0].itens[1].nomeProduto").value("Bebida BL50"));
 
         mockMvc.perform(get("/api/admin/pedidos").session(adminSession()))
             .andExpect(status().isOk())
@@ -175,7 +174,7 @@ class PedidoCatalogoApiTests {
         molho.setNome("Molho renomeado");
         molho.setPrecoAdicional(new BigDecimal("9.99"));
         opcaoPizzaRepository.saveAndFlush(molho);
-        mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo))
+        mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo).param("telefone", "61999998888"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].itens[0].molhos[0].nome").value("Molho BL50"))
             .andExpect(jsonPath("$[0].itens[0].molhos[0].precoAdicional").value(2.50))
@@ -283,7 +282,6 @@ class PedidoCatalogoApiTests {
         return """
             {
               "clienteNome":"Cliente BL50",
-              "clienteEmail":"cliente-bl50@fatiaprime.test",
               "clienteTelefone":"61999998888",
               "cep":"99990100",
               "endereco":"Rua BL50, 10 · Centro · Cidade - UF · CEP 99990-100",

@@ -26,6 +26,18 @@ public class FreteController {
         return calcularFrete(cep, geocoder, properties, HttpStatus.NOT_FOUND);
     }
 
+    @GetMapping("/endereco")
+    public CepGeocoder.Endereco buscarEndereco(@RequestParam(required = false) String cep) {
+        String cepNormalizado = normalizarCep(cep);
+        try {
+            return geocoder.buscarEndereco(cepNormalizado);
+        } catch (CepGeocoder.CepNaoEncontradoException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
+        } catch (CepGeocoder.GeocodificacaoIndisponivelException exception) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
+        }
+    }
+
     static FreteResponse calcularFrete(
         String cep,
         CepGeocoder geocoder,

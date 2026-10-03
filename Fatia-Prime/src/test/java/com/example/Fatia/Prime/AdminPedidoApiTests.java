@@ -176,7 +176,7 @@ class AdminPedidoApiTests {
             .andExpect(jsonPath("$.codigo").value("FP-TESTE-001"))
             .andExpect(jsonPath("$.nomeCliente").value("João da Silva"))
             .andExpect(jsonPath("$.telefone").value("(11) 98765-4321"))
-            .andExpect(jsonPath("$.email").value("admin-api@fatiaprime.test"))
+            .andExpect(jsonPath("$.email").doesNotExist())
             .andExpect(jsonPath("$.senha_hash").doesNotExist())
             .andExpect(jsonPath("$.senhaHash").doesNotExist());
     }
