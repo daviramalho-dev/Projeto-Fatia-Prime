@@ -53,6 +53,8 @@ public class SecurityConfig {
                     "/css/**",
                     "/js/**",
                     "/assets/**",
+                    "/favicon.svg",
+                    "/robots.txt",
                     "/api/auth/**",
                     "/api/produtos/**",
                     "/api/categorias/**",

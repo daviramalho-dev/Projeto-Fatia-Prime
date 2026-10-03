@@ -24,6 +24,9 @@ public class Produto {
     @Column(length = 500)
     private String imagem;
 
+    @Column(length = 40)
+    private String destaque;
+
     @Column(nullable = false)
     private boolean ativo = true;
 
@@ -82,6 +85,14 @@ public class Produto {
 
     public void setImagem(String imagem) {
         this.imagem = imagem;
+    }
+
+    public String getDestaque() {
+        return destaque;
+    }
+
+    public void setDestaque(String destaque) {
+        this.destaque = destaque;
     }
 
     public boolean isAtivo() {

@@ -8,12 +8,10 @@ public record PedidoConsultaResponse(
     String codigo,
     String status,
     LocalDateTime dataCriacao,
-    String clienteTelefone,
     BigDecimal valorTotal,
     List<ItemPedidoResponse> itens,
     BigDecimal subtotal,
-    BigDecimal frete,
-    boolean calculoAproximado
+    BigDecimal frete
 ) {
     public static PedidoConsultaResponse de(Pedido pedido) {
         List<ItemPedidoResponse> itens = pedido.getItens() == null
@@ -24,12 +22,10 @@ public record PedidoConsultaResponse(
             pedido.getCodigo(),
             pedido.getStatus(),
             pedido.getDataCriacao(),
-            pedido.getClienteTelefone(),
             pedido.getValorTotal(),
             itens,
             pedido.calcularSubtotal(),
-            pedido.getValorFrete(),
-            pedido.isCalculoFreteAproximado()
+            pedido.getValorFrete()
         );
     }
 }

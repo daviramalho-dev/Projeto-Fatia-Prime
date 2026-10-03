@@ -30,8 +30,10 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	implementation 'org.springframework.security:spring-security-crypto'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'com.github.ben-manes.caffeine:caffeine:3.2.2'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+	systemProperty 'app.rate-limit.enabled', 'false'
 }

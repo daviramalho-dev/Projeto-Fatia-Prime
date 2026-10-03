@@ -3,6 +3,7 @@ const CART_STORAGE_KEY = 'fatia-prime-cart';
 const ORDER_STORAGE_KEY = 'fatia-prime-last-order';
 const ORDER_HISTORY_STORAGE_KEY = 'fatia-prime-orders';
 const PRODUCT_STORAGE_KEY = 'fatia-prime-products';
+const CHECKOUT_ADDRESS_STORAGE_KEY = 'fatia-prime-checkout-address';
 const ORDER_STATUSES = ['Pedido recebido', 'Pedido em andamento', 'Pedido concluído'];
 const PRODUCT_CATEGORIES = ['classicas', 'carnes', 'frango', 'queijos'];
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -104,11 +105,19 @@ const catalogFeedback = document.querySelector('.catalog-feedback');
 const catalogSearch = document.querySelector('#catalog-search');
 const catalogResults = document.querySelector('.catalog-results');
 const catalogClearFilters = document.querySelector('.catalog-clear-filters');
+const catalogRetryButton = document.createElement('button');
+const adminSoundToggle = document.querySelector('.admin-sound-toggle');
+const adminLiveStatus = document.querySelector('.admin-orders-live-status');
 const backdrop = document.querySelector('.cart-backdrop');
 const itemsElement = document.querySelector('.cart-items');
 const totalElement = document.querySelector('.cart-total strong');
 let deliveryQuoteRequestId = 0;
 let currentDeliveryQuote = null;
+let addressLookupRequestId = 0;
+let addressLookupPromise = null;
+let addressLookupPromiseCep = '';
+let currentAddressDataCep = '';
+let checkoutAddressLastCep = '';
 let editingProductId = null;
 let editingCategoryId = null;
 let editingOptionId = null;
@@ -125,11 +134,43 @@ let adminProducts = [];
 let adminCategories = [];
 let adminPizzaOptions = [];
 let adminCatalogRequestId = 0;
+let publicCatalogLoadInProgress = false;
+let publicCatalogLoadFailed = false;
+let catalogLoadMessageTimer = null;
+let adminRefreshTimer = null;
+let adminRefreshInProgress = false;
+let adminOrdersLoading = false;
+let adminDashboardLoading = false;
+let adminOrdersReloadQueued = false;
+let adminDashboardReloadQueued = false;
+let clientOrderRefreshTimer = null;
+let clientOrderRefreshInProgress = false;
+let activeClientOrderCredentials = null;
+let activeClientOrderStatus = '';
+let adminSoundEnabled = false;
+let knownAdminOrderIds = null;
+const newAdminOrderIds = new Set();
+let adminAudioContext = null;
 
 function setInterfaceMode(mode) {
     const isPublic = mode === 'public';
     const isLogin = mode === 'admin-login';
     const isWorkspace = mode === 'admin-workspace';
+    if (!isWorkspace) {
+        stopAdminAutoRefresh();
+        adminOrdersReloadQueued = false;
+        adminDashboardReloadQueued = false;
+    }
+    if (!isPublic) {
+        window.clearInterval(clientOrderRefreshTimer);
+        clientOrderRefreshTimer = null;
+    } else if (activeClientOrderCredentials) {
+        startClientOrderAutoRefresh(
+            activeClientOrderCredentials.code,
+            activeClientOrderCredentials.phone,
+            orderQueryResult?.querySelector('.order-query-status')?.textContent
+        );
+    }
     document.body.classList.toggle('admin-mode', isWorkspace);
     if (adminHeader) adminHeader.hidden = !isWorkspace;
     if (publicHeader) publicHeader.hidden = !isPublic;
@@ -169,6 +210,7 @@ function openAdminWorkspace() {
     loadAdminDashboard();
     loadAdminOrders();
     loadAdminProducts();
+    startAdminAutoRefresh();
 }
 
 function readCookie(name) {
@@ -237,10 +279,15 @@ function renderAdminSummary(dashboard) {
         : '—';
 }
 
-async function loadAdminDashboard() {
+async function loadAdminDashboard({ quiet = false } = {}) {
+    if (adminDashboardLoading) {
+        if (!quiet) adminDashboardReloadQueued = true;
+        return;
+    }
+    adminDashboardLoading = true;
     const requestId = ++adminDashboardRequestId;
-    renderAdminSummary(null);
-    if (adminDashboardMessage) {
+    if (!quiet) renderAdminSummary(null);
+    if (!quiet && adminDashboardMessage) {
         adminDashboardMessage.textContent = 'Carregando indicadores...';
         adminDashboardMessage.className = 'admin-dashboard-message';
     }
@@ -272,10 +319,16 @@ async function loadAdminDashboard() {
         if (adminDashboardMessage) adminDashboardMessage.textContent = '';
     } catch (error) {
         if (requestId !== adminDashboardRequestId) return;
-        renderAdminSummary(null);
+        if (!quiet) renderAdminSummary(null);
         if (adminDashboardMessage) {
             adminDashboardMessage.textContent = error.message || 'Não foi possível carregar os indicadores.';
             adminDashboardMessage.className = 'admin-dashboard-message error';
+        }
+    } finally {
+        adminDashboardLoading = false;
+        if (adminDashboardReloadQueued && document.body.classList.contains('admin-mode')) {
+            adminDashboardReloadQueued = false;
+            void loadAdminDashboard();
         }
     }
 }
@@ -304,6 +357,10 @@ async function readAdminApiError(response, fallback) {
 }
 
 function normalizeAdminOrder(order) {
+    const freight = normalizeOrderFreight(order);
+    if (freight === null) {
+        throw new Error('A resposta do frete do pedido está indisponível.');
+    }
     return {
         id: order.id,
         code: order.codigo,
@@ -312,14 +369,13 @@ function normalizeAdminOrder(order) {
         customer: order.nomeCliente,
         phone: order.telefone,
         cep: order.cep || '',
-        email: order.email,
         address: order.endereco,
         notes: order.observacoes,
         items: Array.isArray(order.itens)
             ? order.itens.map((item) => ({ ...normalizeOrderItem(item), id: item.id }))
             : [],
         subtotal: Number(order.subtotal ?? order.total) || 0,
-        freight: Number(order.frete) || 0,
+        freight,
         total: Number(order.total) || 0,
         approximateFreight: order.calculoAproximado === true,
     };
@@ -343,14 +399,19 @@ function getAdminOrderFilters() {
     return params;
 }
 
-async function loadAdminOrders() {
+async function loadAdminOrders({ automatic = false, quiet = false } = {}) {
     if (!adminOrderList) return;
+    if (adminOrdersLoading) {
+        if (!automatic) adminOrdersReloadQueued = true;
+        return;
+    }
+    adminOrdersLoading = true;
     const requestId = ++adminOrdersRequestId;
-    if (adminOrdersMessage) {
+    if (!quiet && adminOrdersMessage) {
         adminOrdersMessage.textContent = 'Carregando pedidos...';
         adminOrdersMessage.className = 'admin-orders-message';
     }
-    adminOrderList.setAttribute('aria-busy', 'true');
+    if (!quiet) adminOrderList.setAttribute('aria-busy', 'true');
     adminOrdersEmpty.hidden = true;
 
     try {
@@ -365,17 +426,41 @@ async function loadAdminOrders() {
         const data = await response.json();
         if (requestId !== adminOrdersRequestId) return;
         adminOrders = Array.isArray(data) ? data.map(normalizeAdminOrder) : [];
+        const incomingIds = new Set(adminOrders.map((order) => String(order.id)));
+        if (knownAdminOrderIds === null) {
+            knownAdminOrderIds = incomingIds;
+        } else {
+            const previousPollTime = Date.now() - 25_000;
+            const newlyArrived = automatic
+                ? adminOrders.filter((order) => !knownAdminOrderIds.has(String(order.id))
+                    && Date.parse(order.createdAt) >= previousPollTime)
+                : [];
+            for (const order of adminOrders) knownAdminOrderIds.add(String(order.id));
+            for (const order of newlyArrived) newAdminOrderIds.add(String(order.id));
+            if (newlyArrived.length) {
+                playAdminOrderAlert();
+                updateAdminNewOrderIndicator();
+            }
+        }
         renderAdminOrders();
-        adminOrderList.setAttribute('aria-busy', 'false');
+        if (!quiet) adminOrderList.setAttribute('aria-busy', 'false');
     } catch (error) {
         if (requestId !== adminOrdersRequestId) return;
-        adminOrders = [];
-        adminOrderList.innerHTML = '';
-        adminOrderList.setAttribute('aria-busy', 'false');
-        adminOrdersEmpty.hidden = false;
-        adminOrdersEmpty.querySelector('strong').textContent = 'Não foi possível carregar os pedidos';
-        adminOrdersEmpty.querySelector('span').textContent = error.message || 'Tente novamente.';
+        if (!quiet) {
+            adminOrders = [];
+            adminOrderList.innerHTML = '';
+            adminOrderList.setAttribute('aria-busy', 'false');
+            adminOrdersEmpty.hidden = false;
+            adminOrdersEmpty.querySelector('strong').textContent = 'Não foi possível carregar os pedidos';
+            adminOrdersEmpty.querySelector('span').textContent = error.message || 'Tente novamente.';
+        }
         showAdminApiError(error.message || 'Não foi possível carregar os pedidos.');
+    } finally {
+        adminOrdersLoading = false;
+        if (adminOrdersReloadQueued && document.body.classList.contains('admin-mode')) {
+            adminOrdersReloadQueued = false;
+            void loadAdminOrders();
+        }
     }
 }
 
@@ -503,6 +588,7 @@ function normalizeApiProduct(product, categories) {
         categoryName: category?.name || String(product.categoriaNome || '').trim(),
         price,
         image: String(product.imagem || '').trim(),
+        highlight: String(product.destaque || '').trim(),
         active: product.ativo !== false,
     };
 }
@@ -519,6 +605,9 @@ async function fetchApiJson(url, options = {}) {
 }
 
 async function loadPublicCatalog() {
+    if (publicCatalogLoadInProgress) return;
+    publicCatalogLoadInProgress = true;
+    publicCatalogLoadFailed = false;
     const menuList = document.querySelector('.menu-list');
     const pizzaGrid = document.querySelector('.pizza-grid');
     const featuredSection = pizzaGrid?.closest('.destaques');
@@ -529,6 +618,16 @@ async function loadPublicCatalog() {
     if (pizzaGrid) pizzaGrid.replaceChildren();
     if (featuredSection) featuredSection.hidden = true;
     if (catalogResults) catalogResults.textContent = 'Carregando cardápio...';
+    if (catalogFeedback) {
+        catalogFeedback.textContent = '';
+        catalogFeedback.hidden = true;
+    }
+    catalogLoadMessageTimer = window.setTimeout(() => {
+        if (publicCatalogLoadInProgress && catalogFeedback) {
+            catalogFeedback.textContent = 'Acordando o servidor, pode levar até 1 minuto...';
+            catalogFeedback.hidden = false;
+        }
+    }, 5000);
     try {
         const [products, categories] = await Promise.all([
             fetchApiJson('/api/produtos'),
@@ -546,12 +645,16 @@ async function loadPublicCatalog() {
         }
         renderPublicCatalog();
     } catch (error) {
+        publicCatalogLoadFailed = true;
         publicProducts = [];
         publicCategories = [];
         renderCategoryFilters([], 'public');
-        showCatalogMessage(error.message || 'Não foi possível carregar o cardápio.');
+        showCatalogMessage('Não foi possível carregar o cardápio. Tente novamente.');
         renderPublicCatalog();
     } finally {
+        window.clearTimeout(catalogLoadMessageTimer);
+        catalogLoadMessageTimer = null;
+        publicCatalogLoadInProgress = false;
         if (menuList) menuList.setAttribute('aria-busy', 'false');
     }
 }
@@ -567,6 +670,14 @@ function renderCategoryFilters(categories, mode) {
 function showCatalogMessage(message) {
     const menuList = document.querySelector('.menu-list');
     if (menuList && !publicProducts.length) menuList.innerHTML = `<div class="catalog-message">${escapeHtml(message)}</div>`;
+    if (catalogFeedback) {
+        catalogFeedback.replaceChildren(document.createTextNode(message), document.createTextNode(' '));
+        catalogRetryButton.type = 'button';
+        catalogRetryButton.className = 'catalog-retry-button';
+        catalogRetryButton.textContent = 'Tentar novamente';
+        catalogFeedback.append(catalogRetryButton);
+        catalogFeedback.hidden = false;
+    }
 }
 
 function renderPublicCatalog() {
@@ -581,20 +692,20 @@ function renderPublicCatalog() {
         && (selectedCatalogCategory === 'all' || String(product.categoryId) === selectedCatalogCategory)
         && (!search || normalizeCatalogSearch(product.name).includes(search))
     ));
-    const featuredNames = ['Calabresa Prime', 'Havaiana de Frango', 'Costela com Catupiry'];
-    const featuredProducts = filtersActive ? [] : featuredNames
-        .map((name) => products.find((product) => product.name === name))
-        .filter(Boolean);
-    const menuProducts = filtersActive ? products : products.filter((product) => !featuredNames.includes(product.name));
+    const featuredProducts = filtersActive ? [] : products.filter((product) => product.highlight).slice(0, 3);
+    const menuProducts = products;
     if (featuredSection) featuredSection.hidden = filtersActive || products.length === 0;
     if (catalogResults) {
-        catalogResults.textContent = `${products.length} ${products.length === 1 ? 'produto encontrado' : 'produtos encontrados'}.`;
+        catalogResults.textContent = publicCatalogLoadFailed
+            ? 'Não foi possível carregar o cardápio.'
+            : `${products.length} ${products.length === 1 ? 'produto encontrado' : 'produtos encontrados'}.`;
     }
     if (pizzaGrid) {
         pizzaGrid.innerHTML = featuredProducts.map((product) => `
             <article class="pizza-card" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">
                 <div class="pizza-image">
-                    ${product.image ? `<img class="pizza-zoom-menor" src="${escapeHtml(product.image)}" alt="Pizza ${escapeHtml(product.name)}">` : '<div class="pizza-image-placeholder" aria-hidden="true">FP</div>'}
+                    ${renderProductVisual(product, 'featured')}
+                    ${product.highlight ? `<span class="badge">${escapeHtml(product.highlight)}</span>` : ''}
                 </div>
                 <div class="pizza-info"><div><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div><strong>${money.format(product.price)}</strong></div>
                 <button class="btn-card" type="button" data-product-id="${product.id}">ADICIONAR</button>
@@ -610,6 +721,20 @@ function renderPublicCatalog() {
                 ? 'Nenhum produto encontrado com esses filtros.'
                 : catalogFeedback?.textContent || 'Nenhum produto disponível no momento.'}</p>`;
     }
+}
+
+function renderProductVisual(product, presentation) {
+    const categoryClass = normalizeCatalogSearch(product.categoryName || product.type)
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'outros';
+    const visualClass = presentation === 'featured' ? 'pizza-image-placeholder' : 'customizer-product-placeholder';
+    if (product.image) {
+        const imageClass = presentation === 'featured' ? 'pizza-zoom-menor'
+            : 'customizer-product-image';
+        const dimension = presentation === 'featured' ? '800' : '520';
+        return `<img class="${imageClass}" src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" loading="lazy" width="${dimension}" height="${dimension}">`;
+    }
+    return `<span class="${visualClass} category-art category-art-${escapeHtml(categoryClass)}" aria-hidden="true"><svg viewBox="0 0 64 64" focusable="false"><path d="M10 12 54 24 25 54 10 12Z"/><path d="m17 20 23 6M22 34l14 4"/><circle cx="22" cy="21" r="3"/><circle cx="31" cy="38" r="3"/></svg></span>`;
 }
 
 function normalizeCatalogSearch(value) {
@@ -1166,6 +1291,7 @@ function editAdminProduct(product) {
     adminProductForm.elements.namedItem('productType').value = product.type;
     adminProductForm.elements.namedItem('productPrice').value = product.price;
     adminProductForm.elements.namedItem('productImage').value = product.image;
+    adminProductForm.elements.namedItem('productHighlight').value = product.highlight;
     if (adminProductFormTitle) adminProductFormTitle.textContent = 'Editar produto';
     if (adminProductFormLabel) adminProductFormLabel.textContent = `EDIÇÃO DE ${getProductTypeLabel(product.type).toUpperCase()}`;
     if (adminProductCancel) adminProductCancel.hidden = false;
@@ -1204,6 +1330,7 @@ async function submitAdminProduct(event) {
     const categoryId = String(formData.get('productCategory') || '').trim();
     const price = Number(formData.get('productPrice'));
     const image = String(formData.get('productImage') || '').trim();
+    const highlight = String(formData.get('productHighlight') || '').trim();
 
     if (!name) {
         showAdminProductMessage('Informe o nome do produto.');
@@ -1230,6 +1357,7 @@ async function submitAdminProduct(event) {
         descricao: description,
         preco: price,
         imagem: image,
+        destaque: highlight || null,
         categoriaId: Number(categoryId),
         tipo: String(formData.get('productType') || 'SALGADA'),
         ativo: editingProductId
@@ -1279,7 +1407,6 @@ function renderAdminOrderDetails(order) {
         ['Nome', order.customer || 'Não informado'],
         ['Telefone', order.phone ? formatPhone(order.phone) : 'Não informado'],
         ['CEP', order.cep ? formatCep(order.cep) : 'Não informado'],
-        ['E-mail', order.email || 'Não informado'],
         ['Endereço', order.address || 'Não informado'],
         ['Observações', order.notes || 'Não informado'],
     ];
@@ -1328,6 +1455,7 @@ function renderAdminOrders() {
                     <div class="admin-order-card-title">
                         <strong>${escapeHtml(order.code)}</strong>
                         ${index === 0 ? '<span class="admin-order-latest">Mais recente</span>' : ''}
+                        ${newAdminOrderIds.has(String(order.id)) ? '<span class="admin-order-new">NOVO</span>' : ''}
                         <span class="admin-order-status ${getOrderStatusClass(order.status)}">${escapeHtml(order.status)}</span>
                     </div>
                     <div class="admin-order-card-meta">
@@ -1350,10 +1478,100 @@ function renderAdminOrders() {
         adminOrdersEmpty.querySelector('strong').textContent = 'Nenhum pedido disponível';
         adminOrdersEmpty.querySelector('span').textContent = 'Os pedidos disponíveis no sistema aparecerão aqui.';
     }
+
     if (adminOrdersMessage) {
         adminOrdersMessage.textContent = noOrders ? '' : `${adminOrders.length} ${adminOrders.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}.`;
         adminOrdersMessage.className = 'admin-orders-message';
     }
+}
+
+function updateAdminNewOrderIndicator() {
+    const count = newAdminOrderIds.size;
+    const ordersLink = document.querySelector('.admin-nav a[href="#painel-pedidos"]');
+    if (ordersLink) ordersLink.textContent = count ? `Pedidos (${count})` : 'Pedidos';
+    document.title = count
+        ? `(${count} novos) Fatia Prime | Pizzaria artesanal`
+        : 'Fatia Prime | Pizzaria artesanal';
+}
+
+function playAdminOrderAlert() {
+    if (!adminSoundEnabled || !window.AudioContext) return;
+    try {
+        adminAudioContext ||= new AudioContext();
+        if (adminAudioContext.state === 'suspended') void adminAudioContext.resume();
+        const oscillator = adminAudioContext.createOscillator();
+        const gain = adminAudioContext.createGain();
+        oscillator.frequency.value = 880;
+        gain.gain.setValueAtTime(0.12, adminAudioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, adminAudioContext.currentTime + 0.35);
+        oscillator.connect(gain);
+        gain.connect(adminAudioContext.destination);
+        oscillator.start();
+        oscillator.stop(adminAudioContext.currentTime + 0.35);
+    } catch (error) {
+        if (adminLiveStatus) adminLiveStatus.textContent = 'Não foi possível reproduzir o aviso sonoro.';
+    }
+}
+
+function startAdminAutoRefresh() {
+    window.clearInterval(adminRefreshTimer);
+    adminRefreshTimer = null;
+    if (document.hidden || !document.body.classList.contains('admin-mode')) return;
+    adminRefreshTimer = window.setInterval(async () => {
+        await refreshAdminWorkspace();
+    }, 20_000);
+}
+
+async function refreshAdminWorkspace() {
+    if (document.hidden || adminRefreshInProgress || adminOrdersLoading || adminDashboardLoading) return;
+    adminRefreshInProgress = true;
+    if (adminLiveStatus) adminLiveStatus.textContent = 'Atualizando pedidos e indicadores...';
+    try {
+        await Promise.all([
+            loadAdminOrders({ automatic: true, quiet: true }),
+            loadAdminDashboard({ quiet: true }),
+        ]);
+        if (adminLiveStatus) adminLiveStatus.textContent = 'Atualização automática ativa';
+    } finally {
+        adminRefreshInProgress = false;
+    }
+}
+
+function stopAdminAutoRefresh() {
+    window.clearInterval(adminRefreshTimer);
+    adminRefreshTimer = null;
+}
+
+function startClientOrderAutoRefresh(code, phone, status) {
+    window.clearInterval(clientOrderRefreshTimer);
+    activeClientOrderCredentials = { code, phone };
+    activeClientOrderStatus = status || '';
+    if (document.hidden || activeClientOrderStatus === 'Pedido concluído') return;
+    clientOrderRefreshTimer = window.setInterval(async () => {
+        if (document.hidden || clientOrderRefreshInProgress || !activeClientOrderCredentials) return;
+        clientOrderRefreshInProgress = true;
+        try {
+            const [order] = await queryOrdersByApi(
+                activeClientOrderCredentials.code,
+                activeClientOrderCredentials.phone
+            );
+            order.phone = activeClientOrderCredentials.phone;
+            activeClientOrderStatus = order.status;
+            renderOrderQueryResult(order);
+            if (order.status === 'Pedido concluído') {
+                window.clearInterval(clientOrderRefreshTimer);
+                clientOrderRefreshTimer = null;
+                activeClientOrderCredentials = null;
+            }
+        } catch (error) {
+            if (orderQueryMessage) {
+                orderQueryMessage.textContent = error.message || 'Não foi possível atualizar o status do pedido.';
+                orderQueryMessage.classList.add('error');
+            }
+        } finally {
+            clientOrderRefreshInProgress = false;
+        }
+    }, 30_000);
 }
 
 function renderConfirmation(orderData) {
@@ -1377,7 +1595,7 @@ function renderConfirmation(orderData) {
         </li>`).join('');
     if (confirmationSubtotalElement) confirmationSubtotalElement.textContent = money.format(Number(data.subtotal ?? data.total) || 0);
     if (confirmationFreightElement) {
-        confirmationFreightElement.textContent = `${money.format(Number(data.freight) || 0)}${data.approximateFreight ? ' (estimado)' : ''}`;
+        confirmationFreightElement.textContent = `${money.format(data.freight)}${data.approximateFreight ? ' (estimado)' : ''}`;
     }
     confirmationTotalElement.textContent = money.format(Number(data.total));
 
@@ -1456,6 +1674,168 @@ function syncDeliveryCepFields(value) {
     if (cartDeliveryCep && cartDeliveryCep.value !== formatted) cartDeliveryCep.value = formatted;
     const checkoutCep = checkoutForm?.elements.namedItem('customerCep');
     if (checkoutCep && checkoutCep.value !== formatted) checkoutCep.value = formatted;
+}
+
+const checkoutAddressFieldNames = [
+    'customerCep',
+    'customerState',
+    'customerStreet',
+    'customerNumber',
+    'customerComplement',
+    'customerNeighborhood',
+    'customerCity',
+];
+const cepAutofillFieldNames = [
+    'customerState',
+    'customerStreet',
+    'customerNeighborhood',
+    'customerCity',
+];
+
+function checkoutAddressField(name) {
+    return checkoutForm?.elements.namedItem(name);
+}
+
+function saveCheckoutAddress() {
+    if (!checkoutForm) return;
+    const fields = {};
+    const autoFields = {};
+    checkoutAddressFieldNames.forEach((name) => {
+        const field = checkoutAddressField(name);
+        if (!field) return;
+        fields[name] = field.value;
+        if (field.dataset.cepAutofilledValue) {
+            autoFields[name] = field.dataset.cepAutofilledValue;
+        }
+    });
+    try {
+        sessionStorage.setItem(CHECKOUT_ADDRESS_STORAGE_KEY, JSON.stringify({ fields, autoFields }));
+    } catch (error) {
+        console.warn('Não foi possível preservar o endereço nesta sessão.', error);
+    }
+}
+
+function clearCheckoutAddress() {
+    try {
+        sessionStorage.removeItem(CHECKOUT_ADDRESS_STORAGE_KEY);
+    } catch (error) {
+        console.warn('Não foi possível limpar o endereço preservado nesta sessão.', error);
+    }
+}
+
+function restoreCheckoutAddress() {
+    if (!checkoutForm) return;
+    try {
+        const saved = JSON.parse(sessionStorage.getItem(CHECKOUT_ADDRESS_STORAGE_KEY) || 'null');
+        if (!saved || typeof saved !== 'object') return;
+        checkoutAddressFieldNames.forEach((name) => {
+            const field = checkoutAddressField(name);
+            const value = saved.fields?.[name];
+            if (field && typeof value === 'string') field.value = value;
+            const autofilledValue = saved.autoFields?.[name];
+            if (field && typeof autofilledValue === 'string' && autofilledValue) {
+                field.dataset.cepAutofilledValue = autofilledValue;
+            }
+        });
+        checkoutAddressLastCep = String(checkoutAddressField('customerCep')?.value || '').replace(/\D/g, '');
+        syncDeliveryCepFields(checkoutAddressField('customerCep')?.value || '');
+    } catch (error) {
+        console.warn('Não foi possível restaurar o endereço desta sessão.', error);
+    }
+}
+
+function clearAutofilledAddressFields() {
+    cepAutofillFieldNames.forEach((name) => {
+        const field = checkoutAddressField(name);
+        const autofilledValue = field?.dataset.cepAutofilledValue;
+        if (!field || !autofilledValue) return;
+        if (field.value === autofilledValue) field.value = '';
+        delete field.dataset.cepAutofilledValue;
+    });
+    saveCheckoutAddress();
+}
+
+function handleCheckoutCepChange(value) {
+    const normalizedCep = String(value || '').replace(/\D/g, '');
+    if (normalizedCep !== checkoutAddressLastCep) {
+        checkoutAddressLastCep = normalizedCep;
+        currentAddressDataCep = '';
+        addressLookupRequestId += 1;
+        addressLookupPromise = null;
+        addressLookupPromiseCep = '';
+        clearAutofilledAddressFields();
+        const message = checkoutForm?.querySelector('.address-lookup-message');
+        if (message) message.textContent = '';
+    }
+}
+
+function setAddressLookupMessage(message, type = '') {
+    const element = checkoutForm?.querySelector('.address-lookup-message');
+    if (!element) return;
+    element.textContent = message;
+    element.classList.remove('success', 'error');
+    if (type) element.classList.add(type);
+}
+
+function applyCepAddress(address) {
+    const values = {
+        customerStreet: address?.logradouro,
+        customerNeighborhood: address?.bairro,
+        customerCity: address?.localidade,
+        customerState: address?.uf,
+    };
+    Object.entries(values).forEach(([name, rawValue]) => {
+        const field = checkoutAddressField(name);
+        const value = String(rawValue || '').trim();
+        if (!field || !value) return;
+        const oldAutofilledValue = field.dataset.cepAutofilledValue;
+        if (field.value && field.value !== oldAutofilledValue) return;
+        field.value = value;
+        field.dataset.cepAutofilledValue = value;
+    });
+}
+
+async function refreshAddressFromCep(value) {
+    const normalizedCep = String(value || '').replace(/\D/g, '');
+    if (!/^[0-9]{8}$/.test(normalizedCep)) return false;
+    if (normalizedCep !== String(checkoutAddressField('customerCep')?.value || '').replace(/\D/g, '')) {
+        return false;
+    }
+    if (currentAddressDataCep === normalizedCep) return true;
+    if (addressLookupPromiseCep === normalizedCep && addressLookupPromise) return addressLookupPromise;
+
+    const requestId = ++addressLookupRequestId;
+    addressLookupPromiseCep = normalizedCep;
+    setAddressLookupMessage('Buscando endereço do CEP...');
+    const request = fetchApiJson(`/api/frete/endereco?cep=${encodeURIComponent(normalizedCep)}`)
+        .then((address) => {
+            if (requestId !== addressLookupRequestId
+                || normalizedCep !== String(checkoutAddressField('customerCep')?.value || '').replace(/\D/g, '')) {
+                return false;
+            }
+            applyCepAddress(address);
+            currentAddressDataCep = normalizedCep;
+            saveCheckoutAddress();
+            setAddressLookupMessage('Endereço encontrado. Confira os dados e informe o número.', 'success');
+            return true;
+        })
+        .catch((error) => {
+            if (requestId === addressLookupRequestId) {
+                setAddressLookupMessage(
+                    error?.message || 'Não foi possível preencher o endereço automaticamente. Confira os dados manualmente.',
+                    'error'
+                );
+            }
+            return false;
+        })
+        .finally(() => {
+            if (addressLookupPromise === request) {
+                addressLookupPromise = null;
+                addressLookupPromiseCep = '';
+            }
+        });
+    addressLookupPromise = request;
+    return request;
 }
 
 function setDeliveryQuoteMessage(form, message, type = '') {
@@ -1651,6 +2031,8 @@ function getOrderQueryStatusLabel(status) {
 
 function normalizePublicOrder(order) {
     if (!order || typeof order !== 'object' || !order.codigo || !ORDER_STATUSES.includes(order.status) || !Array.isArray(order.itens)) return null;
+    const freight = normalizeOrderFreight(order);
+    if (freight === null) return null;
     const items = order.itens.map((item) => {
         const normalized = normalizeOrderItem(item);
         if (!Number.isFinite(normalized.price) || normalized.price <= 0
@@ -1665,23 +2047,29 @@ function normalizePublicOrder(order) {
         status: String(order.status),
         createdAt: order.dataCriacao,
         customer: order.clienteNome || '',
-        email: order.clienteEmail || '',
         phone: order.clienteTelefone || '',
         cep: order.cep || '',
         address: order.endereco || '',
         notes: order.observacoes || '',
         items,
         subtotal: Number(order.subtotal ?? order.valorTotal),
-        freight: Number(order.frete) || 0,
+        freight,
         total: Number(order.valorTotal),
         approximateFreight: order.calculoAproximado === true,
     };
 }
 
+function normalizeOrderFreight(order) {
+    const value = order.frete ?? order.valorFrete;
+    if (value === null || value === undefined || value === '') return null;
+    const freight = Number(value);
+    return Number.isFinite(freight) && freight >= 0 ? freight : null;
+}
+
 async function queryOrdersByApi(code, phone) {
     const params = new URLSearchParams();
-    if (code) params.set('codigo', code);
-    else params.set('telefone', normalizePhone(phone));
+    params.set('codigo', code);
+    params.set('telefone', normalizePhone(phone));
     const data = await fetchApiJson(`/api/pedidos/consulta?${params.toString()}`);
     if (!Array.isArray(data)) throw new Error('A resposta da consulta está indisponível.');
     const orders = data.map(normalizePublicOrder);
@@ -1709,9 +2097,7 @@ function renderOrderQueryResult(orderData) {
     if (codeValue) {
         codeValue.textContent = `Pedido ${orderData.code || 'Não informado'}`;
     }
-    if (phoneValue) {
-        phoneValue.textContent = orderData.phone ? formatPhone(orderData.phone) : 'Não informado';
-    }
+    if (phoneValue) phoneValue.textContent = formatPhone(orderData.phone || '');
     const statusBadge = document.querySelector('.order-query-status');
     if (statusBadge) {
         statusBadge.textContent = status;
@@ -1733,9 +2119,7 @@ function renderOrderQueryResult(orderData) {
     const resultItems = document.querySelector('.order-query-items');
     const resultTotal = document.querySelector('.order-query-total strong');
     if (orderQuerySubtotalElement) orderQuerySubtotalElement.textContent = money.format(Number(orderData.subtotal ?? total) || 0);
-    if (orderQueryFreightElement) {
-        orderQueryFreightElement.textContent = `${money.format(Number(orderData.freight) || 0)}${orderData.approximateFreight ? ' (estimado)' : ''}`;
-    }
+    if (orderQueryFreightElement) orderQueryFreightElement.textContent = money.format(orderData.freight);
     if (resultItems) {
         resultItems.innerHTML = list.length
             ? list.map((item) => `
@@ -1751,6 +2135,10 @@ function renderOrderQueryResult(orderData) {
 
     if (resultTotal) {
         resultTotal.textContent = money.format(total);
+    }
+    if (status === 'Pedido concluído') {
+        window.clearInterval(clientOrderRefreshTimer);
+        clientOrderRefreshTimer = null;
     }
 }
 
@@ -1861,6 +2249,11 @@ function openCheckout() {
     const checkoutNotes = checkoutForm?.elements.namedItem('customerNotes');
     if (checkoutName && cartCustomerName && !checkoutName.value) checkoutName.value = cartCustomerName;
     if (checkoutNotes && cartOrderNotes && !checkoutNotes.value) checkoutNotes.value = cartOrderNotes;
+    const cep = checkoutAddressField('customerCep')?.value;
+    if (String(cep || '').replace(/\D/g, '').length === 8) {
+        void refreshAddressFromCep(cep);
+        void refreshDeliveryQuote(cep, checkoutForm);
+    }
     checkoutPanel.classList.add('is-open');
     if (backdrop) {
         backdrop.classList.add('is-open');
@@ -1987,6 +2380,11 @@ function renderPizzaCustomizerSummary() {
     customizerSecondField.hidden = !isHalfAndHalf;
     customizerSecondFlavor.required = isHalfAndHalf;
     pizzaCustomizer.querySelector('.customizer-first-label').textContent = isHalfAndHalf ? '1º sabor' : 'Sabor';
+    const productPreview = pizzaCustomizer.querySelector('.customizer-product-visual');
+    if (productPreview) {
+        productPreview.hidden = !firstProduct;
+        productPreview.innerHTML = firstProduct ? renderProductVisual(firstProduct, 'customizer') : '';
+    }
     const basePrice = firstProduct
         ? secondProduct ? Math.max(firstProduct.price, secondProduct.price) : firstProduct.price
         : 0;
@@ -2171,6 +2569,43 @@ function applyCategoryFilter(category) {
 loadPublicCatalog();
 syncCustomizerSelects();
 
+catalogFeedback?.addEventListener('click', (event) => {
+    if (event.target === catalogRetryButton) void loadPublicCatalog();
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        stopAdminAutoRefresh();
+        window.clearInterval(clientOrderRefreshTimer);
+        clientOrderRefreshTimer = null;
+    } else if (document.body.classList.contains('admin-mode')) {
+        startAdminAutoRefresh();
+        void refreshAdminWorkspace();
+    } else if (activeClientOrderCredentials) {
+        startClientOrderAutoRefresh(
+            activeClientOrderCredentials.code,
+            activeClientOrderCredentials.phone,
+            orderQueryResult?.querySelector('.order-query-status')?.textContent
+        );
+    }
+});
+
+adminSoundToggle?.addEventListener('click', () => {
+    if (!window.AudioContext) {
+        if (adminLiveStatus) adminLiveStatus.textContent = 'O aviso sonoro não é compatível com este navegador.';
+        return;
+    }
+    adminSoundEnabled = !adminSoundEnabled;
+    adminSoundToggle.setAttribute('aria-pressed', String(adminSoundEnabled));
+    adminSoundToggle.textContent = adminSoundEnabled
+        ? 'Desativar som de novos pedidos'
+        : 'Ativar som de novos pedidos';
+    if (adminSoundEnabled) {
+        adminAudioContext ||= new AudioContext();
+        void adminAudioContext.resume();
+    }
+});
+
 publicMenuFilters?.addEventListener('click', (event) => {
     const button = event.target.closest('.menu-filter-button');
     if (button) applyCategoryFilter(button.dataset.filter);
@@ -2246,8 +2681,8 @@ if (orderQueryForm) {
         const codeValue = String(orderQueryForm.querySelector('#order-query-code')?.value || '').trim();
         const phoneValue = String(orderQueryForm.querySelector('#order-query-phone')?.value || '').trim();
 
-        if (!codeValue && !phoneValue) {
-            showOrderQueryMessage('Informe o código de acompanhamento ou o telefone para consultar o pedido.');
+        if (!codeValue || !phoneValue) {
+            showOrderQueryMessage('Informe o código de acompanhamento e o telefone do pedido.');
             if (orderQueryResult) orderQueryResult.hidden = true;
             return;
         }
@@ -2260,7 +2695,9 @@ if (orderQueryForm) {
 
         try {
             const results = await queryOrdersByApi(codeValue, phoneValue);
+            results[0].phone = normalizePhone(phoneValue);
             renderOrderQueryResult(results[0]);
+            startClientOrderAutoRefresh(results[0].code, results[0].phone, results[0].status);
         } catch (error) {
             showOrderQueryMessage(error.message || 'Pedido não encontrado. Verifique o código ou telefone informado.');
             if (orderQueryResult) orderQueryResult.hidden = true;
@@ -2362,6 +2799,9 @@ if (adminOrderList) {
         const button = event.target.closest('[data-order-id]');
         if (!button) return;
         selectedAdminOrderId = Number(button.dataset.orderId);
+        newAdminOrderIds.delete(String(selectedAdminOrderId));
+        updateAdminNewOrderIndicator();
+        renderAdminOrders();
         adminOrderDetails.hidden = false;
         showAdminStatusMessage('Carregando detalhes...', 'success');
         try {
@@ -2464,14 +2904,34 @@ document.querySelectorAll('[data-phone-mask]').forEach((field) => {
 });
 
 if (checkoutForm) {
+    restoreCheckoutAddress();
+    checkoutAddressFieldNames.forEach((name) => {
+        const field = checkoutAddressField(name);
+        if (!field) return;
+        const clearAutofillMarker = () => {
+            if (cepAutofillFieldNames.includes(name)) {
+                delete field.dataset.cepAutofilledValue;
+            }
+            saveCheckoutAddress();
+        };
+        field.addEventListener('input', clearAutofillMarker);
+        field.addEventListener('change', clearAutofillMarker);
+    });
+
     const cepField = checkoutForm.elements.namedItem('customerCep');
     if (cepField) {
         cepField.addEventListener('input', () => {
             cepField.value = formatCep(cepField.value);
+            handleCheckoutCepChange(cepField.value);
             syncDeliveryCepFields(cepField.value);
+            saveCheckoutAddress();
             void refreshDeliveryQuote(cepField.value, checkoutForm);
+            void refreshAddressFromCep(cepField.value);
         });
-        cepField.addEventListener('blur', () => refreshDeliveryQuote(cepField.value, checkoutForm));
+        cepField.addEventListener('blur', () => {
+            void refreshDeliveryQuote(cepField.value, checkoutForm);
+            void refreshAddressFromCep(cepField.value);
+        });
     }
 }
 
@@ -2479,9 +2939,15 @@ if (cartDeliveryCep) {
     cartDeliveryCep.addEventListener('input', () => {
         cartDeliveryCep.value = formatCep(cartDeliveryCep.value);
         syncDeliveryCepFields(cartDeliveryCep.value);
+        handleCheckoutCepChange(cartDeliveryCep.value);
+        saveCheckoutAddress();
         void refreshDeliveryQuote(cartDeliveryCep.value, panel);
+        void refreshAddressFromCep(cartDeliveryCep.value);
     });
-    cartDeliveryCep.addEventListener('blur', () => refreshDeliveryQuote(cartDeliveryCep.value, panel));
+    cartDeliveryCep.addEventListener('blur', () => {
+        void refreshDeliveryQuote(cartDeliveryCep.value, panel);
+        void refreshAddressFromCep(cartDeliveryCep.value);
+    });
 }
 document.querySelector('.cart-quote-button')?.addEventListener('click', () => {
     void refreshDeliveryQuote(cartDeliveryCep?.value, panel, true);
@@ -2497,25 +2963,14 @@ if (checkoutForm) {
         event.preventDefault();
         clearCheckoutValidation();
 
-        const formData = new FormData(checkoutForm);
+        let formData = new FormData(checkoutForm);
         const customer = String(formData.get('customerName') || '').trim();
-        const email = String(formData.get('customerEmail') || '').trim();
-        const address = composeAddress(formData);
+        let address = composeAddress(formData);
         const phone = formatPhone(formData.get('customerPhone'));
         const notes = String(formData.get('customerNotes') || '').trim();
 
         if (!customer) {
             markFieldInvalid('customerName', 'Informe seu nome.');
-            return;
-        }
-
-        if (!email) {
-            markFieldInvalid('customerEmail', 'Informe seu e-mail.');
-            return;
-        }
-
-        if (!isValidEmail(email)) {
-            markFieldInvalid('customerEmail', 'E-mail inválido.');
             return;
         }
 
@@ -2538,6 +2993,10 @@ if (checkoutForm) {
             markFieldInvalid('customerCep', 'Informe um CEP válido.');
             return;
         }
+
+        await refreshAddressFromCep(cep);
+        formData = new FormData(checkoutForm);
+        address = composeAddress(formData);
 
         const requiredAddressFields = [
             ['customerStreet', 'Informe a rua ou o logradouro.'],
@@ -2574,7 +3033,6 @@ if (checkoutForm) {
 
         const payload = {
             clienteNome: customer,
-            clienteEmail: email,
             clienteTelefone: normalizePhone(phone),
             cep,
             endereco: address,
@@ -2611,13 +3069,14 @@ if (checkoutForm) {
                 createdOrder.approximateFreight && 'Valor calculado com base aproximada na região do CEP.',
                 `Total: ${money.format(createdOrder.total)}`,
                 `Nome: ${createdOrder.customer}`,
-                `E-mail: ${createdOrder.email}`,
                 createdOrder.cep && `CEP: ${formatCep(createdOrder.cep)}`,
                 createdOrder.address && `Endereço: ${createdOrder.address}`,
                 `Telefone: ${formatPhone(createdOrder.phone)}`,
                 createdOrder.notes && `Observações: ${createdOrder.notes}`,
             ].filter(Boolean).join('\n');
             saveRecentOrder(createdOrder);
+            clearCheckoutAddress();
+            startClientOrderAutoRefresh(createdOrder.code, createdOrder.phone, createdOrder.status);
             showCheckoutMessage('Pedido criado com sucesso.', true);
             openConfirmation(createdOrder);
             const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
@@ -2654,6 +3113,13 @@ document.querySelector('.confirmation-continue').addEventListener('click', () =>
     closeCheckout();
     if (checkoutForm) {
         checkoutForm.reset();
+        clearCheckoutAddress();
+        checkoutAddressLastCep = '';
+        currentAddressDataCep = '';
+        addressLookupRequestId += 1;
+        addressLookupPromise = null;
+        addressLookupPromiseCep = '';
+        setAddressLookupMessage('');
         setDeliveryQuoteMessage(checkoutForm, '');
     }
     renderDeliveryBreakdown();

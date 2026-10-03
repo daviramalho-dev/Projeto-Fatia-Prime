@@ -1,0 +1,8 @@
+bin
+build
+.gradle
+.git
+.github
+docs
+Fotos_Projeto_FatiaPrime
+*.md

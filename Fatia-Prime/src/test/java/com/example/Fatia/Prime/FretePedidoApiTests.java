@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.util.List;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -110,6 +111,28 @@ class FretePedidoApiTests {
     }
 
     @Test
+    void consultaEnderecoPostalDoCepEPublicaEDevolveCamposDoViaCep() throws Exception {
+        when(cepGeocoder.buscarEndereco("72500107")).thenReturn(new CepGeocoder.Endereco(
+            "72500107", "Quadra AC 200 Bloco G", "Santa Maria", "Brasília", "DF"));
+
+        mockMvc.perform(get("/api/frete/endereco").param("cep", "72500-107"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.cep").value("72500107"))
+            .andExpect(jsonPath("$.logradouro").value("Quadra AC 200 Bloco G"))
+            .andExpect(jsonPath("$.bairro").value("Santa Maria"))
+            .andExpect(jsonPath("$.localidade").value("Brasília"))
+            .andExpect(jsonPath("$.uf").value("DF"));
+
+        mockMvc.perform(get("/api/frete/endereco").param("cep", "7250"))
+            .andExpect(status().isBadRequest());
+
+        when(cepGeocoder.buscarEndereco("72500108"))
+            .thenThrow(new CepGeocoder.GeocodificacaoIndisponivelException());
+        mockMvc.perform(get("/api/frete/endereco").param("cep", "72500108"))
+            .andExpect(status().isServiceUnavailable());
+    }
+
+    @Test
     void pedidoAproximadoRecalculaFreteEpreservaCepEEnderecoInformados() throws Exception {
         when(cepGeocoder.geocodificar("72500107"))
             .thenReturn(FreteTestCoordinates.aproximadaParaDistancia(15.0));
@@ -137,9 +160,9 @@ class FretePedidoApiTests {
         assertEquals(new BigDecimal("8.00"), pedido.getValorFrete());
         assertEquals(true, pedido.isCalculoFreteAproximado());
         String codigo = resposta.replaceAll(".*\\\"codigo\\\":\\\"([^\\\"]+)\\\".*", "$1");
-        mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo))
+        mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo).param("telefone", "61999998888"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].calculoAproximado").value(true));
+            .andExpect(jsonPath("$[0].calculoAproximado").doesNotExist());
         mockMvc.perform(get("/api/admin/pedidos").session(adminSession()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].calculoAproximado").value(true))
@@ -222,13 +245,60 @@ class FretePedidoApiTests {
         BigDecimal valorAnterior = freteProperties.getFaixas().get(1).getValor();
         try {
             freteProperties.getFaixas().get(1).setValor(new BigDecimal("99.00"));
-            mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo))
+            mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo).param("telefone", "61999998888"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].subtotal").value(80.00))
                 .andExpect(jsonPath("$[0].frete").value(8.00))
                 .andExpect(jsonPath("$[0].valorTotal").value(88.00));
         } finally {
             freteProperties.getFaixas().get(1).setValor(valorAnterior);
+        }
+    }
+
+    @Test
+    void fretePersistidoEExibidoEmCriacaoConsultaPublicaEAdminNasTresFaixas() throws Exception {
+        MockHttpSession sessaoAdmin = adminSession();
+        List<FreteEsperado> casos = List.of(
+            new FreteEsperado("99990000", new BigDecimal("5.00")),
+            new FreteEsperado("99990100", new BigDecimal("8.00")),
+            new FreteEsperado("99990200", new BigDecimal("12.00"))
+        );
+
+        for (FreteEsperado caso : casos) {
+            String cep = caso.cep();
+            BigDecimal frete = caso.valor();
+            BigDecimal total = new BigDecimal("40.00").add(frete);
+            String resposta = mockMvc.perform(post("/api/pedidos")
+                    .with(csrf())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(pedidoJson(cep, """
+                        {"produtoId":%d,"quantidade":1}
+                        """.formatted(saborEconomico.getId()), "")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.subtotal").value(40.00))
+                .andExpect(jsonPath("$.frete").value(frete.doubleValue()))
+                .andExpect(jsonPath("$.valorTotal").value(total.doubleValue()))
+                .andReturn().getResponse().getContentAsString();
+
+            String codigo = resposta.replaceAll(".*\\\"codigo\\\":\\\"([^\\\"]+)\\\".*", "$1");
+            String id = JsonPath.read(resposta, "$.id").toString();
+            Pedido pedido = pedidoRepository.findByCodigoForConsulta(codigo).orElseThrow();
+            assertEquals(0, frete.compareTo(pedido.getValorFrete()));
+            assertEquals(0, total.compareTo(pedido.getValorTotal()));
+
+            mockMvc.perform(get("/api/pedidos/consulta")
+                    .param("codigo", codigo)
+                    .param("telefone", "61999998888"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].subtotal").value(40.00))
+                .andExpect(jsonPath("$[0].frete").value(frete.doubleValue()))
+                .andExpect(jsonPath("$[0].valorTotal").value(total.doubleValue()));
+
+            mockMvc.perform(get("/api/admin/pedidos/{id}", id).session(sessaoAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.subtotal").value(40.00))
+                .andExpect(jsonPath("$.frete").value(frete.doubleValue()))
+                .andExpect(jsonPath("$.total").value(total.doubleValue()));
         }
     }
 
@@ -267,7 +337,7 @@ class FretePedidoApiTests {
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"clienteNome":"Cliente","clienteEmail":"cliente@exemplo.test","clienteTelefone":"61999998888",
+                    {"clienteNome":"Cliente","clienteTelefone":"61999998888",
                      "cep":"99990000","itens":[{"produtoId":%d,"quantidade":1}]}
                     """.formatted(saborEconomico.getId())))
             .andExpect(status().isBadRequest());
@@ -309,7 +379,7 @@ class FretePedidoApiTests {
             .andReturn().getResponse().getContentAsString();
         String codigo = resposta.replaceAll(".*\\\"codigo\\\":\\\"([^\\\"]+)\\\".*", "$1");
 
-        mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo))
+        mockMvc.perform(get("/api/pedidos/consulta").param("codigo", codigo).param("telefone", "61999998888"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].subtotal").value(61.00))
             .andExpect(jsonPath("$[0].frete").value(8.00))
@@ -332,7 +402,6 @@ class FretePedidoApiTests {
         return """
             {
               "clienteNome":"Cliente BL51",
-              "clienteEmail":"cliente-bl51@fatiaprime.test",
               "clienteTelefone":"61999998888",
               "cep":"%s",
               "endereco":"Rua de teste, 10 · Centro · Cidade - UF · CEP %s",
@@ -347,5 +416,8 @@ class FretePedidoApiTests {
                 .param("email", admin.getEmail())
                 .param("senha", "senha-123"))
             .andReturn().getRequest().getSession();
+    }
+
+    private record FreteEsperado(String cep, BigDecimal valor) {
     }
 }

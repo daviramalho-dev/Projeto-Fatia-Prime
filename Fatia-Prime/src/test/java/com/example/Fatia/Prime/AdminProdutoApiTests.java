@@ -190,6 +190,38 @@ class AdminProdutoApiTests {
     }
 
     @Test
+    void destaqueDoProdutoPodeSerCriadoEditadoERemovido() throws Exception {
+        String corpo = """
+            {
+              "nome": "Pizza em destaque",
+              "descricao": "Descrição",
+              "preco": 42.00,
+              "categoriaId": %d,
+              "destaque": "MAIS PEDIDA"
+            }
+            """.formatted(carnes.getId());
+        String resposta = mockMvc.perform(post("/api/admin/produtos")
+                .session(adminSession()).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(corpo))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.destaque").value("MAIS PEDIDA"))
+            .andReturn().getResponse().getContentAsString();
+        long id = new tools.jackson.databind.ObjectMapper()
+            .readTree(resposta).get("id").asLong();
+
+        mockMvc.perform(put("/api/admin/produtos/{id}", id)
+                .session(adminSession()).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"nome":"Pizza em destaque","descricao":"Descrição","preco":42.00,
+                     "categoriaId":%d,"destaque":null}
+                    """.formatted(carnes.getId())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.destaque").doesNotExist());
+    }
+
+    @Test
     void rejeitaDadosInvalidosECategoriaInexistente() throws Exception {
         mockMvc.perform(post("/api/admin/produtos")
                 .session(adminSession()).with(csrf())

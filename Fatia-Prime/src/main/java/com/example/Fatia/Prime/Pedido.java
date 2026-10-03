@@ -22,9 +22,6 @@ public class Pedido {
     @Column(name = "cliente_nome", length = 100)
     private String clienteNome;
 
-    @Column(name = "cliente_email", length = 254)
-    private String clienteEmail;
-
     @Column(name = "cliente_telefone", length = 20)
     private String clienteTelefone;
 
@@ -84,14 +81,6 @@ public class Pedido {
 
     public void setClienteNome(String clienteNome) {
         this.clienteNome = clienteNome;
-    }
-
-    public String getClienteEmail() {
-        return clienteEmail;
-    }
-
-    public void setClienteEmail(String clienteEmail) {
-        this.clienteEmail = clienteEmail;
     }
 
     public String getClienteTelefone() {

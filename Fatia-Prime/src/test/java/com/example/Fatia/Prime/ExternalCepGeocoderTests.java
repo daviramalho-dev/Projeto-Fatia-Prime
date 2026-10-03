@@ -195,6 +195,27 @@ class ExternalCepGeocoderTests {
     }
 
     @Test
+    void falhasDeGeocodificacaoNaoSaoArmazenadasEmCache() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        for (int tentativa = 0; tentativa < 2; tentativa++) {
+            server.expect(requestTo("https://brasilapi.test/72500108"))
+                .andRespond(withServerError());
+            server.expect(requestTo("https://viacep.test/ws/72500108/json/"))
+                .andRespond(withServerError());
+            server.expect(requestTo(org.hamcrest.Matchers.containsString("postalcode=72500108")))
+                .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+        }
+        ExternalCepGeocoder geocoder = new ExternalCepGeocoder(properties(), builder.build());
+
+        assertThrows(CepGeocoder.GeocodificacaoIndisponivelException.class,
+            () -> geocoder.geocodificarOpcoes("72500108"));
+        assertThrows(CepGeocoder.GeocodificacaoIndisponivelException.class,
+            () -> geocoder.geocodificarOpcoes("72500108"));
+        server.verify();
+    }
+
+    @Test
     void cepInexistenteEIdentificadoPeloViaCep() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
@@ -205,6 +226,25 @@ class ExternalCepGeocoderTests {
         ExternalCepGeocoder geocoder = new ExternalCepGeocoder(properties(), builder.build());
 
         assertThrows(CepGeocoder.CepNaoEncontradoException.class, () -> geocoder.geocodificar("00000000"));
+        server.verify();
+    }
+
+    @Test
+    void buscaPostalDoViaCepRetornaCamposEReutilizaCache() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://viacep.test/ws/72500107/json/"))
+            .andRespond(withSuccess("""
+                {"cep":"72500-107","logradouro":"Quadra AC 200 Bloco G","bairro":"Santa Maria","localidade":"Brasília","uf":"DF"}
+                """, MediaType.APPLICATION_JSON));
+        ExternalCepGeocoder geocoder = new ExternalCepGeocoder(properties(), builder.build());
+
+        CepGeocoder.Endereco endereco = geocoder.buscarEndereco("72500107");
+        CepGeocoder.Endereco doCache = geocoder.buscarEndereco("72500107");
+
+        assertEquals(new CepGeocoder.Endereco(
+            "72500107", "Quadra AC 200 Bloco G", "Santa Maria", "Brasília", "DF"), endereco);
+        assertEquals(endereco, doCache);
         server.verify();
     }
 

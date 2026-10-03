@@ -1,7 +1,6 @@
 package com.example.Fatia.Prime;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -13,10 +12,6 @@ public record PedidoRequest(
     @NotBlank(message = "O nome do cliente é obrigatório")
     @Size(max = 100, message = "O nome do cliente deve ter no máximo 100 caracteres")
     String clienteNome,
-    @NotBlank(message = "O e-mail do cliente é obrigatório")
-    @Email(message = "O e-mail do cliente é inválido")
-    @Size(max = 254, message = "O e-mail do cliente deve ter no máximo 254 caracteres")
-    String clienteEmail,
     @NotBlank(message = "O telefone do cliente é obrigatório")
     @Size(max = 20, message = "O telefone do cliente deve ter no máximo 20 caracteres")
     String clienteTelefone,

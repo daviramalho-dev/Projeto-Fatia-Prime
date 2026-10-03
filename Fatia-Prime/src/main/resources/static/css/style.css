@@ -2183,6 +2183,22 @@ footer p {
     color: #ff8a80;
 }
 
+.address-lookup-message {
+    min-height: 18px;
+    margin-top: 4px;
+    color: #c7c7c7;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.address-lookup-message.success {
+    color: #6de59b;
+}
+
+.address-lookup-message.error {
+    color: #ff8a80;
+}
+
 .cart-footer label { display: block; margin: 12px 0; color: #ddd; font-size: 12px; font-weight: 600; }
 .cart-footer input, .cart-footer textarea { width: 100%; margin-top: 6px; padding: 10px; border: 1px solid #444; background: #0c0c0c; color: #fff; font: inherit; resize: vertical; }
 .cart-quote-button,
@@ -3693,5 +3709,131 @@ footer p {
 
     .admin-pizza-option-actions button {
         flex: 1;
+    }
+}
+.pizza-image-placeholder,
+.customizer-product-placeholder {
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(245, 196, 0, .28);
+    background: radial-gradient(circle at 50% 45%, #272317, #121212 72%);
+    color: #f5c400;
+}
+
+.pizza-image-placeholder {
+    width: 100%;
+    height: 100%;
+}
+
+.customizer-product-visual {
+    width: 100%;
+    height: 180px;
+    overflow: hidden;
+    border: 1px solid #333;
+    background: #101010;
+}
+
+.customizer-product-image,
+.customizer-product-placeholder {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.category-art svg {
+    width: min(62%, 110px);
+    height: min(62%, 110px);
+}
+
+.customizer-product-placeholder.category-art svg {
+    width: 120px;
+    height: 120px;
+}
+
+.category-art svg path:first-child {
+    fill: #f5c400;
+    stroke: #fff0a3;
+    stroke-linejoin: round;
+    stroke-width: 2;
+}
+
+.category-art svg path:nth-child(2) {
+    fill: none;
+    stroke: #090909;
+    stroke-linecap: round;
+    stroke-width: 3;
+}
+
+.category-art svg circle {
+    fill: #090909;
+}
+
+.category-art-queijos {
+    background: radial-gradient(circle at 50% 45%, #382f14, #121212 72%);
+}
+
+.category-art-doces {
+    background: radial-gradient(circle at 50% 45%, #38221f, #121212 72%);
+}
+
+.category-art-bebidas {
+    background: radial-gradient(circle at 50% 45%, #1b3028, #121212 72%);
+}
+
+.menu-text {
+    min-width: 0;
+}
+
+.menu-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.catalog-retry-button {
+    margin-left: 10px;
+    padding: 8px 12px;
+    border: 1px solid #f5c400;
+    background: transparent;
+    color: #f5c400;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.catalog-retry-button:focus-visible,
+.admin-sound-toggle:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 3px;
+}
+
+.admin-orders-live-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.admin-orders-live-status {
+    color: #bdbdbd;
+    font-size: 12px;
+}
+
+.admin-order-new {
+    padding: 4px 7px;
+    border-radius: 2px;
+    background: #f5c400;
+    color: #090909;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .08em;
+}
+
+@media (max-width: 640px) {
+    .customizer-product-visual {
+        height: 150px;
     }
 }

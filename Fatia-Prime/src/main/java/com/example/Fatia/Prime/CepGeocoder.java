@@ -11,6 +11,13 @@ public interface CepGeocoder {
         return coordenada == null ? List.of() : List.of(coordenada);
     }
 
+    default Endereco buscarEndereco(String cep) {
+        throw new GeocodificacaoIndisponivelException();
+    }
+
+    record Endereco(String cep, String logradouro, String bairro, String localidade, String uf) {
+    }
+
     record Coordenadas(double latitude, double longitude, String fonte, boolean aproximada) {
         public Coordenadas(double latitude, double longitude, String fonte) {
             this(latitude, longitude, fonte, false);

@@ -8,7 +8,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Objects;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,19 +25,22 @@ public class PedidoController {
     private final OpcaoPizzaRepository opcaoPizzaRepository;
     private final CepGeocoder cepGeocoder;
     private final FreteProperties freteProperties;
+    private final TransactionTemplate transactionTemplate;
 
     public PedidoController(
         PedidoRepository pedidoRepository,
         ProdutoRepository produtoRepository,
         OpcaoPizzaRepository opcaoPizzaRepository,
         CepGeocoder cepGeocoder,
-        FreteProperties freteProperties
+        FreteProperties freteProperties,
+        PlatformTransactionManager transactionManager
     ) {
         this.pedidoRepository = pedidoRepository;
         this.produtoRepository = produtoRepository;
         this.opcaoPizzaRepository = opcaoPizzaRepository;
         this.cepGeocoder = cepGeocoder;
         this.freteProperties = freteProperties;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     @GetMapping
@@ -62,34 +68,37 @@ public class PedidoController {
     ) {
         String codigoNormalizado = codigo == null ? "" : codigo.trim().toUpperCase(Locale.ROOT);
         String telefoneNormalizado = normalizarTelefone(telefone);
-        if (codigoNormalizado.isBlank() == telefoneNormalizado.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe o código ou o telefone do pedido");
+        if (codigoNormalizado.isBlank() || telefoneNormalizado.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe o código e o telefone do pedido");
         }
 
-        List<Pedido> pedidos = pedidoRepository.findAllForConsulta().stream()
-            .filter(pedido -> codigoNormalizado.isBlank()
-                ? telefoneNormalizado.equals(normalizarTelefone(telefoneDoPedido(pedido)))
-                : codigoNormalizado.equals(normalizarCodigo(pedido.getCodigo())))
-            .toList();
-
-        if (pedidos.isEmpty()) {
+        Pedido pedido = pedidoRepository.findByCodigoForConsulta(codigoNormalizado)
+            .filter(encontrado -> telefoneNormalizado.equals(normalizarTelefone(telefoneDoPedido(encontrado))))
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido não encontrado"));
+        if (pedido.getItens() == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido não encontrado");
         }
-        return pedidos.stream().map(PedidoConsultaResponse::de).toList();
+        return List.of(PedidoConsultaResponse.de(pedido));
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Transactional
     public PedidoResponse criar(@Valid @RequestBody PedidoRequest request) {
-        Pedido pedido = new Pedido();
         if (request.usuarioId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pedidos públicos não podem informar usuário");
         }
         validarClientePublico(request);
         String cep = FreteController.normalizarCep(request.cep());
+        FreteResponse cotacao = FreteController.calcularFrete(
+            cep, cepGeocoder, freteProperties, HttpStatus.BAD_REQUEST);
+        return Objects.requireNonNull(transactionTemplate.execute(
+            status -> criarPedido(request, cep, cotacao)
+        ));
+    }
+
+    private PedidoResponse criarPedido(PedidoRequest request, String cep, FreteResponse cotacao) {
+        Pedido pedido = new Pedido();
         pedido.setClienteNome(request.clienteNome().trim());
-        pedido.setClienteEmail(request.clienteEmail().trim());
         pedido.setClienteTelefone(normalizarTelefone(request.clienteTelefone()));
         pedido.setEndereco(request.endereco());
         pedido.setCep(request.cep());
@@ -198,8 +207,6 @@ public class PedidoController {
             subtotal = subtotal.add(precoUnitario.multiply(BigDecimal.valueOf(itemRequest.quantidade())));
         }
 
-        FreteResponse cotacao = FreteController.calcularFrete(
-            cep, cepGeocoder, freteProperties, HttpStatus.BAD_REQUEST);
         pedido.setValorFrete(cotacao.valorFrete());
         pedido.setCalculoFreteAproximado(cotacao.calculoAproximado());
         pedido.setValorTotal(subtotal.add(cotacao.valorFrete()));
@@ -226,9 +233,6 @@ public class PedidoController {
         if (request.clienteNome() == null || request.clienteNome().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O nome do cliente é obrigatório");
         }
-        if (request.clienteEmail() == null || request.clienteEmail().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O e-mail do cliente é obrigatório");
-        }
         if (request.clienteTelefone() == null || normalizarTelefone(request.clienteTelefone()).isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O telefone do cliente é obrigatório");
         }
@@ -242,10 +246,6 @@ public class PedidoController {
         return pedido.getClienteTelefone() != null
             ? pedido.getClienteTelefone()
             : pedido.getUsuario() != null ? pedido.getUsuario().getTelefone() : "";
-    }
-
-    private String normalizarCodigo(String codigo) {
-        return codigo == null ? "" : codigo.trim().toUpperCase(Locale.ROOT);
     }
 
     private String normalizarTelefone(String telefone) {

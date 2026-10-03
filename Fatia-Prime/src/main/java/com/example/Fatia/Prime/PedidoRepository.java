@@ -18,6 +18,6 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 	@Query("select distinct p from Pedido p left join fetch p.usuario u left join fetch p.itens i left join fetch i.produto left join fetch i.segundoProduto where p.id = :id")
 	java.util.Optional<Pedido> findByIdForAdmin(Long id);
 
-	@Query("select distinct p from Pedido p left join fetch p.usuario u left join fetch p.itens i left join fetch i.produto left join fetch i.segundoProduto order by p.dataCriacao desc")
-	List<Pedido> findAllForConsulta();
+	@Query("select distinct p from Pedido p left join fetch p.usuario u left join fetch p.itens i left join fetch i.produto left join fetch i.segundoProduto where upper(p.codigo) = upper(:codigo)")
+	java.util.Optional<Pedido> findByCodigoForConsulta(String codigo);
 }

@@ -21,6 +21,9 @@ public record AdminProdutoRequest(
     @Size(max = 500, message = "A imagem deve ter no máximo 500 caracteres")
     String imagem,
 
+    @Size(max = 40, message = "O destaque deve ter no máximo 40 caracteres")
+    String destaque,
+
     @NotNull(message = "A categoria é obrigatória")
     Long categoriaId,
 
