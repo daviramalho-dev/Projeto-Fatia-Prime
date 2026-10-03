@@ -1,12 +1,18 @@
 package com.example.Fatia.Prime;
 
+import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
-	@Query("select distinct p from Pedido p left join fetch p.usuario u left join fetch p.itens i left join fetch i.produto left join fetch i.segundoProduto order by p.dataCriacao desc")
+	long countByStatus(String status);
+
+	@Query("select sum(p.valorTotal) from Pedido p")
+	BigDecimal sumValorTotal();
+
+	@Query("select distinct p from Pedido p left join fetch p.usuario u left join fetch p.itens i left join fetch i.produto left join fetch i.segundoProduto order by p.dataCriacao desc, p.id desc")
 	List<Pedido> findAllForAdmin();
 
 	@Query("select distinct p from Pedido p left join fetch p.usuario u left join fetch p.itens i left join fetch i.produto left join fetch i.segundoProduto where p.id = :id")
