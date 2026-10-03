@@ -2,6 +2,7 @@ package com.example.Fatia.Prime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -39,7 +40,62 @@ class FreteDistanciaTests {
             return coordenadaParaDistancia(5.0);
         }, properties());
 
-        assertEquals("72500100", controller.consultar("72500-100").cep());
+        FreteResponse response = controller.consultar("72500-100");
+        assertEquals("72500100", response.cep());
+        assertEquals(5.00, response.valorFrete().doubleValue());
+        assertTrue(response.disponivel());
+        assertEquals(false, response.calculoAproximado());
+    }
+
+    @Test
+    void aceitaCepAteTrintaKmEEscolheFallbackMaisPrecisoDentroDaArea() {
+        CepGeocoder geocoder = new CepGeocoder() {
+            @Override
+            public Coordenadas geocodificar(String cep) {
+                return geocodificarOpcoes(cep).get(0);
+            }
+
+            @Override
+            public List<Coordenadas> geocodificarOpcoes(String cep) {
+                return List.of(
+                    coordenadaParaDistancia(31.0, "Bairro", true),
+                    coordenadaParaDistancia(30.0, "Localidade", true)
+                );
+            }
+        };
+        FreteController controller = new FreteController(geocoder, properties());
+
+        FreteResponse response = controller.consultar("72500107");
+
+        assertEquals("Acima de 20 ate 30 km", response.regiao());
+        assertEquals(new BigDecimal("12.00"), response.valorFrete());
+        assertEquals(30.0, response.distanciaKm(), 0.0001);
+        assertEquals("Localidade", response.fonteCoordenadas());
+        assertTrue(response.calculoAproximado());
+    }
+
+    @Test
+    void soRetornaForaDaAreaQuandoTodasAsReferenciasAproximadasEstaoAcimaDeTrintaKm() {
+        CepGeocoder geocoder = new CepGeocoder() {
+            @Override
+            public Coordenadas geocodificar(String cep) {
+                return geocodificarOpcoes(cep).get(0);
+            }
+
+            @Override
+            public List<Coordenadas> geocodificarOpcoes(String cep) {
+                return List.of(
+                    coordenadaParaDistancia(30.1, "Bairro", true),
+                    coordenadaParaDistancia(30.5, "Cidade", true)
+                );
+            }
+        };
+        FreteController controller = new FreteController(geocoder, properties());
+
+        ResponseStatusException exception = assertThrows(
+            ResponseStatusException.class, () -> controller.consultar("72500107"));
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 
     @Test
@@ -87,6 +143,16 @@ class FreteDistanciaTests {
             indisponibilidade.getReason());
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, assertThrows(
             ResponseStatusException.class, () -> naoConfigurado.consultar("72500100")).getStatusCode());
+    }
+
+    @Test
+    void ausenciaDeCoordenadasRetorna503SemSerInterpretadaComoForaDaArea() {
+        FreteController controller = new FreteController(cep -> null, properties());
+
+        ResponseStatusException exception = assertThrows(
+            ResponseStatusException.class, () -> controller.consultar("72500100"));
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, exception.getStatusCode());
     }
 
     private void assertCotacao(
@@ -137,7 +203,11 @@ class FreteDistanciaTests {
     }
 
     private CepGeocoder.Coordenadas coordenadaParaDistancia(double distanciaKm) {
+        return coordenadaParaDistancia(distanciaKm, "teste", false);
+    }
+
+    private CepGeocoder.Coordenadas coordenadaParaDistancia(double distanciaKm, String fonte, boolean aproximada) {
         double longitude = Math.toDegrees(distanciaKm / 6371.0088);
-        return new CepGeocoder.Coordenadas(0, longitude, "teste");
+        return new CepGeocoder.Coordenadas(0, longitude, fonte, aproximada);
     }
 }

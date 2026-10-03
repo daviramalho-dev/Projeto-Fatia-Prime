@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,6 +70,8 @@ class PedidoCatalogoApiTests {
     void prepararDados() {
         when(cepGeocoder.geocodificar(anyString()))
             .thenAnswer(invocation -> FreteTestCoordinates.paraCep(invocation.getArgument(0)));
+        when(cepGeocoder.geocodificarOpcoes(anyString()))
+            .thenAnswer(invocation -> List.of(cepGeocoder.geocodificar(invocation.getArgument(0))));
         pedidoRepository.deleteAll();
         usuarioRepository.deleteAll();
         produtoRepository.deleteAll();

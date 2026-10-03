@@ -31,7 +31,7 @@ public class Pedido {
     @Column(name = "endereco", length = 500)
     private String endereco;
 
-    @Column(name = "cep", nullable = false, length = 8)
+    @Column(name = "cep", nullable = false, length = 9)
     private String cep;
 
     @Column(name = "data_criacao", nullable = false)
@@ -48,6 +48,9 @@ public class Pedido {
 
     @Column(name = "valor_frete", nullable = false, precision = 10, scale = 2)
     private BigDecimal valorFrete = BigDecimal.ZERO;
+
+    @Column(name = "calculo_frete_aproximado")
+    private Boolean calculoFreteAproximado = false;
 
     @Column(name = "observacoes", length = 500)
     private String observacoes;
@@ -149,6 +152,14 @@ public class Pedido {
 
     public void setValorFrete(BigDecimal valorFrete) {
         this.valorFrete = valorFrete == null ? BigDecimal.ZERO : valorFrete;
+    }
+
+    public boolean isCalculoFreteAproximado() {
+        return Boolean.TRUE.equals(calculoFreteAproximado);
+    }
+
+    public void setCalculoFreteAproximado(boolean calculoFreteAproximado) {
+        this.calculoFreteAproximado = calculoFreteAproximado;
     }
 
     @Transient

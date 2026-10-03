@@ -7,6 +7,8 @@ public record FreteResponse(
     String regiao,
     BigDecimal valorFrete,
     double distanciaKm,
-    String fonteCoordenadas
+    String fonteCoordenadas,
+    boolean calculoAproximado,
+    boolean disponivel
 ) {
 }
