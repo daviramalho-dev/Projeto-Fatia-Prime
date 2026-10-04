@@ -239,7 +239,7 @@ async function authenticateAdmin(email, senha) {
     });
 
     if (!response.ok) {
-        let message = 'Não foi possível autenticar. Verifique o e-mail e a palavra-passe.';
+        let message = 'Não foi possível autenticar. Verifique o e-mail e a senha informados.';
         try {
             const data = await response.json();
             if (data.message) message = data.message;
@@ -624,7 +624,7 @@ async function loadPublicCatalog() {
     }
     catalogLoadMessageTimer = window.setTimeout(() => {
         if (publicCatalogLoadInProgress && catalogFeedback) {
-            catalogFeedback.textContent = 'Acordando o servidor, pode levar até 1 minuto...';
+            catalogFeedback.textContent = 'Conectando ao servidor... O carregamento inicial pode levar alguns instantes.';
             catalogFeedback.hidden = false;
         }
     }, 5000);
@@ -718,8 +718,8 @@ function renderPublicCatalog() {
                 <div class="menu-actions"><strong>${money.format(product.price)}</strong><button class="btn-menu-add" type="button" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">ADICIONAR</button></div>
             </div>`).join('')
             : `<p class="catalog-empty" role="status">${filtersActive
-                ? 'Nenhum produto encontrado com esses filtros.'
-                : catalogFeedback?.textContent || 'Nenhum produto disponível no momento.'}</p>`;
+                ? 'Nenhum produto encontrado para os filtros selecionados.'
+                : catalogFeedback?.textContent || 'Nenhum produto disponível no cardápio no momento.'}</p>`;
     }
 }
 
@@ -899,10 +899,15 @@ function pizzaDetailsMarkup(item) {
 }
 
 function pizzaWhatsAppDescription(item) {
+    if (item?.itemType === 'BEBIDA') {
+        return item.name || item.firstFlavor?.name || 'Bebida';
+    }
     const presentation = getPizzaPresentation(item);
-    return [presentation.title, presentation.flavors, presentation.border, presentation.addons, presentation.sauces]
-        .filter(Boolean)
-        .join(' | ');
+    const parts = [presentation.title, presentation.flavors];
+    if (item?.border?.name) parts.push(`Borda: ${item.border.name}`);
+    if (item?.addons?.length) parts.push(`Adicionais: ${item.addons.map((addon) => addon.name).join(', ')}`);
+    if (item?.sauces?.length) parts.push(`Molhos: ${item.sauces.map((sauce) => sauce.name).join(', ')}`);
+    return parts.filter(Boolean).join(' | ');
 }
 
 function getOrderStatusClass(status) {
@@ -912,8 +917,8 @@ function getOrderStatusClass(status) {
 function getOrderStatusMessage(status) {
     return {
         'Pedido recebido': 'Recebemos seu pedido e ele está aguardando o início do preparo.',
-        'Pedido em andamento': 'Seu pedido está sendo preparado pela nossa equipe.',
-        'Pedido concluído': 'Seu pedido foi concluído. Obrigado por pedir na Fatia Prime!',
+        'Pedido em andamento': 'Seu pedido está no forno e sendo preparado com todo cuidado.',
+        'Pedido concluído': 'Seu pedido foi finalizado. Bom apetite e obrigado pela preferência!',
     }[status] || '';
 }
 
@@ -1317,7 +1322,7 @@ async function toggleAdminProduct(productIdValue) {
         await loadPublicCatalog();
         showAdminProductMessage(normalized.active ? 'Produto reativado com sucesso.' : 'Produto desativado com sucesso.', 'success');
     } catch (error) {
-        showAdminProductMessage(error.message || 'Não foi possível atualizar a disponibilidade da pizza.');
+        showAdminProductMessage(error.message || 'Não foi possível atualizar a disponibilidade do produto.');
     }
 }
 
@@ -1386,10 +1391,10 @@ async function submitAdminProduct(event) {
         adminProductForm.reset();
         editingProductId = null;
         if (adminProductFormTitle) adminProductFormTitle.textContent = 'Adicionar ao cardápio';
-        if (adminProductFormLabel) adminProductFormLabel.textContent = 'NOVA PIZZA';
+        if (adminProductFormLabel) adminProductFormLabel.textContent = 'NOVO PRODUTO';
         if (adminProductCancel) adminProductCancel.hidden = true;
     } catch (error) {
-        showAdminProductMessage(error.message || 'Não foi possível salvar a pizza.');
+        showAdminProductMessage(error.message || 'Não foi possível salvar o produto.');
     }
 }
 
@@ -1475,8 +1480,8 @@ function renderAdminOrders() {
     const noOrders = adminOrders.length === 0;
     adminOrdersEmpty.hidden = !noOrders;
     if (noOrders) {
-        adminOrdersEmpty.querySelector('strong').textContent = 'Nenhum pedido disponível';
-        adminOrdersEmpty.querySelector('span').textContent = 'Os pedidos disponíveis no sistema aparecerão aqui.';
+        adminOrdersEmpty.querySelector('strong').textContent = 'Nenhum pedido encontrado';
+        adminOrdersEmpty.querySelector('span').textContent = 'Novos pedidos realizados no site aparecerão aqui.';
     }
 
     if (adminOrdersMessage) {
@@ -2012,7 +2017,7 @@ function validateAdminLogin() {
 
     if (!password) {
         passwordField.classList.add('is-invalid');
-        showAdminLoginMessage('Informe a palavra-passe.');
+        showAdminLoginMessage('Informe a senha.');
         passwordField.focus();
         return false;
     }
@@ -2220,7 +2225,7 @@ function markFieldInvalid(fieldName, message) {
 
 function openCheckout() {
     if (!Array.isArray(window.cart) || !window.cart.length || !cartItemsAreValid()) {
-        const message = !Array.isArray(window.cart) || !window.cart.length ? 'Carrinho vazio.' : 'Itens do carrinho inválidos.';
+        const message = !Array.isArray(window.cart) || !window.cart.length ? 'Seu carrinho está vazio. Adicione itens antes de continuar.' : 'Itens do carrinho inválidos.';
         if (checkoutMessage) {
             showCheckoutMessage(message, false);
         } else {
@@ -2758,7 +2763,7 @@ if (adminLoginForm) {
             const isPasswordVisible = passwordField.type === 'text';
             passwordField.type = isPasswordVisible ? 'password' : 'text';
             passwordToggle.textContent = isPasswordVisible ? 'Mostrar' : 'Ocultar';
-            passwordToggle.setAttribute('aria-label', isPasswordVisible ? 'Mostrar palavra-passe' : 'Ocultar palavra-passe');
+            passwordToggle.setAttribute('aria-label', isPasswordVisible ? 'Mostrar senha' : 'Ocultar senha');
             passwordToggle.setAttribute('aria-pressed', String(!isPasswordVisible));
         });
     }
@@ -3059,7 +3064,7 @@ if (checkoutForm) {
                 throw new Error('A resposta da criação do pedido está indisponível.');
             }
             const message = [
-                'Olá! Meu pedido foi criado:',
+                'Olá! Acabei de fazer um pedido na Fatia Prime:',
                 `Código: ${createdOrder.code}`,
                 `Status: ${createdOrder.status}`,
                 ...createdOrder.items.map((item) => `• ${item.quantity}x ${pizzaWhatsAppDescription(item)} — ${money.format(item.subtotal)}`),
@@ -3133,7 +3138,7 @@ document.querySelector('.js-scroll-to-about').addEventListener('click', () => {
     document.querySelector('#sobre').scrollIntoView({ behavior: 'smooth' });
 });
 document.querySelector('.js-about-whatsapp').addEventListener('click', () => {
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Olá! Quero saber mais sobre a Fatia Prime.')}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Olá! Gostaria de mais informações sobre o cardápio da Fatia Prime.')}`, '_blank', 'noopener,noreferrer');
 });
 
 renderAdminProducts();

@@ -98,7 +98,7 @@ public class SecurityConfig {
         return (request, response, exception) -> {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
             response.setContentType("application/json");
-            response.getWriter().write("{\"message\":\"E-mail ou palavra-passe inválidos.\"}");
+            response.getWriter().write("{\"message\":\"E-mail ou senha inválidos.\"}");
         };
     }
 }
