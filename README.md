@@ -38,7 +38,8 @@ A interface apresenta a marca e carrega o catálogo pela API. O frontend está i
 
 - Autenticação administrativa.
 - Gerenciamento, consulta e atualização do status dos pedidos.
-- Cadastro, edição, consulta, ativação e desativação de pizzas e bebidas.
+- Cadastro, edição, consulta, ativação e desativação de produtos (pizzas e bebidas).
+- Gerenciamento administrativo de categorias.
 - Configuração de bordas recheadas, adicionais e molhos, incluindo preço, tipo de pizza e disponibilidade.
 - Consulta e cadastro administrativo de usuários.
 
@@ -164,6 +165,15 @@ A autenticação administrativa utiliza os seguintes endpoints:
 - `GET /api/categorias/{id}`  
   Retorna uma categoria específica por ID.
 
+- `GET /api/admin/categorias` e `GET /api/admin/categorias/{id}`
+  Listam e detalham categorias para administradores autenticados.
+
+- `POST /api/admin/categorias` e `PUT /api/admin/categorias/{id}`
+  Criam e atualizam categorias no painel administrativo.
+
+- `DELETE /api/admin/categorias/{id}`
+  Remove uma categoria sem produtos vinculados.
+
 ### Produtos
 
 - `GET /api/produtos`  
@@ -196,8 +206,8 @@ A autenticação administrativa utiliza os seguintes endpoints:
 
 - `GET /api/frete/consulta?cep=99990000`
   Normaliza o CEP e retorna a região atendida e o valor da faixa ativa; CEP inválido retorna erro de validação e CEP sem faixa ativa não pode ser usado para finalizar pedidos.
-- As faixas iniciais ficam no seed local e estão identificadas como dados artificiais de demonstração, não como cobertura geográfica comercial.
-- O seed também inclui uma bebida e um molho com nomes e preços explicitamente demonstrativos; substitua-os pelos itens e preços oficiais antes de usar o catálogo comercialmente.
+- As faixas iniciais ficam no seed local e estão identificadas como dados de demonstração da aplicação.
+- O catálogo inicial inclui pizzas salgadas, doces, bordas, adicionais, molhos e bebidas padronizadas para atendimento da pizzaria.
 - Ao criar o pedido, o backend resolve novamente a faixa e grava o CEP normalizado e o valor do frete cobrado naquele momento. O total é recalculado como subtotal dos produtos mais frete; valores financeiros enviados pelo navegador não são usados.
 
 ### Bebidas, adicionais e molhos
@@ -274,7 +284,7 @@ O frontend é servido pelo próprio Spring Boot e se comunica com as APIs REST d
 - O carrinho utiliza `localStorage`, enquanto o checkout e os pedidos são processados pelo backend.
 - O deploy atual está preparado para o Render: https://fatia-prime.onrender.com
 - O workflow de GitHub Pages publica somente o frontend estático; a aplicação completa depende do backend Spring Boot, disponibilizado no Render.
-- Última atualização: setembro de 2026.
+- Última atualização: outubro de 2026.
 
 ## Equipe
 
