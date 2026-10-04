@@ -118,16 +118,37 @@ Esse comando compila o projeto, inicia o contexto Spring Boot e executa os teste
 
 ## Estrutura do projeto
 
-- `Fatia-Prime/src/main/java` — classes Java do backend
-- `Fatia-Prime/src/main/java/com/example/Fatia/Prime` — entidades `Usuario`, `Categoria`, `Produto`, `Pedido` e `ItemPedido`; controllers, repositories, requests, responses, autenticação e tratamento de erros
-- `Fatia-Prime/src/main/resources` — configuração e arquivos estáticos
-- `Fatia-Prime/src/main/resources/data.sql` — seed inicial de categorias e produtos
-- `Fatia-Prime/src/main/resources/static` — HTML, CSS e JavaScript do frontend
-- `Fatia-Prime/src/test/java` — testes automatizados
-- `Fatia-Prime/src/test/java/com/example/Fatia/Prime` — testes de pedidos públicos, produtos administrativos, pedidos administrativos, segurança e contexto da aplicação
-- `Fatia-Prime/build.gradle` — configuração do Gradle e dependências
-- `Fatia-Prime/Dockerfile` — imagem para execução e deploy no Render
-- `Fatia-Prime/src/main/resources/application.properties` — configuração da aplicação e do banco H2
+```text
+Fatia-Prime/
+├── build.gradle                         # plugins, toolchain e dependências
+├── Dockerfile                           # imagem usada no deploy
+└── src/
+    ├── main/
+    │   ├── java/com/example/Fatia/Prime/
+    │   │   ├── *Controller.java         # endpoints REST
+    │   │   ├── *Repository.java         # persistência JPA
+    │   │   ├── *Request.java / *Response.java
+    │   │   ├── Categoria.java, Produto.java, Pedido.java, ItemPedido.java, Usuario.java
+    │   │   └── configuração, segurança, frete e tratamento de erros
+    │   └── resources/
+    │       ├── application.properties   # configuração da aplicação
+    │       ├── data.sql                 # seed inicial
+    │       └── static/
+    │           ├── assets/
+    │           ├── css/style.css
+    │           ├── js/script.js
+    │           ├── favicon.svg
+    │           ├── index.html
+    │           └── robots.txt
+    └── test/java/com/example/Fatia/Prime/
+        ├── *ApiTests.java               # testes de integração da API
+        ├── *Tests.java                  # demais testes automatizados
+        └── FreteTestCoordinates.java    # suporte aos testes de frete
+```
+
+As classes Java ficam em um único pacote e são distinguidas pelo papel indicado nos nomes; a árvore acima descreve a organização existente, sem introduzir subpacotes ou uma camada Service.
+
+Os arquivos de publicação estática do GitHub Pages estão em `.github/workflows/pages.yml`. Os documentos e materiais de apoio ficam em `docs/` e `Fotos_Projeto_FatiaPrime/`.
 
 O projeto mantém a arquitetura simples de frontend estático servido pelo Spring Boot, com controllers, repositories e JPA no backend. Não há uma camada Service separada.
 
