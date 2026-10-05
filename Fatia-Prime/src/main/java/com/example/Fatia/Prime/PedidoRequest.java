@@ -24,6 +24,7 @@ public record PedidoRequest(
     @Size(max = 500, message = "As observações devem ter no máximo 500 caracteres")
     String observacoes,
     @NotEmpty(message = "O pedido deve conter pelo menos um item")
+    @Size(max = 50, message = "O pedido não pode conter mais de 50 itens")
     List<@NotNull @Valid ItemPedidoRequest> itens
 ) {
 }
