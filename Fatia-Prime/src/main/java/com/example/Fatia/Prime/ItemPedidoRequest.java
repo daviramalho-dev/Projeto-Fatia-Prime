@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 
 public record ItemPedidoRequest(
@@ -19,7 +20,9 @@ public record ItemPedidoRequest(
     Long segundoProdutoId,
     @Positive(message = "A borda deve ser válida")
     Long bordaId,
+    @Size(max = 20, message = "O pedido não pode conter mais de 20 adicionais")
     List<@NotNull @Positive(message = "O adicional deve ser válido") Long> adicionalIds,
+    @Size(max = 20, message = "O pedido não pode conter mais de 20 molhos")
     List<@NotNull @Positive(message = "O molho deve ser válido") Long> molhoIds
 ) {
     public ItemPedidoRequest {
