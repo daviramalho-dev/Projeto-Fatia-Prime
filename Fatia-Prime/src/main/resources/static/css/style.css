@@ -270,8 +270,10 @@ button:disabled {
     position: relative;
     display: flex;
     align-items: center;
-    background:
-        linear-gradient(135deg, var(--color-bg-dark) 0%, var(--color-bg-medium) 50%, #0f0f0f 100%);
+    background-image:
+        url("../assets/pizza-background.webp");
+    background-size: cover;
+    background-position: center;
     overflow: hidden;
 }
 
@@ -283,12 +285,14 @@ button:disabled {
     background-image:
         repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(245, 196, 0, 0.4) 35px, rgba(245, 196, 0, 0.4) 36px);
     pointer-events: none;
+    z-index: 1;
 }
 
 .hero-overlay {
     position: absolute;
     inset: 0;
     background:
+        linear-gradient(90deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.75) 42%, rgba(0, 0, 0, 0.25) 100%),
         radial-gradient(ellipse at 30% 50%, rgba(245, 196, 0, 0.08) 0%, transparent 50%);
 }
 

@@ -12,7 +12,7 @@ values ('Havaiana de Frango', 'Frango desfiado temperado, mussarela, sour cream,
 merge into produtos (nome, descricao, preco, imagem, destaque, ativo, categoria_id, tipo_produto) key(nome)
 values ('Costela com Catupiry', 'Costela bovina desfiada no bafo, Catupiry original, mussarela e cebola roxa.', 62.90, 'assets/costela-catupiry.webp', 'FAVORITA', true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
 merge into produtos (nome, descricao, preco, imagem, destaque, ativo, categoria_id, tipo_produto) key(nome)
-values ('Quatro Queijos', 'Combinação equilibrada de mussarela, provolone, queijo parmesão e gorgonzola.', 59.90, 'assets/quatro-queijos.webp', null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA');
+values ('Quatro Queijos', 'Combinação equilibrada de mussarela, provolone, queijo parmesão e gorgonzola.', 59.90, 'assets/pizza-background.webp', null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA');
 
 merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
 values ('Calabresa Spicy', 'Calabresa fatiada, mussarela, cebola roxa e pimenta jalapeño.', 52.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
