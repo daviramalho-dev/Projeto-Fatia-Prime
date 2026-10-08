@@ -284,6 +284,10 @@ A interface principal está em:
 
 Ela inclui apresentação da marca, catálogo de produtos vindo da API, categorias e filtros, carrinho com `localStorage`, checkout, validações, confirmação do pedido, consulta pública de pedidos e integração com WhatsApp para finalizar os pedidos. As operações administrativas de pedidos e produtos também são integradas ao backend.
 
+## Protótipo no Figma
+
+[Visualizar protótipo no Figma](https://www.figma.com/design/tyNXJswozPjT9W5TddLoRi/Fatia-Prime-%25E2%2580%2594-Prot%25C3%25B3tipo-M%25C3%25A9dia-Fidelidade?node-id=0-1&t=zAM0bcqzzKuyRwPT-0)
+
 ## Fluxo básico
 
 1. O cliente acessa a página inicial.
