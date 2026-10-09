@@ -1,133 +1,67 @@
-merge into categorias (nome) key(nome) values ('Clássicas');
-merge into categorias (nome) key(nome) values ('Carnes');
-merge into categorias (nome) key(nome) values ('Frango');
-merge into categorias (nome) key(nome) values ('Queijos');
-merge into categorias (nome) key(nome) values ('Doces');
-merge into categorias (nome) key(nome) values ('Bebidas');
+INSERT INTO categorias (nome) SELECT 'Clássicas' WHERE NOT EXISTS (SELECT 1 FROM categorias WHERE nome = 'Clássicas');
+INSERT INTO categorias (nome) SELECT 'Carnes' WHERE NOT EXISTS (SELECT 1 FROM categorias WHERE nome = 'Carnes');
+INSERT INTO categorias (nome) SELECT 'Frango' WHERE NOT EXISTS (SELECT 1 FROM categorias WHERE nome = 'Frango');
+INSERT INTO categorias (nome) SELECT 'Queijos' WHERE NOT EXISTS (SELECT 1 FROM categorias WHERE nome = 'Queijos');
+INSERT INTO categorias (nome) SELECT 'Doces' WHERE NOT EXISTS (SELECT 1 FROM categorias WHERE nome = 'Doces');
+INSERT INTO categorias (nome) SELECT 'Bebidas' WHERE NOT EXISTS (SELECT 1 FROM categorias WHERE nome = 'Bebidas');
 
-merge into produtos (nome, descricao, preco, imagem, destaque, ativo, categoria_id, tipo_produto) key(nome)
-values ('Calabresa Prime', 'Calabresa fatiada selecionada, mussarela especial, cebola e orégano.', 52.90, 'assets/calabresa-prime.webp', 'MAIS PEDIDA', true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, destaque, ativo, categoria_id, tipo_produto) key(nome)
-values ('Havaiana de Frango', 'Frango desfiado temperado, mussarela, sour cream, cebola roxa e orégano.', 54.90, 'assets/havaiana-de-frango.webp', 'CUSTO BENEFÍCIO', true, (select id from categorias where nome = 'Frango'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, destaque, ativo, categoria_id, tipo_produto) key(nome)
-values ('Costela com Catupiry', 'Costela bovina desfiada no bafo, Catupiry original, mussarela e cebola roxa.', 62.90, 'assets/costela-catupiry.webp', 'FAVORITA', true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, destaque, ativo, categoria_id, tipo_produto) key(nome)
-values ('Quatro Queijos', 'Combinação equilibrada de mussarela, provolone, queijo parmesão e gorgonzola.', 59.90, 'assets/pizza-background.webp', null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA');
+INSERT INTO produtos (nome, descricao, preco, imagem, destaque, ativo, categoria_id, tipo_produto) SELECT 'Calabresa Prime', 'Calabresa fatiada selecionada, mussarela especial, cebola e orégano.', 52.90, 'assets/calabresa-prime.webp', 'MAIS PEDIDA', true, (select id from categorias where nome = 'Carnes'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Calabresa Prime');
+INSERT INTO produtos (nome, descricao, preco, imagem, destaque, ativo, categoria_id, tipo_produto) SELECT 'Havaiana de Frango', 'Frango desfiado temperado, mussarela, sour cream, cebola roxa e orégano.', 54.90, 'assets/havaiana-de-frango.webp', 'CUSTO BENEFÍCIO', true, (select id from categorias where nome = 'Frango'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Havaiana de Frango');
+INSERT INTO produtos (nome, descricao, preco, imagem, destaque, ativo, categoria_id, tipo_produto) SELECT 'Costela com Catupiry', 'Costela bovina desfiada no bafo, Catupiry original, mussarela e cebola roxa.', 62.90, 'assets/costela-catupiry.webp', 'FAVORITA', true, (select id from categorias where nome = 'Carnes'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Costela com Catupiry');
+INSERT INTO produtos (nome, descricao, preco, imagem, destaque, ativo, categoria_id, tipo_produto) SELECT 'Quatro Queijos', 'Combinação equilibrada de mussarela, provolone, queijo parmesão e gorgonzola.', 59.90, 'assets/pizza-background.webp', null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Quatro Queijos');
 
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Calabresa Spicy', 'Calabresa fatiada, mussarela, cebola roxa e pimenta jalapeño.', 52.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Frango com Catupiry', 'Frango desfiado temperado, mussarela derretida e Catupiry original.', 54.90, null, true, (select id from categorias where nome = 'Frango'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Pepperoni', 'Fatias de pepperoni crocante, mussarela e molho de tomate artesanal.', 59.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Portuguesa', 'Presunto cozido, mussarela, ovos, cebola fatiada, ervilhas frescas e milho.', 54.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Margherita', 'Molho de tomate artesanal, mussarela, fatias de tomate fresco e folhas de manjericão.', 49.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Napolitana', 'Mussarela, presunto em fatias, rodelas de tomate, queijo parmesão ralado e orégano.', 52.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Bacon com Barbecue', 'Bacon crocante em tiras, mussarela, cebola caramelizada e molho barbecue.', 57.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Carne Seca com Cebola', 'Carne seca desfiada e refogada, mussarela, cebola roxa e Catupiry.', 64.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Frango Prime', 'Frango desfiado especial, mussarela, milho verde, bacon crocante e molho da casa.', 57.90, null, true, (select id from categorias where nome = 'Frango'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Frango com Milho', 'Frango desfiado temperado, mussarela, milho verde e requeijão cremoso.', 52.90, null, true, (select id from categorias where nome = 'Frango'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Brie com Geleia de Pimenta', 'Queijo brie selecionado, mussarela, geleia de pimenta agridoce e castanhas picadas.', 64.90, null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Provolone Especial', 'Queijo provolone defumado, mussarela, parmesão ralado, tomate seco e orégano.', 59.90, null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Calabresa Spicy', 'Calabresa fatiada, mussarela, cebola roxa e pimenta jalapeño.', 52.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Calabresa Spicy');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Frango com Catupiry', 'Frango desfiado temperado, mussarela derretida e Catupiry original.', 54.90, null, true, (select id from categorias where nome = 'Frango'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Frango com Catupiry');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Pepperoni', 'Fatias de pepperoni crocante, mussarela e molho de tomate artesanal.', 59.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Pepperoni');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Portuguesa', 'Presunto cozido, mussarela, ovos, cebola fatiada, ervilhas frescas e milho.', 54.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Portuguesa');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Margherita', 'Molho de tomate artesanal, mussarela, fatias de tomate fresco e folhas de manjericão.', 49.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Margherita');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Napolitana', 'Mussarela, presunto em fatias, rodelas de tomate, queijo parmesão ralado e orégano.', 52.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Napolitana');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Bacon com Barbecue', 'Bacon crocante em tiras, mussarela, cebola caramelizada e molho barbecue.', 57.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Bacon com Barbecue');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Carne Seca com Cebola', 'Carne seca desfiada e refogada, mussarela, cebola roxa e Catupiry.', 64.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Carne Seca com Cebola');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Frango Prime', 'Frango desfiado especial, mussarela, milho verde, bacon crocante e molho da casa.', 57.90, null, true, (select id from categorias where nome = 'Frango'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Frango Prime');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Frango com Milho', 'Frango desfiado temperado, mussarela, milho verde e requeijão cremoso.', 52.90, null, true, (select id from categorias where nome = 'Frango'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Frango com Milho');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Brie com Geleia de Pimenta', 'Queijo brie selecionado, mussarela, geleia de pimenta agridoce e castanhas picadas.', 64.90, null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Brie com Geleia de Pimenta');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Provolone Especial', 'Queijo provolone defumado, mussarela, parmesão ralado, tomate seco e orégano.', 59.90, null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Provolone Especial');
 
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Strogonoff de Carne', 'Tiras macias de carne ao molho de strogonoff cremoso, mussarela e batata palha crocante.', 62.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Filé com Cheddar', 'Tiras de filé selecionado, cheddar cremoso derretido e mussarela.', 64.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Mussarela', 'Mussarela derretida sobre molho de tomate artesanal, rodelas de tomate fresco e orégano.', 47.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Calabresa Tradicional', 'Calabresa fatiada em rodelas, cebola fresca e orégano sobre camada de mussarela.', 49.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Atum', 'Atum sólido especial, mussarela derretida, cebola fatiada e orégano.', 54.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Alho e Óleo', 'Alho dourado no azeite de oliva, mussarela farta e orégano.', 47.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Presunto', 'Presunto fatiado selecionado, mussarela derretida e orégano.', 49.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Escarola com Bacon', 'Escarola fresca refogada no alho, bacon crocante em cubos e mussarela.', 52.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Lombo Canadense', 'Fatias de lombo canadense defumado, mussarela derretida e cebola roxa.', 56.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Frango com Cheddar e Bacon', 'Frango desfiado temperado, cheddar cremoso, bacon crocante e mussarela.', 59.90, null, true, (select id from categorias where nome = 'Frango'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Gorgonzola com Nozes', 'Queijo gorgonzola de sabor marcante, mussarela e nozes crocantes picadas.', 64.90, null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Catupiry Especial', 'Catupiry original cremoso, mussarela selecionada e toque de orégano.', 56.90, null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Strogonoff de Carne', 'Tiras macias de carne ao molho de strogonoff cremoso, mussarela e batata palha crocante.', 62.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Strogonoff de Carne');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Filé com Cheddar', 'Tiras de filé selecionado, cheddar cremoso derretido e mussarela.', 64.90, null, true, (select id from categorias where nome = 'Carnes'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Filé com Cheddar');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Mussarela', 'Mussarela derretida sobre molho de tomate artesanal, rodelas de tomate fresco e orégano.', 47.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Mussarela');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Calabresa Tradicional', 'Calabresa fatiada em rodelas, cebola fresca e orégano sobre camada de mussarela.', 49.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Calabresa Tradicional');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Atum', 'Atum sólido especial, mussarela derretida, cebola fatiada e orégano.', 54.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Atum');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Alho e Óleo', 'Alho dourado no azeite de oliva, mussarela farta e orégano.', 47.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Alho e Óleo');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Presunto', 'Presunto fatiado selecionado, mussarela derretida e orégano.', 49.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Presunto');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Escarola com Bacon', 'Escarola fresca refogada no alho, bacon crocante em cubos e mussarela.', 52.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Escarola com Bacon');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Lombo Canadense', 'Fatias de lombo canadense defumado, mussarela derretida e cebola roxa.', 56.90, null, true, (select id from categorias where nome = 'Clássicas'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Lombo Canadense');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Frango com Cheddar e Bacon', 'Frango desfiado temperado, cheddar cremoso, bacon crocante e mussarela.', 59.90, null, true, (select id from categorias where nome = 'Frango'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Frango com Cheddar e Bacon');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Gorgonzola com Nozes', 'Queijo gorgonzola de sabor marcante, mussarela e nozes crocantes picadas.', 64.90, null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Gorgonzola com Nozes');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Catupiry Especial', 'Catupiry original cremoso, mussarela selecionada e toque de orégano.', 56.90, null, true, (select id from categorias where nome = 'Queijos'), 'SALGADA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Catupiry Especial');
 
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Chocolate com Morango', 'Chocolate ao leite cremoso coberto com morangos frescos fatiados e fios de leite condensado.', 57.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Romeu e Julieta', 'Goiabada cremosa combinada com queijo mussarela derretido.', 49.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Nutella', 'Creme de avelã Nutella original espalhado sobre base macia.', 59.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Nutella com Morango', 'Creme de avelã Nutella original com morangos frescos fatiados.', 64.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Brigadeiro', 'Brigadeiro de panela cremoso coberto com granulado de chocolate.', 52.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Prestígio', 'Chocolate ao leite coberto com coco ralado úmido e leite condensado.', 52.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Banana com Canela', 'Fatias de banana com açúcar, canela em pó e suave camada de mussarela.', 44.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Doce de Leite com Coco', 'Doce de leite cremoso suave salpicado com coco ralado.', 49.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Oreo com Chocolate Branco', 'Chocolate branco derretido com pedaços crocantes de biscoito Oreo.', 59.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Beijinho', 'Creme de beijinho artesanal com coco ralado e leite condensado.', 49.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Chocolate com Morango', 'Chocolate ao leite cremoso coberto com morangos frescos fatiados e fios de leite condensado.', 57.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Chocolate com Morango');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Romeu e Julieta', 'Goiabada cremosa combinada com queijo mussarela derretido.', 49.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Romeu e Julieta');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Nutella', 'Creme de avelã Nutella original espalhado sobre base macia.', 59.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Nutella');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Nutella com Morango', 'Creme de avelã Nutella original com morangos frescos fatiados.', 64.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Nutella com Morango');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Brigadeiro', 'Brigadeiro de panela cremoso coberto com granulado de chocolate.', 52.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Brigadeiro');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Prestígio', 'Chocolate ao leite coberto com coco ralado úmido e leite condensado.', 52.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Prestígio');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Banana com Canela', 'Fatias de banana com açúcar, canela em pó e suave camada de mussarela.', 44.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Banana com Canela');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Doce de Leite com Coco', 'Doce de leite cremoso suave salpicado com coco ralado.', 49.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Doce de Leite com Coco');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Oreo com Chocolate Branco', 'Chocolate branco derretido com pedaços crocantes de biscoito Oreo.', 59.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Oreo com Chocolate Branco');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Beijinho', 'Creme de beijinho artesanal com coco ralado e leite condensado.', 49.90, null, true, (select id from categorias where nome = 'Doces'), 'DOCE' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Beijinho');
 
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Coca-Cola Original', 'Refrigerante Coca-Cola Original em lata de 350 ml.', 8.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Coca-Cola Zero', 'Refrigerante Coca-Cola Zero Açúcar em lata de 350 ml.', 8.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Pepsi Original', 'Refrigerante Pepsi Original em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Pepsi Black', 'Refrigerante Pepsi Black sem açúcar em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Pepsi Twist', 'Refrigerante Pepsi com toque de limão em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Fanta Laranja', 'Refrigerante Fanta Laranja em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Fanta Uva', 'Refrigerante Fanta Uva em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Sprite', 'Refrigerante Sprite sabor limão em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
-merge into produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) key(nome)
-values ('Guaraná Antarctica', 'Refrigerante Guaraná Antarctica em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Coca-Cola Original', 'Refrigerante Coca-Cola Original em lata de 350 ml.', 8.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Coca-Cola Original');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Coca-Cola Zero', 'Refrigerante Coca-Cola Zero Açúcar em lata de 350 ml.', 8.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Coca-Cola Zero');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Pepsi Original', 'Refrigerante Pepsi Original em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Pepsi Original');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Pepsi Black', 'Refrigerante Pepsi Black sem açúcar em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Pepsi Black');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Pepsi Twist', 'Refrigerante Pepsi com toque de limão em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Pepsi Twist');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Fanta Laranja', 'Refrigerante Fanta Laranja em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Fanta Laranja');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Fanta Uva', 'Refrigerante Fanta Uva em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Fanta Uva');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Sprite', 'Refrigerante Sprite sabor limão em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Sprite');
+INSERT INTO produtos (nome, descricao, preco, imagem, ativo, categoria_id, tipo_produto) SELECT 'Guaraná Antarctica', 'Refrigerante Guaraná Antarctica em lata de 350 ml.', 7.99, null, true, (select id from categorias where nome = 'Bebidas'), 'BEBIDA' WHERE NOT EXISTS (SELECT 1 FROM produtos WHERE nome = 'Guaraná Antarctica');
 
-delete from produtos where nome in ('Bebida demonstrativa 350 ml', 'Pepperoni Prime', 'Margherita Prime', 'Bacon Prime', 'Brie com Geleia', 'Provolone Prime');
-
-merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
-values ('Catupiry', 'BORDA', 'SALGADA', 7.00, true);
-merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
-values ('Cheddar', 'BORDA', 'SALGADA', 7.50, true);
-merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
-values ('Chocolate', 'BORDA', 'DOCE', 7.00, true);
-merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
-values ('Queijo extra', 'ADICIONAL', 'SALGADA', 4.00, true);
-merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
-values ('Bacon extra', 'ADICIONAL', 'SALGADA', 5.00, true);
-merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
-values ('Morango extra', 'ADICIONAL', 'DOCE', 5.00, true);
-merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
-values ('Granulado', 'ADICIONAL', 'DOCE', 3.00, true);
-merge into opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) key(nome)
-values ('Molho de tomate', 'MOLHO', 'SALGADA', 0.00, true);
-
-delete from opcoes_pizza where nome = 'Molho demonstrativo';
-delete from faixas_frete where nome like 'Demonstração - Região %';
-
-update itens_pedido
-set tipo_produto_snapshot = (
-	select produtos.tipo_produto from produtos where produtos.id = itens_pedido.produto_id
-)
-where tipo_produto_snapshot is null;
+INSERT INTO opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) SELECT 'Catupiry', 'BORDA', 'SALGADA', 7.00, true WHERE NOT EXISTS (SELECT 1 FROM opcoes_pizza WHERE nome = 'Catupiry');
+INSERT INTO opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) SELECT 'Cheddar', 'BORDA', 'SALGADA', 7.50, true WHERE NOT EXISTS (SELECT 1 FROM opcoes_pizza WHERE nome = 'Cheddar');
+INSERT INTO opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) SELECT 'Chocolate', 'BORDA', 'DOCE', 7.00, true WHERE NOT EXISTS (SELECT 1 FROM opcoes_pizza WHERE nome = 'Chocolate');
+INSERT INTO opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) SELECT 'Queijo extra', 'ADICIONAL', 'SALGADA', 4.00, true WHERE NOT EXISTS (SELECT 1 FROM opcoes_pizza WHERE nome = 'Queijo extra');
+INSERT INTO opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) SELECT 'Bacon extra', 'ADICIONAL', 'SALGADA', 5.00, true WHERE NOT EXISTS (SELECT 1 FROM opcoes_pizza WHERE nome = 'Bacon extra');
+INSERT INTO opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) SELECT 'Morango extra', 'ADICIONAL', 'DOCE', 5.00, true WHERE NOT EXISTS (SELECT 1 FROM opcoes_pizza WHERE nome = 'Morango extra');
+INSERT INTO opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) SELECT 'Granulado', 'ADICIONAL', 'DOCE', 3.00, true WHERE NOT EXISTS (SELECT 1 FROM opcoes_pizza WHERE nome = 'Granulado');
+INSERT INTO opcoes_pizza (nome, tipo, tipo_produto, preco_adicional, ativo) SELECT 'Molho de tomate', 'MOLHO', 'SALGADA', 0.00, true WHERE NOT EXISTS (SELECT 1 FROM opcoes_pizza WHERE nome = 'Molho de tomate');
