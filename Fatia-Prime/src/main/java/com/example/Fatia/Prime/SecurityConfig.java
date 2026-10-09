@@ -43,8 +43,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf
                 .csrfTokenRepository(csrfRepository)
-                .csrfTokenRequestHandler(csrfHandler)
-                .ignoringRequestMatchers("/h2-console/**"))
+                .csrfTokenRequestHandler(csrfHandler))
             .headers(headers -> headers
                 .frameOptions(frame -> frame.sameOrigin())
                 .contentTypeOptions(contentType -> {})
@@ -67,7 +66,6 @@ public class SecurityConfig {
                     "/api/opcoes-pizza/**",
                     "/api/frete/**"
                 ).permitAll()
-                .requestMatchers("/h2-console/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/pedidos").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/pedidos/consulta").permitAll()
                 .requestMatchers("/api/admin/**", "/api/pedidos/**", "/api/usuarios/**").hasRole("ADMIN")
