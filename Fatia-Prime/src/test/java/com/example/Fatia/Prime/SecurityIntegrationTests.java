@@ -92,12 +92,6 @@ class SecurityIntegrationTests {
     }
 
     @Test
-    void h2ConsoleIsNotPubliclyAccessible() throws Exception {
-        mockMvc.perform(get("/h2-console"))
-            .andExpect(status().isUnauthorized());
-    }
-
-    @Test
     void publicProductEndpointRemainsAccessibleAnonymously() throws Exception {
         mockMvc.perform(get("/api/produtos"))
             .andExpect(status().isOk());

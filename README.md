@@ -18,7 +18,7 @@
 
 O Projeto Fatia Prime é uma aplicação web integrada para uma pizzaria, com foco na apresentação do cardápio, na experiência de pedidos dos clientes e no gerenciamento administrativo de usuários, produtos e pedidos.
 
-A interface apresenta a marca e carrega o catálogo pela API. O frontend está integrado ao backend Spring Boot, que disponibiliza uma API REST e utiliza Spring Data JPA, Spring Security, Spring Validation e PostgreSQL. H2 permanece disponível para testes locais.
+A interface apresenta a marca e carrega o catálogo pela API. O frontend está integrado ao backend Spring Boot, que disponibiliza uma API REST e utiliza Spring Data JPA, Spring Security, Spring Validation e PostgreSQL. H2 está restrito ao perfil de testes; a aplicação não o usa como alternativa de execução.
 
 ## Funcionalidades
 
@@ -59,7 +59,7 @@ O workflow configurado do GitHub Pages publica somente os arquivos estáticos do
 - **Spring Security** e **Spring Security Crypto** — autenticação, autorização e BCrypt.
 - **Spring Validation** — validação de dados recebidos pela API.
 - **PostgreSQL** — banco relacional principal; produção pode usar Neon.
-- **H2 Database** — banco em memória para a suíte de testes local.
+- **H2 Database** — dependência exclusiva do perfil de testes em memória; não faz parte do runtime da aplicação.
 - **HTML5, CSS3 e JavaScript** — interface do sistema, sem framework frontend.
 - **Gradle Wrapper** — compilação, execução e testes do projeto.
 - **Docker** — imagem de execução definida no `Dockerfile` para o deploy.
@@ -72,6 +72,7 @@ Antes de executar o projeto, verifique se você possui:
 - Git.
 - Navegador web moderno.
 - Conexão com a internet para baixar as dependências do Gradle.
+- Docker em execução para os testes de integração PostgreSQL via Testcontainers.
 
 O projeto já inclui o Gradle Wrapper, então não é necessário instalar o Gradle manualmente. No Render, a aplicação utiliza a variável de ambiente `PORT`.
 
@@ -122,7 +123,7 @@ Para executar a suíte atual do projeto, utilize:
 ./gradlew clean test --no-daemon
 ```
 
-Esse comando compila o projeto, inicia o contexto Spring Boot e executa os testes configurados.
+Esse comando compila o projeto e executa os testes. A maior parte da suíte usa H2 em memória no perfil `test`; os testes PostgreSQL iniciam um PostgreSQL 16 local com Docker/Testcontainers e validam a migração e os fluxos integrados.
 
 ## Como a aplicação funciona
 
@@ -131,7 +132,7 @@ Esse comando compila o projeto, inicia o contexto Spring Boot e executa os teste
 - **PostgreSQL** é o banco da aplicação no perfil local `dev` e no perfil de implantação `prod`. No Render, ele deve ser um banco externo persistente, como Neon; a aplicação não usa o disco local do Render para guardar registros.
 - **Flyway** aplica as migrações versionadas em `src/main/resources/db/migration`; Hibernate valida o esquema em vez de alterar tabelas automaticamente.
 - `data.sql` insere categorias, produtos e opções iniciais de forma idempotente. Não substitui dados já existentes nem apaga produtos, pedidos ou itens na inicialização.
-- **H2** fica isolado no perfil `test` para a suíte existente. Os testes PostgreSQL usam PostgreSQL 16 real em contêiner local (Testcontainers).
+- **H2** fica isolado no classpath e no perfil `test`; não é incluído no runtime distribuído. Os testes PostgreSQL usam PostgreSQL 16 real em contêiner local (Testcontainers).
 - **Spring Security** autentica administradores por e-mail e senha, mantém a sessão e restringe as rotas administrativas por perfil. As operações protegidas também usam token CSRF.
 - **BCrypt** é usado pelo `PasswordEncoder` para gerar e verificar hashes de senha; as senhas não são armazenadas em texto puro.
 
@@ -150,8 +151,11 @@ Fatia-Prime/
     │   │   ├── Categoria.java, Produto.java, Pedido.java, ItemPedido.java, Usuario.java
     │   │   └── configuração, segurança, frete e tratamento de erros
     │   └── resources/
-    │       ├── application.properties   # configuração da aplicação
-    │       ├── data.sql                 # seed inicial
+    │       ├── application.properties   # defaults e configuração comum
+    │       ├── application-dev.properties
+    │       ├── application-prod.properties
+    │       ├── data.sql                 # seed inicial aditivo
+    │       ├── db/migration/            # migrações Flyway
     │       └── static/
     │           ├── assets/
     │           ├── css/style.css
@@ -159,10 +163,11 @@ Fatia-Prime/
     │           ├── favicon.svg
     │           ├── index.html
     │           └── robots.txt
-    └── test/java/com/example/Fatia/Prime/
-        ├── *ApiTests.java               # testes de integração da API
-        ├── *Tests.java                  # demais testes automatizados
-        └── FreteTestCoordinates.java    # suporte aos testes de frete
+    ├── test/java/com/example/Fatia/Prime/
+    │   ├── *ApiTests.java / *Tests.java # testes automatizados
+    │   └── FreteTestCoordinates.java    # suporte aos testes de frete
+    └── test/resources/
+        └── application-test.properties # banco H2 exclusivo dos testes
 ```
 
 As classes Java ficam em um único pacote e são distinguidas pelo papel indicado nos nomes; a árvore acima descreve a organização existente, sem introduzir subpacotes ou uma camada Service.
@@ -248,7 +253,7 @@ A autenticação administrativa utiliza os seguintes endpoints:
   Normaliza o CEP e retorna a região atendida e o valor da faixa ativa; CEP inválido retorna erro de validação e CEP sem faixa ativa não pode ser usado para finalizar pedidos.
 - As faixas de frete usadas pelo cálculo são configuração da aplicação (`app.frete.faixas`); a tabela `faixas_frete` mapeada pela entidade não é usada pelo fluxo atual de cotação.
 - O catálogo inicial inclui pizzas salgadas, doces, bordas, adicionais, molhos e bebidas padronizadas para atendimento da pizzaria.
-- Ao criar o pedido, o backend resolve novamente a faixa e grava o CEP normalizado e o valor do frete cobrado naquele momento. O total é recalculado como subtotal dos produtos mais frete; valores financeiros enviados pelo navegador não são usados.
+- Ao criar o pedido, o backend normaliza o CEP para consultar o frete, mas preserva no pedido o CEP informado pelo cliente. O frete cotado fica registrado como snapshot. O total é recalculado no servidor; valores financeiros enviados pelo navegador não são usados.
 
 ### Bebidas, adicionais e molhos
 
@@ -301,7 +306,7 @@ O perfil `dev` é o padrão e usa PostgreSQL em `localhost:5432/fatiaprime`. É 
 
    O URL é somente JDBC host/banco e não deve conter usuário ou senha. O perfil `prod` também exige TLS (`sslmode=require`) e limita o pool Hikari a cinco conexões por padrão (`DB_POOL_MAX_SIZE=5`, `DB_POOL_MIN_IDLE=0`). Ajuste esses limites somente considerando as cotas do Neon e o número de instâncias.
 
-5. Não habilite `H2_CONSOLE_ENABLED` nem exponha console de banco no site. O console administrativo do Neon permanece no domínio e no painel do próprio Neon. Não configure armazenamento no filesystem do Render para persistência; pedidos e catálogo são gravados no PostgreSQL externo.
+5. O artefato da aplicação não inclui console H2. Não exponha consoles de banco no site: o console administrativo do Neon permanece no domínio e no painel do próprio Neon. Não configure armazenamento no filesystem do Render para persistência; pedidos e catálogo são gravados no PostgreSQL externo.
 
 O Render injeta `PORT`, usado pela aplicação. Não é necessário configurar um disco persistente pago para o banco, pois ele não fica no container do Render. Isso não significa disponibilidade contínua: serviços gratuitos podem suspender ou reiniciar, e cotas, suspensão, retenção de backup e armazenamento do Neon dependem do plano e das políticas vigentes. Consulte os limites atuais nos painéis antes de publicar.
 
@@ -327,13 +332,26 @@ Para o esquema atual, veja as tabelas no SQL Editor ou consulte `information_sch
 
 Flyway aplica `V1__create_initial_schema.sql` em um banco vazio. `spring.jpa.hibernate.ddl-auto=validate` faz a aplicação falhar se o esquema não corresponder; não usa `create`, `create-drop` ou alterações silenciosas de esquema. Migrações futuras devem ser adicionadas como novos arquivos versionados `V<n>__descricao.sql`, revisadas e testadas contra PostgreSQL antes do deploy. Não edite uma migração que já tenha sido aplicada.
 
-O seed aditivo em `data.sql` pode ser repetido: adiciona somente nomes de catálogo ainda inexistentes e não apaga nem atualiza dados. Ele não é uma migração de banco e não transfere registros do H2.
+O seed aditivo em `data.sql` pode ser repetido: adiciona somente nomes de catálogo ainda inexistentes e não apaga nem atualiza dados. Ele não é uma migração de banco e não transfere registros de instalações antigas que tenham usado H2.
 
-Não há exportação automática do banco anterior. Antes de migrar dados importantes de uma instância H2 ainda em execução, suspenda temporariamente novos pedidos, faça uma cópia/exportação consistente do H2, confira os arquivos exportados e carregue no Neon vazio em ordem de dependências (categorias/usuários/opções/faixas, produtos, pedidos, itens e adicionais). Preserve IDs e snapshots, adapte tipos/valores ao esquema PostgreSQL e atualize as sequências de identidade após importação. Compare contagens por tabela e confira pedidos e itens por código antes de reabrir o checkout. Mantenha o backup original até concluir essa validação. Não use scripts que apaguem tabelas ou configure `baseline-on-migrate` para contornar falhas sem uma revisão do schema e do histórico. Se o H2 anterior já foi reiniciado, os registros em memória não podem ser recuperados pela aplicação.
+Não há exportação automática de dados anteriores. Se uma instalação antiga em H2 tiver dados que precisem ser preservados, confirme primeiro que a instância e os arquivos existem, suspenda novos pedidos, faça e verifique uma cópia consistente e planeje a importação para PostgreSQL em ordem de dependências (categorias/usuários/opções/faixas, produtos, pedidos, itens e adicionais). Preserve IDs e snapshots, adapte tipos/valores ao esquema PostgreSQL e atualize as sequências de identidade após importação. Compare contagens por tabela e confira pedidos e itens por código antes de reabrir o checkout. Mantenha o backup original até concluir essa validação. Não use scripts que apaguem tabelas ou configure `baseline-on-migrate` para contornar falhas sem revisão do schema e do histórico. H2 em memória perde os dados quando o processo termina.
 
-O perfil `test` continua usando H2 em memória; ele não prova conectividade com Neon. A suíte `PostgreSqlPersistenceTests` usa PostgreSQL 16 via Docker/Testcontainers para verificar migrations, seed idempotente, checkout, pedido/itens, autenticação administrativa, painel e transição de status.
+O perfil `test` usa H2 em memória para testes rápidos e não prova conectividade com Neon. `PostgreSqlPersistenceTests` usa PostgreSQL 16 via Docker/Testcontainers para verificar migrations, seed idempotente, checkout, pedido/itens, autenticação administrativa, painel e transição de status.
 
-As entidades persistidas incluem `Usuario`, `Categoria`, `Produto`, `OpcaoPizza`, `FaixaFrete`, `Pedido` e `ItemPedido`. Opções selecionadas ficam no item como snapshots de nome, tipo e preço; o item também guarda tipo de produto, nome e preço unitário cobrado. O pedido guarda o CEP normalizado e o frete cobrado como snapshot; pedidos existentes não são recalculados se as faixas mudarem.
+As entidades persistidas incluem `Usuario`, `Categoria`, `Produto`, `OpcaoPizza`, `FaixaFrete`, `Pedido` e `ItemPedido`. O backend calcula o preço unitário cobrado: para pizza meio a meio, usa o maior dos dois preços-base; soma borda, adicionais e molhos; multiplica pelo número de unidades; e, ao total dos itens, soma o frete cotado. Assim, `preco_unitario` já inclui as personalizações: não some novamente `borda_preco` ou os snapshots em `item_pedido_adicionais` ao recalcular o total, pois isso duplica valores. Os snapshots preservam nome, tipo e preço das opções na compra. O pedido guarda o CEP fornecido e o frete cobrado como snapshots; pedidos existentes não são recalculados se o catálogo ou as regras de frete mudarem. A API atual inicializa o status como `Pedido recebido` e grava `valor_total` calculado antes de salvar; dados antigos incompletos exigem diagnóstico e não são corrigidos automaticamente.
+
+Consulta somente de leitura para conferir os valores armazenados sem somar personalizações duas vezes:
+
+```sql
+SELECT p.id, p.codigo, p.status, p.valor_total, p.valor_frete,
+       COALESCE(SUM(i.quantidade * i.preco_unitario), 0) AS subtotal_itens,
+       COALESCE(SUM(i.quantidade * i.preco_unitario), 0)
+           + COALESCE(p.valor_frete, 0) AS total_calculado
+FROM public.pedidos AS p
+LEFT JOIN public.itens_pedido AS i ON i.pedido_id = p.id
+GROUP BY p.id, p.codigo, p.status, p.valor_total, p.valor_frete
+ORDER BY p.id DESC;
+```
 
 ## Frontend
 
@@ -371,6 +389,8 @@ O frontend é servido pelo próprio Spring Boot e se comunica com as APIs REST d
 - O deploy atual está preparado para o Render: https://fatia-prime.onrender.com
 - O workflow de GitHub Pages publica somente o frontend estático; a aplicação completa depende do backend Spring Boot, disponibilizado no Render.
 - Última atualização: outubro de 2026.
+
+Os PDFs em `docs/` são registros acadêmicos e cronogramas da etapa em que foram produzidos; menções a H2 e status antigos não descrevem a configuração atual de execução. Consulte também o [adendo técnico da revisão PostgreSQL](./docs/Atualizacao_Tecnica_PostgreSQL.md), que registra o estado verificado e as validações ainda pendentes sem substituir o histórico dos documentos originais.
 
 ## Equipe
 
