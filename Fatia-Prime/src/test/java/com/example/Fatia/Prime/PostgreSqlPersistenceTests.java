@@ -1,6 +1,7 @@
 package com.example.Fatia.Prime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -22,10 +23,14 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.jdbc.JdbcTestUtils;
@@ -81,6 +86,9 @@ class PostgreSqlPersistenceTests {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @MockitoBean
     private CepGeocoder cepGeocoder;
 
@@ -112,6 +120,115 @@ class PostgreSqlPersistenceTests {
         assertThat(JdbcTestUtils.countRowsInTable(jdbcTemplate, "categorias")).isEqualTo(categoriesBefore);
         assertThat(JdbcTestUtils.countRowsInTable(jdbcTemplate, "produtos")).isEqualTo(productsBefore);
         assertThat(JdbcTestUtils.countRowsInTable(jdbcTemplate, "opcoes_pizza")).isEqualTo(optionsBefore);
+    }
+
+    @Test
+    @Transactional
+    void persistsAndUpdatesEntityRelationshipsThenCascadesOrderDeletion() {
+        String unique = UUID.randomUUID().toString();
+        Usuario usuario = usuarioRepository.saveAndFlush(new Usuario(
+            "Usuário PostgreSQL " + unique,
+            "relacionamento-" + unique + "@fatiaprime.test",
+            passwordEncoder.encode(unique),
+            UsuarioRole.USER
+        ));
+        Categoria categoria = categoriaRepository.saveAndFlush(new Categoria("Categoria " + unique));
+        Produto produto = produtoRepository.saveAndFlush(new Produto(
+            "Produto " + unique,
+            "Descrição original",
+            new BigDecimal("41.75"),
+            null,
+            categoria
+        ));
+
+        Pedido pedido = new Pedido();
+        pedido.setUsuario(usuario);
+        pedido.setClienteNome("Cliente " + unique);
+        pedido.setClienteTelefone("61999998888");
+        pedido.setEndereco("Rua PostgreSQL");
+        pedido.setCep("99990000");
+        pedido.setCodigo("FP-" + unique.replace("-", "").substring(0, 12));
+        pedido.setStatus("Pedido recebido");
+        pedido.setValorTotal(new BigDecimal("48.75"));
+        pedido.setValorFrete(new BigDecimal("7.00"));
+        ItemPedido item = new ItemPedido(produto, 1, new BigDecimal("48.75"));
+        item.setAdicionais(List.of(new ItemPedidoAdicional(
+            null,
+            "Adicional snapshot",
+            new BigDecimal("7.00"),
+            TipoOpcaoPizza.ADICIONAL
+        )));
+        pedido.adicionarItem(item);
+
+        Pedido savedOrder = pedidoRepository.saveAndFlush(pedido);
+        Long orderId = savedOrder.getId();
+        Long itemId = savedOrder.getItens().getFirst().getId();
+
+        entityManager.clear();
+
+        Pedido loadedOrder = pedidoRepository.findByCodigoForConsulta(savedOrder.getCodigo()).orElseThrow();
+        assertThat(loadedOrder.getUsuario().getId()).isEqualTo(usuario.getId());
+        assertThat(loadedOrder.getItens()).hasSize(1);
+        assertThat(loadedOrder.getItens().getFirst().getProduto().getId()).isEqualTo(produto.getId());
+        assertThat(loadedOrder.getItens().getFirst().getProduto().getCategoria().getNome())
+            .isEqualTo(categoria.getNome());
+        assertThat(loadedOrder.getItens().getFirst().getAdicionais())
+            .singleElement()
+            .satisfies(adicional -> {
+                assertThat(adicional.getNome()).isEqualTo("Adicional snapshot");
+                assertThat(adicional.getPrecoAdicional()).isEqualByComparingTo("7.00");
+            });
+
+        Categoria updatedCategory = categoriaRepository.findById(categoria.getId()).orElseThrow();
+        updatedCategory.setNome("Categoria atualizada " + unique);
+        categoriaRepository.saveAndFlush(updatedCategory);
+        entityManager.clear();
+
+        Produto loadedProduct = produtoRepository.findById(produto.getId()).orElseThrow();
+        assertThat(loadedProduct.getCategoria().getNome()).isEqualTo("Categoria atualizada " + unique);
+
+        pedidoRepository.delete(loadedOrder);
+        pedidoRepository.flush();
+        assertThat(JdbcTestUtils.countRowsInTableWhere(jdbcTemplate, "itens_pedido", "pedido_id = " + orderId))
+            .isZero();
+        assertThat(JdbcTestUtils.countRowsInTableWhere(
+            jdbcTemplate, "item_pedido_adicionais", "item_pedido_id = " + itemId
+        )).isZero();
+
+        produtoRepository.delete(loadedProduct);
+        categoriaRepository.deleteById(categoria.getId());
+        usuarioRepository.deleteById(usuario.getId());
+        assertThat(pedidoRepository.findById(orderId)).isEmpty();
+        assertThat(produtoRepository.findById(produto.getId())).isEmpty();
+        assertThat(categoriaRepository.findById(categoria.getId())).isEmpty();
+        assertThat(usuarioRepository.findById(usuario.getId())).isEmpty();
+    }
+
+    @Test
+    void postgresEnforcesCategoryUniquenessAndProductForeignKey() {
+        String unique = UUID.randomUUID().toString();
+        long categoriesBefore = categoriaRepository.count();
+        Categoria categoria = categoriaRepository.saveAndFlush(new Categoria("Categoria restrita " + unique));
+        Produto produto = produtoRepository.saveAndFlush(new Produto(
+            "Produto referenciado " + unique,
+            null,
+            new BigDecimal("19.99"),
+            null,
+            categoria
+        ));
+
+        assertThatThrownBy(() -> categoriaRepository.saveAndFlush(new Categoria(categoria.getNome())))
+            .isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(categoriaRepository.count()).isEqualTo(categoriesBefore + 1);
+
+        assertThatThrownBy(() -> categoriaRepository.deleteById(categoria.getId()))
+            .isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(categoriaRepository.findById(categoria.getId())).isPresent();
+        assertThat(produtoRepository.findById(produto.getId())).isPresent();
+
+        produtoRepository.deleteById(produto.getId());
+        categoriaRepository.deleteById(categoria.getId());
+        assertThat(categoriaRepository.findById(categoria.getId())).isEmpty();
     }
 
     @Test
