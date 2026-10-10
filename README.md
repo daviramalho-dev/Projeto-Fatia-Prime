@@ -310,6 +310,44 @@ O perfil `dev` é o padrão e usa PostgreSQL em `localhost:5432/fatiaprime`. É 
 
 O Render injeta `PORT`, usado pela aplicação. Não é necessário configurar um disco persistente pago para o banco, pois ele não fica no container do Render. Isso não significa disponibilidade contínua: serviços gratuitos podem suspender ou reiniciar, e cotas, suspensão, retenção de backup e armazenamento do Neon dependem do plano e das políticas vigentes. Consulte os limites atuais nos painéis antes de publicar.
 
+### Diagnóstico e verificação pós-deploy
+
+O projeto não inclui Spring Boot Actuator nem um endpoint dedicado de health. `GET /` serve a página estática e confirma apenas que o servidor HTTP respondeu; não confirma conexão com o banco. `GET /api/categorias` é uma consulta pública somente de leitura que acessa o PostgreSQL. Se configurar um health check no serviço Render e quiser verificar também a dependência do banco, use `/api/categorias`; não exponha uma rota administrativa para esse fim.
+
+As chamadas abaixo exibem somente o código HTTP, sem imprimir conteúdo do catálogo:
+
+```bash
+BASE_URL="https://fatia-prime.onrender.com"
+curl --fail --silent --show-error -o /dev/null -w 'HTTP %{http_code}\n' "$BASE_URL/"
+curl --fail --silent --show-error -o /dev/null -w 'HTTP %{http_code}\n' "$BASE_URL/api/categorias"
+```
+
+Após um deploy, confira no painel do Render se a implantação mais recente terminou com sucesso e examine os logs de inicialização. Confirme que o perfil `prod` foi ativado, que o Spring Boot e o pool de conexões iniciaram, que o Flyway verificou/aplicou as migrações e que não houve falhas de conexão, migração ou validação Hibernate. Verifique no painel apenas se as variáveis necessárias estão definidas; nunca copie seus valores para logs, tickets ou mensagens.
+
+Para investigar indisponibilidade:
+
+1. Se nem `/` responder, confira o estado da implantação, a configuração Docker com diretório raiz `Fatia-Prime`, a porta `PORT` e os primeiros erros de inicialização nos logs do Render.
+2. Se `/` responder, mas `/api/categorias` falhar, confira se o perfil `prod` está ativo e se `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` e `SPRING_DATASOURCE_PASSWORD` estão definidas. No Neon, confirme projeto, branch, banco e usuário; confira o hostname do endpoint (incluindo `-pooler` quando usar pooled) e TLS com `sslmode=require`. Não imprima nem compartilhe valores das variáveis.
+3. Se a falha mencionar Flyway ou Hibernate, compare a versão implantada com as migrações versionadas em `src/main/resources/db/migration` e consulte, somente para leitura, o histórico no SQL Editor do banco correto:
+
+   ```sql
+   SELECT installed_rank, version, description, success
+   FROM public.flyway_schema_history
+   ORDER BY installed_rank;
+   ```
+
+   Não edite `flyway_schema_history`, não desative `ddl-auto=validate` para contornar incompatibilidades e não use `create`, `create-drop`, `DROP`, `TRUNCATE` ou alteração manual de tabelas como tentativa de recuperação.
+4. Antes de uma nova migração, valide-a em PostgreSQL descartável e confirme que há um backup recuperável conforme os recursos disponíveis no plano Neon. Migrações já aplicadas não devem ser reescritas. Se um deploy falhar, só retorne a uma versão anterior quando ela for compatível com o esquema já aplicado; caso contrário, corrija a migração em frente e publique uma versão compatível. Qualquer restauração de backup deve ser planejada e conferida antes de afetar o banco usado pela aplicação.
+5. O bootstrap do administrador cria uma conta apenas quando ainda não existe administrador. Alterar `APP_ADMIN_BOOTSTRAP_PASSWORD` não redefine a senha de uma conta existente; não trate reiniciar ou redeployar como recuperação de credenciais.
+
+Checklist pós-deploy:
+
+- Confirmar implantação bem-sucedida e inicialização sem erros de Spring, Hikari, Flyway ou Hibernate.
+- Confirmar a resposta HTTP da raiz e de `/api/categorias`; a segunda consulta verifica o caminho até o banco.
+- Confirmar no Neon, no projeto/branch/banco corretos, o estado do Flyway e a presença do catálogo esperado, sem expor dados de clientes ou hashes de senha.
+- Validar fluxos que gravam dados em ambiente de staging ou em um branch Neon isolado antes de qualquer teste de escrita em produção.
+- Confirmar que nenhuma etapa de deploy ou recuperação depende de arquivos locais do container Render e que limites e políticas atuais dos planos Render/Neon foram considerados.
+
 ### Console SQL do Neon
 
 No Neon, abra o projeto, selecione o branch e o banco corretos e use **SQL Editor**. As tabelas da aplicação ficam no schema `public`. Exemplos para inspecionar pedidos e itens:
