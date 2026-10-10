@@ -390,7 +390,7 @@ O frontend é servido pelo próprio Spring Boot e se comunica com as APIs REST d
 - O workflow de GitHub Pages publica somente o frontend estático; a aplicação completa depende do backend Spring Boot, disponibilizado no Render.
 - Última atualização: outubro de 2026.
 
-Os PDFs em `docs/` são registros acadêmicos e cronogramas da etapa em que foram produzidos; menções a H2 e status antigos não descrevem a configuração atual de execução. Consulte também o [adendo técnico da revisão PostgreSQL](./docs/Atualizacao_Tecnica_PostgreSQL.md), que registra o estado verificado e as validações ainda pendentes sem substituir o histórico dos documentos originais.
+Os PDFs em `docs/` são registros acadêmicos e cronogramas da etapa em que foram produzidos; menções a H2 e status antigos descrevem etapas anteriores e não a configuração atual de execução. Atualmente, o desenvolvimento e a produção usam PostgreSQL; H2 permanece somente nos testes automatizados.
 
 ## Equipe
 
