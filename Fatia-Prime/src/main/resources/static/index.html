@@ -33,16 +33,24 @@
             <span class="logo-prime">PRIME</span>
         </div>
 
-        <nav>
+        <nav id="public-navigation" aria-hidden="false">
             <a href="#inicio">Início</a>
             <a href="#cardapio">Cardápio</a>
             <a href="#sobre">Sobre nós</a>
             <a class="js-open-admin" href="#acesso-admin">Acesso admin</a>
         </nav>
 
-        <button class="btn-pedido" type="button" data-open-cart>
-            Fazer pedido <span class="cart-count">0</span>
-        </button>
+        <div class="public-header-actions">
+            <button class="public-menu-toggle" type="button" data-toggle-public-menu aria-controls="public-navigation" aria-expanded="false">
+                <span class="visually-hidden">Abrir navegação</span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </button>
+            <button class="btn-pedido" type="button" data-open-cart>
+                Fazer pedido <span class="cart-count">0</span>
+            </button>
+        </div>
 
     </header>
 
@@ -67,11 +75,6 @@
             <div class="hero-overlay"></div>
 
             <div class="hero-content">
-
-                <span class="hero-tag">
-                    🍕 PIZZA ARTESANAL
-                </span>
-
                 <h1>
                     SABOR ARTESANAL<br>
                     <span>EM CADA FATIA.</span>
@@ -103,9 +106,7 @@
         <section class="destaques">
 
             <div class="section-title">
-
                 <span>SELEÇÃO ESPECIAL</span>
-
                 <h2>
                     PIZZAS MAIS PEDIDAS
                 </h2>
@@ -136,11 +137,6 @@
         <section class="banner">
 
             <div class="banner-content">
-
-                <span>
-                    PREPARO ARTESANAL
-                </span>
-
                 <h2>
                     MASSA ARTESANAL.<br>
                     SABOR <strong>DE VERDADE.</strong>
@@ -165,9 +161,6 @@
         <section class="cardapio" id="cardapio">
 
             <div class="section-title">
-
-                <span>ESCOLHA SUA FAVORITA</span>
-
                 <h2>
                     NOSSO CARDÁPIO
                 </h2>
@@ -211,11 +204,6 @@
             </div>
 
             <div class="sobre-content">
-
-                <span>
-                    SOBRE A FATIA PRIME
-                </span>
-
                 <h2>
                     PAIXÃO POR PIZZA<br>
                     <strong>DO INÍCIO AO FIM.</strong>
@@ -708,6 +696,7 @@
             </div>
             <section class="pizza-customizer-summary" aria-live="polite">
                 <h3>Resumo da pizza</h3>
+                <div class="customizer-summary-visual" hidden></div>
                 <p class="customizer-summary-type">Pizza inteira</p>
                 <p class="customizer-summary-flavors">Escolha um sabor</p>
                 <p class="customizer-summary-border">Sem borda recheada</p>
