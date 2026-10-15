@@ -1,5 +1,6 @@
 const WHATSAPP_NUMBER = '5561993637373';
 const CART_STORAGE_KEY = 'fatia-prime-cart';
+const THEME_STORAGE_KEY = 'fatia-prime-theme';
 const ORDER_STORAGE_KEY = 'fatia-prime-last-order';
 const ORDER_HISTORY_STORAGE_KEY = 'fatia-prime-orders';
 const PRODUCT_STORAGE_KEY = 'fatia-prime-products';
@@ -106,8 +107,7 @@ const publicHeader = document.querySelector('.public-header');
 const publicFooter = document.querySelector('footer');
 const publicOrderTracking = document.querySelector('.order-tracking');
 const publicWhatsapp = document.querySelector('.whatsapp-float');
-const publicNavigation = document.querySelector('#public-navigation');
-const publicMenuToggle = document.querySelector('[data-toggle-public-menu]');
+const themeToggles = document.querySelectorAll('[data-theme-toggle]');
 const publicMenuFilters = document.querySelector('.menu-filters');
 const catalogFeedback = document.querySelector('.catalog-feedback');
 const catalogSearch = document.querySelector('#catalog-search');
@@ -165,16 +165,38 @@ function getScrollBehavior() {
     return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 }
 
-function setPublicMenuOpen(isOpen) {
-    if (!publicNavigation || !publicMenuToggle) return;
-    publicNavigation.classList.toggle('is-open', isOpen);
-    publicNavigation.setAttribute('aria-hidden', String(!isOpen));
-    publicMenuToggle.setAttribute('aria-expanded', String(isOpen));
-    publicMenuToggle.setAttribute('aria-label', isOpen ? 'Fechar navegação' : 'Abrir navegação');
-    publicMenuToggle.querySelector('.visually-hidden').textContent = isOpen
-        ? 'Fechar navegação'
-        : 'Abrir navegação';
+function applyTheme(theme, persist = false) {
+    const isLight = theme === 'light';
+    document.body.dataset.theme = isLight ? 'light' : 'dark';
+    themeToggles.forEach((toggle) => {
+        toggle.setAttribute('aria-pressed', String(isLight));
+        toggle.setAttribute('aria-label', `Ativar modo ${isLight ? 'escuro' : 'claro'}`);
+        toggle.title = `Ativar modo ${isLight ? 'escuro' : 'claro'}`;
+        const label = toggle.querySelector('[aria-hidden="true"]');
+        if (label) label.textContent = isLight ? 'ESCURO' : 'CLARO';
+    });
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isLight ? '#f6f7f4' : '#090909');
+
+    if (persist) {
+        try {
+            localStorage.setItem(THEME_STORAGE_KEY, isLight ? 'light' : 'dark');
+        } catch (error) {
+            console.warn('Não foi possível salvar a preferência de tema.', error);
+        }
+    }
 }
+
+try {
+    applyTheme(localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark');
+} catch (error) {
+    applyTheme('dark');
+}
+
+themeToggles.forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+        applyTheme(document.body.dataset.theme === 'light' ? 'dark' : 'light', true);
+    });
+});
 
 function setInterfaceMode(mode) {
     const isPublic = mode === 'public';
@@ -196,7 +218,6 @@ function setInterfaceMode(mode) {
         );
     }
     document.body.classList.toggle('admin-mode', isWorkspace);
-    if (!isPublic) setPublicMenuOpen(false);
     if (adminHeader) adminHeader.hidden = !isWorkspace;
     if (publicHeader) publicHeader.hidden = !isPublic;
     if (adminAccess) adminAccess.hidden = !isLogin;
@@ -2765,24 +2786,6 @@ adminSoundToggle?.addEventListener('click', () => {
     if (adminSoundEnabled) {
         adminAudioContext ||= new AudioContext();
         void adminAudioContext.resume();
-    }
-});
-
-publicMenuToggle?.addEventListener('click', () => {
-    const isOpen = publicMenuToggle.getAttribute('aria-expanded') === 'true';
-    setPublicMenuOpen(!isOpen);
-});
-publicNavigation?.addEventListener('click', (event) => {
-    if (event.target.closest('a')) setPublicMenuOpen(false);
-});
-document.addEventListener('click', (event) => {
-    if (publicNavigation?.classList.contains('is-open')
-        && !event.target.closest('.public-header')) setPublicMenuOpen(false);
-});
-document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && publicNavigation?.classList.contains('is-open')) {
-        setPublicMenuOpen(false);
-        publicMenuToggle?.focus();
     }
 });
 
