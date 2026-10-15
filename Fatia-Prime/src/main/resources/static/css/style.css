@@ -239,6 +239,9 @@ button:disabled {
 /* BUTTON */
 
 .btn-pedido {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     border: none;
 
     background: var(--color-primary);
@@ -2085,15 +2088,18 @@ footer p {
 }
 
 .cart-count {
-    display: inline-grid;
-    place-items: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-width: 18px;
     height: 18px;
-    margin-left: 4px;
+    padding: 0 3px;
     border-radius: 50%;
     background: var(--color-bg-darker);
     color: var(--color-primary);
     font-size: 10px;
+    line-height: 1;
+    text-align: center;
 }
 
 .cart-count.is-pulsing {
