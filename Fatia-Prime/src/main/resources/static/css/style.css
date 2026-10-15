@@ -16,6 +16,8 @@
     --color-primary: #f5c400;
     --color-primary-dark: #d4a900;
     --color-primary-light: #ffd633;
+    --color-theme-fill: #f5c400;
+    --color-theme-on-fill: #090909;
     --color-bg-dark: #0b0b0b;
     --color-bg-darker: #090909;
     --color-bg-medium: #101010;
@@ -29,12 +31,47 @@
     --color-success: #6de59b;
     --color-error: #ff8a80;
     --color-warning: #ffb74d;
+    --color-theme-input: #090909;
+    --color-theme-input-border: #444;
+    --color-theme-surface: #111;
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
     --radius-sm: 4px;
     --radius-md: 6px;
     --radius-lg: 8px;
+}
+
+body[data-theme="light"] {
+    color-scheme: light;
+    --color-primary: #805f00;
+    --color-primary-dark: #674d00;
+    --color-primary-light: #f2cd45;
+    --color-theme-fill: #f5c400;
+    --color-theme-on-fill: #171a16;
+    --color-bg-dark: #f4f6f2;
+    --color-bg-darker: #ffffff;
+    --color-bg-medium: #ffffff;
+    --color-bg-light: #eef1eb;
+    --color-bg-lighter: #e1e5de;
+    --color-text-primary: #222722;
+    --color-text-secondary: #454c46;
+    --color-text-tertiary: #5d665f;
+    --color-border: #d4dad2;
+    --color-border-light: #c2cac1;
+    --color-success: #176b3c;
+    --color-error: #b3261e;
+    --color-warning: #805300;
+    --color-theme-input: #ffffff;
+    --color-theme-input-border: #b9c2b8;
+    --color-theme-surface: #ffffff;
+    --shadow-sm: 0 2px 8px rgba(25, 35, 25, .08);
+    --shadow-md: 0 4px 16px rgba(25, 35, 25, .12);
+    --shadow-lg: 0 8px 32px rgba(25, 35, 25, .16);
+}
+
+body[data-theme="dark"] {
+    color-scheme: dark;
 }
 
 html {
@@ -2959,10 +2996,6 @@ footer p {
         padding: 0 5%;
     }
 
-    .header nav {
-        display: none;
-    }
-
     .admin-header {
         padding: 0 5%;
     }
@@ -3980,8 +4013,7 @@ footer p {
     .pizza-image img,
     .btn-card,
     .btn-menu-add,
-    .public-header nav,
-    .public-menu-toggle {
+    .public-header nav {
         transition: none;
     }
 
@@ -4000,37 +4032,6 @@ footer p {
     display: flex;
     align-items: center;
     gap: 12px;
-}
-
-.public-menu-toggle {
-    display: none;
-    width: 42px;
-    height: 42px;
-    padding: 10px 9px;
-    border: 1px solid var(--color-border-light);
-    background: transparent;
-    color: var(--color-text-primary);
-}
-
-.public-menu-toggle > span:not(.visually-hidden) {
-    display: block;
-    width: 22px;
-    height: 2px;
-    margin: 4px auto;
-    background: currentColor;
-    transition: transform .2s ease, opacity .2s ease;
-}
-
-.public-menu-toggle[aria-expanded="true"] > span:nth-of-type(2) {
-    transform: translateY(6px) rotate(45deg);
-}
-
-.public-menu-toggle[aria-expanded="true"] > span:nth-of-type(3) {
-    opacity: 0;
-}
-
-.public-menu-toggle[aria-expanded="true"] > span:nth-of-type(4) {
-    transform: translateY(-6px) rotate(-45deg);
 }
 
 .pizza-split-fallback {
@@ -4085,62 +4086,11 @@ footer p {
     .public-header-actions {
         gap: 8px;
     }
-
-    .public-menu-toggle {
-        display: block;
-    }
-
-    .public-header nav {
-        visibility: hidden;
-
-        position: absolute;
-        top: 100%;
-        right: 5%;
-        left: 5%;
-        display: none;
-        flex-direction: column;
-        gap: 0;
-        padding: 8px;
-        border: 1px solid var(--color-border-light);
-        background: var(--color-bg-darker);
-        box-shadow: var(--shadow-md);
-    }
-
-    .public-header nav[aria-hidden="true"] {
-        visibility: hidden;
-    }
-
-    .public-header nav.is-open {
-        display: flex;
-        visibility: visible;
-    }
-
-    .public-header nav a {
-        min-height: 44px;
-        display: flex;
-        align-items: center;
-        padding: 0 12px;
-    }
-
-    .public-header nav a:hover,
-    .public-header nav a:focus-visible {
-        background: var(--color-bg-light);
-    }
 }
 
 @media (max-width: 600px) {
     .public-header-actions {
         gap: 6px;
-    }
-
-    .public-menu-toggle {
-        width: 38px;
-        height: 38px;
-    }
-
-    .public-header nav {
-        right: 4%;
-        left: 4%;
     }
 
     .destaques .section-title h2 {
@@ -4159,5 +4109,523 @@ footer p {
 
     .pizza-image {
         height: min(360px, 92vw);
+    }
+}
+
+body[data-theme="light"] .header nav a,
+body[data-theme="light"] .admin-nav a,
+body[data-theme="light"] .catalog-controls > label,
+body[data-theme="light"] .menu-text p,
+body[data-theme="light"] .admin-orders-live-status,
+body[data-theme="light"] .footer-links a,
+body[data-theme="light"] .admin-login-note {
+    color: var(--color-text-secondary);
+}
+
+body[data-theme="light"] .logo-fatia {
+    color: var(--color-text-primary);
+}
+
+body[data-theme="light"] .hero h1 {
+    color: #ffffff;
+}
+
+body[data-theme="light"] .hero h1 span {
+    color: #ffd633;
+}
+
+body[data-theme="light"] .hero p {
+    color: #f1f1eb;
+}
+
+body[data-theme="light"] .pizza-card,
+body[data-theme="light"] .admin-product-card,
+body[data-theme="light"] .checkout-panel,
+body[data-theme="light"] .order-query-meta,
+body[data-theme="light"] .order-query-summary {
+    background: var(--color-theme-surface);
+}
+
+body[data-theme="light"] .pizza-image,
+body[data-theme="light"] .pizza-image-placeholder,
+body[data-theme="light"] .customizer-product-placeholder {
+    background-color: #e8ece5;
+    color: #263028;
+}
+
+body[data-theme="light"] .pizza-image-placeholder small,
+body[data-theme="light"] .customizer-product-placeholder small {
+    color: #465148;
+}
+
+body[data-theme="light"] .btn-pedido,
+body[data-theme="light"] .btn-primary,
+body[data-theme="light"] .badge,
+body[data-theme="light"] .menu-filter-button.is-active,
+body[data-theme="light"] .menu-filter-button:hover,
+body[data-theme="light"] .btn-card:hover,
+body[data-theme="light"] .btn-menu-add:hover,
+body[data-theme="light"] .admin-order-new,
+body[data-theme="light"] .admin-order-card-side button:hover,
+body[data-theme="light"] .admin-product-card-actions button:hover,
+body[data-theme="light"] .admin-status-save:hover {
+    background-color: var(--color-theme-fill);
+    color: var(--color-theme-on-fill);
+}
+
+body[data-theme="light"] .hero .btn-primary {
+    color: var(--color-theme-on-fill);
+}
+
+body[data-theme="light"] .banner {
+    background: linear-gradient(135deg, #e7ebe4 0%, #f8f9f6 52%, #e5e9e2 100%);
+}
+
+body[data-theme="light"] .banner p,
+body[data-theme="light"] .checkout-items li {
+    color: var(--color-text-secondary);
+}
+
+body[data-theme="light"] .catalog-feedback {
+    background: #fff8d9;
+    color: #554200;
+}
+
+body[data-theme="light"] .cart-panel,
+body[data-theme="light"] .confirmation-panel,
+body[data-theme="light"] .pizza-customizer,
+body[data-theme="light"] .pizza-customizer-header,
+body[data-theme="light"] .custom-select-options {
+    background: var(--color-bg-medium);
+    color: var(--color-text-primary);
+}
+
+body[data-theme="light"] .pizza-type-choices label,
+body[data-theme="light"] .custom-select-options button,
+body[data-theme="light"] .customizer-addon-option {
+    border-color: var(--color-border-light);
+    color: var(--color-text-primary);
+}
+
+body[data-theme="light"] .pizza-type-choices label:has(input:checked),
+body[data-theme="light"] .custom-select-options button[aria-selected="true"],
+body[data-theme="light"] .custom-select-options button:hover:not(:disabled) {
+    background: #fff5c2;
+    color: var(--color-primary-dark);
+}
+
+body[data-theme="light"] .checkout-items li,
+body[data-theme="light"] .cart-item-controls button,
+body[data-theme="light"] .pizza-customizer-close,
+body[data-theme="light"] .pizza-customizer-quantity button,
+body[data-theme="light"] .order-progress-marker {
+    border-color: var(--color-border-light);
+}
+
+body[data-theme="light"] .confirmation-code {
+    background: #fff8dc;
+    border-color: #d7bd60;
+}
+
+body[data-theme="light"] .confirmation-section,
+body[data-theme="light"] .confirmation-customer,
+body[data-theme="light"] .admin-summary-card,
+body[data-theme="light"] .admin-status-editor,
+body[data-theme="light"] .admin-order-customer div,
+body[data-theme="light"] .admin-order-customer p,
+body[data-theme="light"] .admin-order-products,
+body[data-theme="light"] .admin-catalog-panel,
+body[data-theme="light"] .admin-category-card,
+body[data-theme="light"] .admin-pizza-option,
+body[data-theme="light"] .order-query-panel,
+body[data-theme="light"] .order-query-result {
+    background-color: var(--color-bg-medium);
+}
+
+body[data-theme="light"] .status-progress {
+    background: rgba(38, 100, 156, .1);
+    color: #245d91;
+    border-color: rgba(38, 100, 156, .35);
+}
+
+body[data-theme="light"] .status-finished {
+    background: rgba(23, 107, 60, .1);
+    color: #176b3c;
+    border-color: rgba(23, 107, 60, .35);
+}
+
+body[data-theme="light"] .status-received {
+    background: #fff5c2;
+    color: var(--color-primary-dark);
+    border-color: #d7bd60;
+}
+
+body[data-theme="light"] .cart-backdrop,
+body[data-theme="light"] .pizza-customizer::backdrop {
+    background: rgba(20, 27, 21, .48);
+}
+
+body[data-theme="light"] :is(input, select, textarea) {
+    border-color: var(--color-theme-input-border);
+    background-color: var(--color-theme-input);
+    color: var(--color-text-primary);
+}
+
+body[data-theme="light"] :is(input, textarea)::placeholder {
+    color: #626a63;
+    opacity: 1;
+}
+
+body[data-theme="light"] :is(label, legend) {
+    color: var(--color-text-secondary);
+}
+
+body[data-theme="light"] .admin-login-message.success,
+body[data-theme="light"] .admin-category-message.success,
+body[data-theme="light"] .admin-product-form-message.success,
+body[data-theme="light"] .admin-pizza-option-message.success,
+body[data-theme="light"] .admin-status-message.success,
+body[data-theme="light"] .delivery-quote-message.success,
+body[data-theme="light"] .address-lookup-message.success,
+body[data-theme="light"] .order-query-message.success {
+    color: #176b3c;
+}
+
+body[data-theme="light"] .admin-login-message.error,
+body[data-theme="light"] .admin-category-message,
+body[data-theme="light"] .admin-product-form-message,
+body[data-theme="light"] .admin-pizza-option-message.error,
+body[data-theme="light"] .admin-status-message,
+body[data-theme="light"] .checkout-message,
+body[data-theme="light"] .order-query-message.error {
+    color: #a5211b;
+}
+
+body[data-theme="light"] footer p,
+body[data-theme="light"] .copyright {
+    color: #58615a;
+}
+
+body[data-theme="light"] .copyright {
+    border-color: var(--color-border);
+}
+
+@media (max-width: 900px) {
+    .header.public-header {
+        height: auto;
+        min-height: 0;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        padding: 9px 4% 6px;
+    }
+
+    .public-header .logo {
+        order: 0;
+    }
+
+    .public-header-actions {
+        order: 1;
+        margin-left: auto;
+    }
+
+    .header.public-header nav,
+    .header.public-header nav[aria-hidden="true"],
+    .header.public-header nav.is-open {
+        position: static;
+        order: 2;
+        display: flex;
+        visibility: visible;
+        flex: 0 0 100%;
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+        gap: 10px;
+        overflow-x: auto;
+        padding: 3px 0 2px;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        scrollbar-width: none;
+    }
+
+    .header.public-header nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .public-header nav a {
+        display: flex;
+        min-height: 42px;
+        flex: 0 0 auto;
+        align-items: center;
+        padding: 0 2px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    .public-header nav a:hover,
+    .public-header nav a:focus-visible {
+        background: transparent;
+    }
+
+    .hero {
+        margin-top: 108px;
+    }
+
+    .admin-header {
+        min-height: 0;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        padding: 9px 5% 6px;
+    }
+
+    .admin-header-brand {
+        order: 0;
+    }
+
+    .admin-header-actions {
+        order: 1;
+        margin-left: auto;
+    }
+
+    .admin-nav {
+        order: 2;
+        flex: 0 0 100%;
+        gap: 22px;
+        overflow-x: auto;
+        padding: 2px 0 4px;
+    }
+
+    .admin-nav a {
+        min-height: 38px;
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+    .admin-access,
+    .admin-orders,
+    .admin-catalog {
+        padding-top: 132px;
+    }
+
+    .cart-panel,
+    .checkout-panel,
+    .confirmation-panel {
+        height: 100dvh;
+        min-height: 0;
+        overscroll-behavior: contain;
+    }
+}
+
+@media (min-width: 701px) and (max-width: 900px) {
+    .pizza-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .header.public-header {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+
+    .public-header-actions {
+        gap: 6px;
+    }
+
+    .theme-toggle {
+        min-width: 62px;
+        min-height: 44px;
+        padding: 0 8px;
+    }
+
+    .btn-pedido {
+        min-height: 44px;
+        padding: 10px 11px;
+        font-size: 10px;
+    }
+
+    .hero {
+        margin-top: 108px;
+    }
+
+    .hero h1 {
+        font-size: 60px;
+    }
+
+    .hero-buttons {
+        gap: 12px;
+    }
+
+    .hero-buttons .btn-primary,
+    .hero-buttons .btn-secondary,
+    .center-button .btn-primary {
+        min-height: 46px;
+        text-align: center;
+    }
+
+    .catalog-results-row {
+        flex-wrap: wrap;
+    }
+
+    .catalog-clear-filters {
+        min-height: 44px;
+    }
+
+    .menu-item:hover {
+        padding-left: 0;
+    }
+
+    .menu-actions {
+        gap: 10px;
+    }
+
+    .btn-menu-add,
+    .menu-filter-button {
+        min-height: 44px;
+    }
+
+    .sobre-image {
+        height: 280px;
+    }
+
+    .admin-header {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+
+    .admin-nav {
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .admin-header-actions {
+        gap: 6px;
+    }
+
+    .admin-logout {
+        min-height: 44px;
+    }
+
+    .admin-access,
+    .admin-orders,
+    .admin-catalog {
+        padding-top: 126px;
+    }
+
+    .cart-panel,
+    .checkout-panel,
+    .confirmation-panel {
+        padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    }
+
+    .cart-footer {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .checkout-form-grid,
+    .checkout-address-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .checkout-form-grid .field-full,
+    .checkout-address-grid .address-field-wide {
+        grid-column: auto;
+    }
+
+    .checkout-address-section,
+    .order-query-panel {
+        padding: 14px;
+    }
+
+    .checkout-submit,
+    .checkout-button,
+    .cart-continue,
+    .cart-quote-button,
+    .customizer-add-to-cart {
+        min-height: 48px;
+    }
+
+    .pizza-customizer {
+        width: calc(100vw - 16px);
+        max-height: calc(100dvh - 16px);
+    }
+
+    .pizza-customizer-header,
+    .pizza-customizer-content {
+        padding-right: 16px;
+        padding-left: 16px;
+    }
+
+    .customizer-addon-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .footer-links {
+        flex-wrap: wrap;
+        gap: 12px 20px;
+    }
+
+    .order-query-actions > * {
+        min-height: 46px;
+    }
+}
+
+@media (max-width: 430px) {
+    .hero h1 {
+        font-size: 54px;
+    }
+
+    .pizza-info {
+        padding: 17px 16px 12px;
+    }
+
+    .pizza-card-footer {
+        flex-wrap: wrap;
+        padding: 0 16px 16px;
+    }
+
+    .pizza-card-footer .btn-card {
+        min-height: 44px;
+    }
+
+    .cart-header h2,
+    .checkout-header h2 {
+        font-size: 30px;
+    }
+
+    .admin-summary {
+        gap: 8px;
+    }
+
+    .admin-summary-card {
+        padding: 12px;
+    }
+
+    .admin-summary-card strong {
+        font-size: 23px;
+    }
+}
+
+@media (max-width: 390px) {
+    .public-header nav {
+        gap: 8px;
+    }
+
+    .public-header nav a {
+        font-size: 10px;
+    }
+
+    .btn-pedido {
+        padding-right: 8px;
+        padding-left: 8px;
+    }
+
+    .hero h1 {
+        font-size: 50px;
+    }
+
+    .pizza-type-choices label {
+        flex: 1 1 100%;
     }
 }
