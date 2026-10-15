@@ -1958,11 +1958,38 @@ function setDeliveryQuoteMessage(form, message, type = '') {
     if (type) element.classList.add(type);
 }
 
+function setDeliveryQuoteButtonLoading(isLoading) {
+    const button = document.querySelector('.cart-quote-button');
+    if (!button) return;
+    if (!button.dataset.defaultLabel) button.dataset.defaultLabel = button.textContent.trim();
+    button.disabled = isLoading;
+    button.setAttribute('aria-busy', String(isLoading));
+    button.textContent = isLoading ? 'AGUARDE...' : button.dataset.defaultLabel;
+}
+
+function invalidateDeliveryQuoteForCepChange(cep, form) {
+    const normalizedCep = String(cep || '').replace(/\D/g, '');
+    if (currentDeliveryQuote?.cep === normalizedCep) return;
+    currentDeliveryQuote = null;
+    deliveryQuoteRequestId += 1;
+    setDeliveryQuoteButtonLoading(false);
+    renderDeliveryBreakdown();
+    setDeliveryQuoteMessage(form, '');
+}
+
+function isCurrentDeliveryQuoteRequest(requestId, cep, form) {
+    const cepField = form === checkoutForm
+        ? checkoutAddressField('customerCep')
+        : form?.querySelector('.cart-delivery-cep');
+    return requestId === deliveryQuoteRequestId
+        && cep === String(cepField?.value || '').replace(/\D/g, '');
+}
+
 function deliveryQuoteMessage(quote) {
     if (quote.aproximado) {
-        return `Frete estimado: ${money.format(quote.frete)}. Valor calculado com base aproximada na região do CEP.`;
+        return 'Frete estimado com base aproximada na região do CEP.';
     }
-    return `Frete: ${money.format(quote.frete)} (${quote.regiao}).`;
+    return 'Frete calculado com sucesso.';
 }
 
 function renderDeliveryBreakdown() {
@@ -1995,17 +2022,15 @@ async function refreshDeliveryQuote(cep, form, force = false) {
     if (!/^[0-9]{8}$/.test(normalizedCep)) {
         currentDeliveryQuote = null;
         deliveryQuoteRequestId += 1;
+        setDeliveryQuoteButtonLoading(false);
         renderDeliveryBreakdown();
         setDeliveryQuoteMessage(form, normalizedCep ? 'Informe um CEP válido.' : '');
         return false;
     }
 
     if (!force && currentDeliveryQuote?.cep === normalizedCep) {
-        setDeliveryQuoteMessage(
-            form,
-            deliveryQuoteMessage(currentDeliveryQuote),
-            'success'
-        );
+        const message = deliveryQuoteMessage(currentDeliveryQuote);
+        setDeliveryQuoteMessage(form, message, message ? 'success' : '');
         return true;
     }
 
@@ -2013,10 +2038,11 @@ async function refreshDeliveryQuote(cep, form, force = false) {
     currentDeliveryQuote = null;
     renderDeliveryBreakdown();
     setDeliveryQuoteMessage(form, 'Calculando entrega...');
+    setDeliveryQuoteButtonLoading(true);
 
     try {
         const quote = await fetchApiJson(`/api/frete/consulta?cep=${encodeURIComponent(normalizedCep)}`);
-        if (requestId !== deliveryQuoteRequestId) return false;
+        if (!isCurrentDeliveryQuoteRequest(requestId, normalizedCep, form)) return false;
         const freight = Number(quote?.valorFrete);
         if (!Number.isFinite(freight) || freight < 0 || !quote?.regiao) {
             throw new Error('Não foi possível calcular a entrega. Tente novamente.');
@@ -2032,14 +2058,11 @@ async function refreshDeliveryQuote(cep, form, force = false) {
             checkoutMessage.textContent = '';
             checkoutMessage.classList.remove('error');
         }
-        setDeliveryQuoteMessage(
-            form,
-            deliveryQuoteMessage(currentDeliveryQuote),
-            'success'
-        );
+        const message = deliveryQuoteMessage(currentDeliveryQuote);
+        setDeliveryQuoteMessage(form, message, message ? 'success' : '');
         return true;
     } catch (error) {
-        if (requestId !== deliveryQuoteRequestId) return false;
+        if (!isCurrentDeliveryQuoteRequest(requestId, normalizedCep, form)) return false;
         currentDeliveryQuote = null;
         renderDeliveryBreakdown();
         const mensagemForaDaArea = 'Ainda não entregamos nessa região. Em breve abriremos novas unidades mais perto de você!';
@@ -2054,6 +2077,8 @@ async function refreshDeliveryQuote(cep, form, force = false) {
             'error'
         );
         return false;
+    } finally {
+        if (requestId === deliveryQuoteRequestId) setDeliveryQuoteButtonLoading(false);
     }
 }
 
@@ -3095,12 +3120,11 @@ if (cartDeliveryCep) {
         cartDeliveryCep.value = formatCep(cartDeliveryCep.value);
         syncDeliveryCepFields(cartDeliveryCep.value);
         handleCheckoutCepChange(cartDeliveryCep.value);
+        invalidateDeliveryQuoteForCepChange(cartDeliveryCep.value, panel);
         saveCheckoutAddress();
-        void refreshDeliveryQuote(cartDeliveryCep.value, panel);
         void refreshAddressFromCep(cartDeliveryCep.value);
     });
     cartDeliveryCep.addEventListener('blur', () => {
-        void refreshDeliveryQuote(cartDeliveryCep.value, panel);
         void refreshAddressFromCep(cartDeliveryCep.value);
     });
 }
