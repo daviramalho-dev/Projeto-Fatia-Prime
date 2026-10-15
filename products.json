@@ -1,0 +1,244 @@
+[
+  {
+    "id": 22,
+    "name": "Alho e Óleo",
+    "price": 47.9
+  },
+  {
+    "id": 21,
+    "name": "Atum",
+    "price": 54.9
+  },
+  {
+    "id": 11,
+    "name": "Bacon com Barbecue",
+    "price": 57.9
+  },
+  {
+    "id": 35,
+    "name": "Banana com Canela",
+    "price": 44.9
+  },
+  {
+    "id": 38,
+    "name": "Beijinho",
+    "price": 49.9
+  },
+  {
+    "id": 15,
+    "name": "Brie com Geleia de Pimenta",
+    "price": 64.9
+  },
+  {
+    "id": 33,
+    "name": "Brigadeiro",
+    "price": 52.9
+  },
+  {
+    "id": 1,
+    "name": "Calabresa Prime",
+    "image": "assets/calabresa-prime.webp",
+    "customizerImage": "assets/cardapio/calabresa-prime-cardapio.png",
+    "price": 52.9
+  },
+  {
+    "id": 5,
+    "name": "Calabresa Spicy",
+    "price": 52.9
+  },
+  {
+    "id": 20,
+    "name": "Calabresa Tradicional",
+    "price": 49.9
+  },
+  {
+    "id": 12,
+    "name": "Carne Seca com Cebola",
+    "price": 64.9
+  },
+  {
+    "id": 28,
+    "name": "Catupiry Especial",
+    "price": 56.9
+  },
+  {
+    "id": 29,
+    "name": "Chocolate com Morango",
+    "price": 57.9
+  },
+  {
+    "id": 39,
+    "name": "Coca-Cola Original",
+    "price": 8.99
+  },
+  {
+    "id": 40,
+    "name": "Coca-Cola Zero",
+    "price": 8.99
+  },
+  {
+    "id": 3,
+    "name": "Costela com Catupiry",
+    "image": "assets/costela-catupiry.webp",
+    "customizerImage": "assets/cardapio/costela-catupiry-cardapio.png",
+    "price": 62.9
+  },
+  {
+    "id": 36,
+    "name": "Doce de Leite com Coco",
+    "price": 49.9
+  },
+  {
+    "id": 24,
+    "name": "Escarola com Bacon",
+    "price": 52.9
+  },
+  {
+    "id": 44,
+    "name": "Fanta Laranja",
+    "price": 7.99
+  },
+  {
+    "id": 45,
+    "name": "Fanta Uva",
+    "price": 7.99
+  },
+  {
+    "id": 18,
+    "name": "Filé com Cheddar",
+    "price": 64.9
+  },
+  {
+    "id": 13,
+    "name": "Frango Prime",
+    "price": 57.9
+  },
+  {
+    "id": 6,
+    "name": "Frango com Catupiry",
+    "price": 54.9
+  },
+  {
+    "id": 26,
+    "name": "Frango com Cheddar e Bacon",
+    "price": 59.9
+  },
+  {
+    "id": 14,
+    "name": "Frango com Milho",
+    "price": 52.9
+  },
+  {
+    "id": 27,
+    "name": "Gorgonzola com Nozes",
+    "price": 64.9
+  },
+  {
+    "id": 47,
+    "name": "Guaraná Antarctica",
+    "price": 7.99
+  },
+  {
+    "id": 2,
+    "name": "Havaiana de Frango",
+    "image": "assets/havaiana-de-frango.webp",
+    "customizerImage": "assets/cardapio/havaiana-de-frango-cardapio.png",
+    "price": 54.9
+  },
+  {
+    "id": 25,
+    "name": "Lombo Canadense",
+    "price": 56.9
+  },
+  {
+    "id": 9,
+    "name": "Margherita",
+    "price": 49.9
+  },
+  {
+    "id": 19,
+    "name": "Mussarela",
+    "price": 47.9
+  },
+  {
+    "id": 10,
+    "name": "Napolitana",
+    "price": 52.9
+  },
+  {
+    "id": 31,
+    "name": "Nutella",
+    "price": 59.9
+  },
+  {
+    "id": 32,
+    "name": "Nutella com Morango",
+    "price": 64.9
+  },
+  {
+    "id": 37,
+    "name": "Oreo com Chocolate Branco",
+    "price": 59.9
+  },
+  {
+    "id": 7,
+    "name": "Pepperoni",
+    "price": 59.9
+  },
+  {
+    "id": 42,
+    "name": "Pepsi Black",
+    "price": 7.99
+  },
+  {
+    "id": 41,
+    "name": "Pepsi Original",
+    "price": 7.99
+  },
+  {
+    "id": 43,
+    "name": "Pepsi Twist",
+    "price": 7.99
+  },
+  {
+    "id": 8,
+    "name": "Portuguesa",
+    "price": 54.9
+  },
+  {
+    "id": 34,
+    "name": "Prestígio",
+    "price": 52.9
+  },
+  {
+    "id": 23,
+    "name": "Presunto",
+    "price": 49.9
+  },
+  {
+    "id": 16,
+    "name": "Provolone Especial",
+    "price": 59.9
+  },
+  {
+    "id": 4,
+    "name": "Quatro Queijos",
+    "image": "assets/pizza-background.webp",
+    "price": 59.9
+  },
+  {
+    "id": 30,
+    "name": "Romeu e Julieta",
+    "price": 49.9
+  },
+  {
+    "id": 46,
+    "name": "Sprite",
+    "price": 7.99
+  },
+  {
+    "id": 17,
+    "name": "Strogonoff de Carne",
+    "price": 62.9
+  }
+]
