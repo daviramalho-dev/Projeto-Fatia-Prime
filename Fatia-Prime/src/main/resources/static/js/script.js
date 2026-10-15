@@ -6,6 +6,11 @@ const PRODUCT_STORAGE_KEY = 'fatia-prime-products';
 const CHECKOUT_ADDRESS_STORAGE_KEY = 'fatia-prime-checkout-address';
 const ORDER_STATUSES = ['Pedido recebido', 'Pedido em andamento', 'Pedido concluído'];
 const PRODUCT_CATEGORIES = ['classicas', 'carnes', 'frango', 'queijos'];
+const CUSTOMIZER_PRODUCT_IMAGES = new Map([
+    ['calabresa prime', 'assets/cardapio/calabresa-prime-cardapio.png'],
+    ['havaiana de frango', 'assets/cardapio/havaiana-de-frango-cardapio.png'],
+    ['costela com catupiry', 'assets/cardapio/costela-catupiry-cardapio.png'],
+]);
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const panel = document.querySelector('.cart-panel');
 const checkoutPanel = document.querySelector('.checkout-panel');
@@ -21,6 +26,7 @@ const cartDeliveryCep = document.querySelector('.cart-delivery-cep');
 const cartTotalLabel = document.querySelector('.cart-total span');
 const checkoutTotalLabel = document.querySelector('.checkout-total span');
 const pizzaCustomizer = document.querySelector('.pizza-customizer');
+const buttonFeedbackTimers = new WeakMap();
 const customizerFirstFlavor = document.querySelector('.customizer-first-flavor');
 const customizerSecondFlavor = document.querySelector('.customizer-second-flavor');
 const customizerSecondField = document.querySelector('.customizer-second-field');
@@ -100,6 +106,8 @@ const publicHeader = document.querySelector('.public-header');
 const publicFooter = document.querySelector('footer');
 const publicOrderTracking = document.querySelector('.order-tracking');
 const publicWhatsapp = document.querySelector('.whatsapp-float');
+const publicNavigation = document.querySelector('#public-navigation');
+const publicMenuToggle = document.querySelector('[data-toggle-public-menu]');
 const publicMenuFilters = document.querySelector('.menu-filters');
 const catalogFeedback = document.querySelector('.catalog-feedback');
 const catalogSearch = document.querySelector('#catalog-search');
@@ -123,6 +131,7 @@ let editingCategoryId = null;
 let editingOptionId = null;
 let customizerQuantity = 1;
 let customizerOptions = [];
+let customizerTrigger = null;
 let selectedAdminOrderId = null;
 let adminOrders = [];
 let adminOrdersRequestId = 0;
@@ -152,6 +161,21 @@ let knownAdminOrderIds = null;
 const newAdminOrderIds = new Set();
 let adminAudioContext = null;
 
+function getScrollBehavior() {
+    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+}
+
+function setPublicMenuOpen(isOpen) {
+    if (!publicNavigation || !publicMenuToggle) return;
+    publicNavigation.classList.toggle('is-open', isOpen);
+    publicNavigation.setAttribute('aria-hidden', String(!isOpen));
+    publicMenuToggle.setAttribute('aria-expanded', String(isOpen));
+    publicMenuToggle.setAttribute('aria-label', isOpen ? 'Fechar navegação' : 'Abrir navegação');
+    publicMenuToggle.querySelector('.visually-hidden').textContent = isOpen
+        ? 'Fechar navegação'
+        : 'Abrir navegação';
+}
+
 function setInterfaceMode(mode) {
     const isPublic = mode === 'public';
     const isLogin = mode === 'admin-login';
@@ -172,6 +196,7 @@ function setInterfaceMode(mode) {
         );
     }
     document.body.classList.toggle('admin-mode', isWorkspace);
+    if (!isPublic) setPublicMenuOpen(false);
     if (adminHeader) adminHeader.hidden = !isWorkspace;
     if (publicHeader) publicHeader.hidden = !isPublic;
     if (adminAccess) adminAccess.hidden = !isLogin;
@@ -188,7 +213,7 @@ function setInterfaceMode(mode) {
     });
     if (isPublic) {
         window.history.replaceState({}, '', '#inicio');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: getScrollBehavior() });
     } else {
         closeCart();
         closeCheckout();
@@ -199,14 +224,14 @@ function setInterfaceMode(mode) {
 function openAdminLogin() {
     setInterfaceMode('admin-login');
     window.location.hash = 'acesso-admin';
-    adminAccess?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    adminAccess?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
     adminLoginForm?.elements.namedItem('adminEmail')?.focus();
 }
 
 function openAdminWorkspace() {
     setInterfaceMode('admin-workspace');
     window.location.hash = 'painel-pedidos';
-    adminOrdersSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    adminOrdersSection?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
     loadAdminDashboard();
     loadAdminOrders();
     loadAdminProducts();
@@ -546,7 +571,27 @@ function addCartItem(item) {
     if (existing) existing.quantity = Math.min(50, existing.quantity + item.quantity);
     else window.cart.push(item);
     updateCart();
+    document.querySelectorAll('.cart-count').forEach((element) => {
+        element.classList.remove('is-pulsing');
+        void element.offsetWidth;
+        element.classList.add('is-pulsing');
+    });
     openCart();
+}
+
+function showAddedFeedback(button) {
+    if (!button) return;
+    const currentTimer = buttonFeedbackTimers.get(button);
+    if (currentTimer) window.clearTimeout(currentTimer);
+    if (!button.dataset.defaultLabel) button.dataset.defaultLabel = button.textContent.trim();
+    button.textContent = 'ADICIONADO ✓';
+    button.classList.add('is-added');
+    const timer = window.setTimeout(() => {
+        button.textContent = button.dataset.defaultLabel;
+        button.classList.remove('is-added');
+        buttonFeedbackTimers.delete(button);
+    }, 1000);
+    buttonFeedbackTimers.set(button, timer);
 }
 
 function loadCart() {
@@ -644,6 +689,7 @@ async function loadPublicCatalog() {
             catalogFeedback.hidden = true;
         }
         renderPublicCatalog();
+        if (window.cart?.length) updateCart();
     } catch (error) {
         publicCatalogLoadFailed = true;
         publicProducts = [];
@@ -692,7 +738,13 @@ function renderPublicCatalog() {
         && (selectedCatalogCategory === 'all' || String(product.categoryId) === selectedCatalogCategory)
         && (!search || normalizeCatalogSearch(product.name).includes(search))
     ));
-    const featuredProducts = filtersActive ? [] : products.filter((product) => product.highlight).slice(0, 3);
+    const highlightedProducts = filtersActive ? [] : products.filter((product) => product.highlight);
+    const mainProduct = highlightedProducts.find((product) => (
+        normalizeCatalogSearch(product.name).includes('calabresa prime')
+    )) || highlightedProducts[0];
+    const featuredProducts = mainProduct
+        ? [mainProduct, ...highlightedProducts.filter((product) => product !== mainProduct).slice(0, 2)]
+        : [];
     const menuProducts = products;
     if (featuredSection) featuredSection.hidden = filtersActive || products.length === 0;
     if (catalogResults) {
@@ -701,15 +753,7 @@ function renderPublicCatalog() {
             : `${products.length} ${products.length === 1 ? 'produto encontrado' : 'produtos encontrados'}.`;
     }
     if (pizzaGrid) {
-        pizzaGrid.innerHTML = featuredProducts.map((product) => `
-            <article class="pizza-card" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">
-                <div class="pizza-image">
-                    ${renderProductVisual(product, 'featured')}
-                    ${product.highlight ? `<span class="badge">${escapeHtml(product.highlight)}</span>` : ''}
-                </div>
-                <div class="pizza-info"><div><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div><strong>${money.format(product.price)}</strong></div>
-                <button class="btn-card" type="button" data-product-id="${product.id}">ADICIONAR</button>
-            </article>`).join('');
+        pizzaGrid.innerHTML = featuredProducts.map(renderFeaturedProductCard).join('');
     }
     if (menuList) {
         menuList.innerHTML = menuProducts.length ? menuProducts.map((product) => `
@@ -723,18 +767,73 @@ function renderPublicCatalog() {
     }
 }
 
+function renderFeaturedProductCard(product) {
+    const badge = product.highlight ? `<span class="badge">${escapeHtml(product.highlight)}</span>` : '';
+    const image = renderProductVisual(product, 'featured');
+    return `
+        <article class="pizza-card" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">
+            <div class="pizza-image">
+                ${image}
+                ${badge}
+            </div>
+            <div class="pizza-info">
+                <h3>${escapeHtml(product.name)}</h3>
+                <p>${escapeHtml(product.description)}</p>
+            </div>
+            <div class="pizza-card-footer">
+                <strong>${money.format(product.price)}</strong>
+                <button class="btn-card" type="button" data-product-id="${product.id}">ADICIONAR</button>
+            </div>
+        </article>`;
+}
+
+function getCustomizerProductImage(product) {
+    return CUSTOMIZER_PRODUCT_IMAGES.get(normalizeCatalogSearch(product.name)) || '';
+}
+
 function renderProductVisual(product, presentation) {
-    const categoryClass = normalizeCatalogSearch(product.categoryName || product.type)
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '') || 'outros';
     const visualClass = presentation === 'featured' ? 'pizza-image-placeholder' : 'customizer-product-placeholder';
-    if (product.image) {
-        const imageClass = presentation === 'featured' ? 'pizza-zoom-menor'
+    const image = presentation === 'featured'
+        ? product.image
+        : getCustomizerProductImage(product);
+    if (image) {
+        const imageClass = presentation === 'featured' ? ''
             : 'customizer-product-image';
         const dimension = presentation === 'featured' ? '800' : '520';
-        return `<img class="${imageClass}" src="${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" loading="lazy" width="${dimension}" height="${dimension}">`;
+        return `<img${imageClass ? ` class="${imageClass}"` : ''} src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}" loading="lazy" width="${dimension}" height="${dimension}">`;
     }
-    return `<span class="${visualClass} category-art category-art-${escapeHtml(categoryClass)}" aria-hidden="true"><svg viewBox="0 0 64 64" focusable="false"><path d="M10 12 54 24 25 54 10 12Z"/><path d="m17 20 23 6M22 34l14 4"/><circle cx="22" cy="21" r="3"/><circle cx="31" cy="38" r="3"/></svg></span>`;
+    return `<span class="${visualClass}"><strong>${escapeHtml(product.name)}</strong>${product.categoryName ? `<small>${escapeHtml(product.categoryName)}</small>` : ''}</span>`;
+}
+
+function renderHalfAndHalfPizzaVisual(firstProduct, secondProduct, visualClass) {
+    const renderHalf = (product, side) => {
+        const image = getCustomizerProductImage(product);
+        return image
+            ? `<img class="pizza-split-image pizza-split-image-${side}" data-split-name="${escapeHtml(product.name)}" src="${escapeHtml(image)}" alt="" loading="lazy">`
+            : `<span class="pizza-split-fallback pizza-split-fallback-${side}" aria-hidden="true"><strong>${escapeHtml(product.name)}</strong></span>`;
+    };
+    return `
+        <span class="${visualClass}" role="img" aria-label="Pizza meio a meio: ${escapeHtml(firstProduct.name)} e ${escapeHtml(secondProduct.name)}">
+            ${renderHalf(firstProduct, 'first')}
+            ${renderHalf(secondProduct, 'second')}
+        </span>`;
+}
+
+function renderCustomizerProductVisual(firstProduct, secondProduct, isHalfAndHalf) {
+    if (!isHalfAndHalf || !secondProduct) return renderProductVisual(firstProduct, 'customizer');
+    return renderHalfAndHalfPizzaVisual(firstProduct, secondProduct, 'pizza-split-visual customizer-split-visual');
+}
+
+function renderPizzaItemVisual(item) {
+    if (item?.itemType === 'BEBIDA' || item?.pizzaType !== 'MEIO_A_MEIO' || !item.secondFlavor) return '';
+    const getFlavorProduct = (flavor) => publicProducts.find((product) => String(product.id) === String(flavor.id))
+        || publicProducts.find((product) => product.name === flavor.name)
+        || { name: flavor.name, image: '' };
+    return renderHalfAndHalfPizzaVisual(
+        getFlavorProduct(item.firstFlavor),
+        getFlavorProduct(item.secondFlavor),
+        'pizza-split-visual pizza-item-split-visual'
+    );
 }
 
 function normalizeCatalogSearch(value) {
@@ -895,7 +994,15 @@ function pizzaDetailsMarkup(item) {
         .filter(Boolean)
         .map((detail) => `<small>${escapeHtml(detail)}</small>`)
         .join('');
-    return `<strong>${escapeHtml(presentation.title)}</strong>${details}`;
+    const visual = renderPizzaItemVisual(item);
+    return `
+        <span class="pizza-item-layout${visual ? ' has-pizza-visual' : ''}">
+            ${visual ? `<span class="pizza-item-visual">${visual}</span>` : ''}
+            <span class="pizza-item-copy">
+                <strong>${escapeHtml(presentation.title)}</strong>
+                ${details}
+            </span>
+        </span>`;
 }
 
 function pizzaWhatsAppDescription(item) {
@@ -997,7 +1104,7 @@ function editAdminCategory(categoryId) {
     if (adminCategoryFormTitle) adminCategoryFormTitle.textContent = `Editando: ${category.name}`;
     if (adminCategoryCancel) adminCategoryCancel.hidden = false;
     showAdminCategoryMessage('');
-    adminCategoryForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    adminCategoryForm.scrollIntoView({ behavior: getScrollBehavior(), block: 'nearest' });
     adminCategoryForm.elements.namedItem('categoryName').focus();
 }
 
@@ -1207,7 +1314,7 @@ function editAdminPizzaOption(option) {
     adminPizzaOptionFormTitle.textContent = 'Editar opção';
     adminPizzaOptionCancel.hidden = false;
     showAdminPizzaOptionMessage('');
-    adminPizzaOptionForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    adminPizzaOptionForm.scrollIntoView({ behavior: getScrollBehavior(), block: 'nearest' });
 }
 
 async function toggleAdminPizzaOption(optionIdValue) {
@@ -1301,7 +1408,7 @@ function editAdminProduct(product) {
     if (adminProductFormLabel) adminProductFormLabel.textContent = `EDIÇÃO DE ${getProductTypeLabel(product.type).toUpperCase()}`;
     if (adminProductCancel) adminProductCancel.hidden = false;
     showAdminProductMessage('');
-    adminProductForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    adminProductForm.scrollIntoView({ behavior: getScrollBehavior(), block: 'nearest' });
 }
 
 async function toggleAdminProduct(productIdValue) {
@@ -1444,7 +1551,7 @@ function renderAdminOrderDetails(order) {
     }
     if (totalElement) totalElement.textContent = money.format(Number(order.total) || 0);
     adminOrderDetails.hidden = false;
-    adminOrderDetails.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    adminOrderDetails.scrollIntoView({ behavior: getScrollBehavior(), block: 'nearest' });
 }
 
 function renderAdminOrders() {
@@ -1635,7 +1742,7 @@ function openOrderTracking(orderData) {
     closeConfirmation();
     if (orderQueryCode) orderQueryCode.value = orderData.code || '';
     if (orderQueryPhone) orderQueryPhone.value = orderData.phone ? formatPhone(orderData.phone) : '';
-    document.querySelector('#consultar-pedido')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelector('#consultar-pedido')?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
 }
 
 function renderCheckoutSummary() {
@@ -2318,10 +2425,12 @@ async function addProduct(element) {
             addons: [],
             sauces: [],
         });
+        showAddedFeedback(element);
         return;
     }
     if (!pizzaCustomizer) return;
 
+    customizerTrigger = element;
     const originalLabel = element.textContent;
     element.disabled = true;
     element.setAttribute('aria-busy', 'true');
@@ -2362,6 +2471,7 @@ async function addProduct(element) {
         renderPizzaCustomizerSummary();
         pizzaCustomizer.showModal();
     } catch (error) {
+        customizerTrigger = null;
         if (catalogFeedback) {
             catalogFeedback.textContent = 'Não foi possível carregar as opções da pizza. Tente novamente.';
             catalogFeedback.hidden = false;
@@ -2388,7 +2498,17 @@ function renderPizzaCustomizerSummary() {
     const productPreview = pizzaCustomizer.querySelector('.customizer-product-visual');
     if (productPreview) {
         productPreview.hidden = !firstProduct;
-        productPreview.innerHTML = firstProduct ? renderProductVisual(firstProduct, 'customizer') : '';
+        productPreview.innerHTML = firstProduct
+            ? renderCustomizerProductVisual(firstProduct, secondProduct, isHalfAndHalf)
+            : '';
+    }
+    const summaryVisual = pizzaCustomizer.querySelector('.customizer-summary-visual');
+    const hasHalfAndHalfPreview = isHalfAndHalf && firstProduct && secondProduct;
+    if (summaryVisual) {
+        summaryVisual.hidden = !hasHalfAndHalfPreview;
+        summaryVisual.innerHTML = hasHalfAndHalfPreview
+            ? renderCustomizerProductVisual(firstProduct, secondProduct, true)
+            : '';
     }
     const basePrice = firstProduct
         ? secondProduct ? Math.max(firstProduct.price, secondProduct.price) : firstProduct.price
@@ -2563,6 +2683,8 @@ function addCustomizedPizza() {
     };
     pizzaCustomizer.close();
     addCartItem(pizza);
+    showAddedFeedback(customizerTrigger);
+    customizerTrigger = null;
 }
 
 function applyCategoryFilter(category) {
@@ -2595,6 +2717,16 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+document.addEventListener('error', (event) => {
+    const image = event.target;
+    if (!(image instanceof HTMLImageElement) || !image.matches('.pizza-split-image')) return;
+    const fallback = document.createElement('span');
+    fallback.className = `pizza-split-fallback ${image.classList.contains('pizza-split-image-first') ? 'pizza-split-fallback-first' : 'pizza-split-fallback-second'}`;
+    fallback.setAttribute('aria-hidden', 'true');
+    fallback.innerHTML = `<strong>${escapeHtml(image.dataset.splitName)}</strong>`;
+    image.replaceWith(fallback);
+}, true);
+
 adminSoundToggle?.addEventListener('click', () => {
     if (!window.AudioContext) {
         if (adminLiveStatus) adminLiveStatus.textContent = 'O aviso sonoro não é compatível com este navegador.';
@@ -2608,6 +2740,24 @@ adminSoundToggle?.addEventListener('click', () => {
     if (adminSoundEnabled) {
         adminAudioContext ||= new AudioContext();
         void adminAudioContext.resume();
+    }
+});
+
+publicMenuToggle?.addEventListener('click', () => {
+    const isOpen = publicMenuToggle.getAttribute('aria-expanded') === 'true';
+    setPublicMenuOpen(!isOpen);
+});
+publicNavigation?.addEventListener('click', (event) => {
+    if (event.target.closest('a')) setPublicMenuOpen(false);
+});
+document.addEventListener('click', (event) => {
+    if (publicNavigation?.classList.contains('is-open')
+        && !event.target.closest('.public-header')) setPublicMenuOpen(false);
+});
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && publicNavigation?.classList.contains('is-open')) {
+        setPublicMenuOpen(false);
+        publicMenuToggle?.focus();
     }
 });
 
@@ -2779,7 +2929,7 @@ document.querySelectorAll('.js-open-admin').forEach((link) => {
 document.querySelector('.js-exit-admin')?.addEventListener('click', (event) => {
     event.preventDefault();
     setInterfaceMode('public');
-    document.querySelector('#cardapio')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelector('#cardapio')?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
 });
 
 adminLogout?.addEventListener('click', async () => {
@@ -3135,7 +3285,7 @@ document.querySelector('.confirmation-continue').addEventListener('click', () =>
 });
 
 document.querySelector('.js-scroll-to-about').addEventListener('click', () => {
-    document.querySelector('#sobre').scrollIntoView({ behavior: 'smooth' });
+    document.querySelector('#sobre').scrollIntoView({ behavior: getScrollBehavior() });
 });
 document.querySelector('.js-about-whatsapp').addEventListener('click', () => {
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Olá! Gostaria de mais informações sobre o cardápio da Fatia Prime.')}`, '_blank', 'noopener,noreferrer');
