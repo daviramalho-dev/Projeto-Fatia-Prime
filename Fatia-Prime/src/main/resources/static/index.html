@@ -6,7 +6,16 @@
 
     <title>Fatia Prime | Pizzaria artesanal</title>
     <meta name="description" content="Peça pizzas artesanais da Fatia Prime, preparadas com ingredientes selecionados. Confira o cardápio e faça seu pedido online.">
-    <meta name="theme-color" content="#090909">
+    <meta name="theme-color" content="#151311">
+    <script>
+        try {
+            if (localStorage.getItem('fatia-prime-theme') === 'light') {
+                document.documentElement.dataset.theme = 'light';
+            }
+        } catch (error) {
+            // A preferência será aplicada pelo script principal quando o storage estiver indisponível.
+        }
+    </script>
     <link rel="canonical" href="https://fatia-prime.onrender.com/">
     <meta property="og:title" content="Fatia Prime | Pizzaria artesanal">
     <meta property="og:description" content="Pizzas artesanais preparadas com ingredientes selecionados. Confira o cardápio da Fatia Prime.">
@@ -41,11 +50,19 @@
         </nav>
 
         <div class="public-header-actions">
-            <button class="theme-toggle" type="button" data-theme-toggle aria-label="Ativar modo claro" aria-pressed="false">
-                <span aria-hidden="true">CLARO</span>
+            <button class="theme-toggle" type="button" data-theme-toggle aria-label="Ativar modo claro" aria-pressed="false" title="Ativar modo claro">
+                <svg class="theme-toggle-icon theme-toggle-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+                </svg>
+                <svg class="theme-toggle-icon theme-toggle-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M20.4 15.2A8.5 8.5 0 0 1 8.8 3.6 8.5 8.5 0 1 0 20.4 15.2Z"></path>
+                </svg>
+                <span class="theme-toggle-label visually-hidden">Ativar modo claro</span>
             </button>
             <button class="btn-pedido" type="button" data-open-cart>
-                Fazer pedido <span class="cart-count">0</span>
+                <span class="btn-pedido-label">Fazer pedido</span>
+                <span class="cart-count" data-digits="1">0</span>
             </button>
         </div>
 
@@ -61,8 +78,15 @@
             <a href="#gestao-cardapio">Cardápio</a>
         </nav>
         <div class="admin-header-actions">
-            <button class="theme-toggle" type="button" data-theme-toggle aria-label="Ativar modo claro" aria-pressed="false">
-                <span aria-hidden="true">CLARO</span>
+            <button class="theme-toggle" type="button" data-theme-toggle aria-label="Ativar modo claro" aria-pressed="false" title="Ativar modo claro">
+                <svg class="theme-toggle-icon theme-toggle-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+                </svg>
+                <svg class="theme-toggle-icon theme-toggle-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M20.4 15.2A8.5 8.5 0 0 1 8.8 3.6 8.5 8.5 0 1 0 20.4 15.2Z"></path>
+                </svg>
+                <span class="theme-toggle-label visually-hidden">Ativar modo claro</span>
             </button>
             <button class="admin-logout" type="button">SAIR</button>
         </div>
