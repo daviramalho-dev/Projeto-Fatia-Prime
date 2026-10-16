@@ -38,7 +38,6 @@
     "id": 1,
     "name": "Calabresa Prime",
     "image": "assets/calabresa-prime.webp",
-    "customizerImage": "assets/cardapio/calabresa-prime-cardapio.png",
     "price": 52.9
   },
   {
@@ -80,7 +79,6 @@
     "id": 3,
     "name": "Costela com Catupiry",
     "image": "assets/costela-catupiry.webp",
-    "customizerImage": "assets/cardapio/costela-catupiry-cardapio.png",
     "price": 62.9
   },
   {
@@ -142,7 +140,6 @@
     "id": 2,
     "name": "Havaiana de Frango",
     "image": "assets/havaiana-de-frango.webp",
-    "customizerImage": "assets/cardapio/havaiana-de-frango-cardapio.png",
     "price": 54.9
   },
   {
