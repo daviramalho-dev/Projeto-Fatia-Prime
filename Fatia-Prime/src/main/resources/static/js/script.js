@@ -109,6 +109,45 @@ const publicOrderTracking = document.querySelector('.order-tracking');
 const publicWhatsapp = document.querySelector('.whatsapp-float');
 const themeToggles = document.querySelectorAll('[data-theme-toggle]');
 const publicMenuFilters = document.querySelector('.menu-filters');
+let publicWhatsappScrollFrame = 0;
+let publicWhatsappLastScrollY = Math.max(window.scrollY, 0);
+
+function resetPublicWhatsappScrollState() {
+    if (!publicWhatsapp) return;
+    publicWhatsapp.classList.remove('is-scroll-hidden');
+    publicWhatsappLastScrollY = Math.max(window.scrollY, 0);
+}
+
+function syncPublicWhatsappScrollState() {
+    publicWhatsappScrollFrame = 0;
+    if (!publicWhatsapp
+        || publicWhatsapp.hidden
+        || document.body.classList.contains('admin-mode')
+        || !window.matchMedia?.('(max-width: 600px)').matches) {
+        resetPublicWhatsappScrollState();
+        return;
+    }
+
+    const currentScrollY = Math.max(window.scrollY, 0);
+    const scrollDelta = currentScrollY - publicWhatsappLastScrollY;
+
+    if (currentScrollY <= 24 || scrollDelta < -6) {
+        publicWhatsapp.classList.remove('is-scroll-hidden');
+    } else if (scrollDelta > 8) {
+        publicWhatsapp.classList.add('is-scroll-hidden');
+    }
+
+    publicWhatsappLastScrollY = currentScrollY;
+}
+
+function schedulePublicWhatsappScrollState() {
+    if (publicWhatsappScrollFrame) return;
+    publicWhatsappScrollFrame = window.requestAnimationFrame(syncPublicWhatsappScrollState);
+}
+
+window.addEventListener('scroll', schedulePublicWhatsappScrollState, { passive: true });
+window.addEventListener('resize', schedulePublicWhatsappScrollState, { passive: true });
+publicWhatsapp?.addEventListener('focusin', resetPublicWhatsappScrollState);
 const catalogFeedback = document.querySelector('.catalog-feedback');
 const catalogSearch = document.querySelector('#catalog-search');
 const catalogResults = document.querySelector('.catalog-results');
@@ -167,15 +206,17 @@ function getScrollBehavior() {
 
 function applyTheme(theme, persist = false) {
     const isLight = theme === 'light';
+    document.documentElement.dataset.theme = isLight ? 'light' : 'dark';
     document.body.dataset.theme = isLight ? 'light' : 'dark';
     themeToggles.forEach((toggle) => {
+        const label = `Ativar modo ${isLight ? 'escuro' : 'claro'}`;
         toggle.setAttribute('aria-pressed', String(isLight));
-        toggle.setAttribute('aria-label', `Ativar modo ${isLight ? 'escuro' : 'claro'}`);
-        toggle.title = `Ativar modo ${isLight ? 'escuro' : 'claro'}`;
-        const label = toggle.querySelector('[aria-hidden="true"]');
-        if (label) label.textContent = isLight ? 'ESCURO' : 'CLARO';
+        toggle.setAttribute('aria-label', label);
+        toggle.title = label;
+        const hiddenLabel = toggle.querySelector('.theme-toggle-label');
+        if (hiddenLabel) hiddenLabel.textContent = label;
     });
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isLight ? '#f6f7f4' : '#090909');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isLight ? '#eee9df' : '#151311');
 
     if (persist) {
         try {
@@ -225,7 +266,10 @@ function setInterfaceMode(mode) {
     if (adminCatalogSection) adminCatalogSection.hidden = !isWorkspace;
     if (publicFooter) publicFooter.hidden = !isPublic;
     if (publicOrderTracking) publicOrderTracking.hidden = !isPublic;
-    if (publicWhatsapp) publicWhatsapp.hidden = !isPublic;
+    if (publicWhatsapp) {
+        publicWhatsapp.hidden = !isPublic;
+        resetPublicWhatsappScrollState();
+    }
     document.querySelectorAll('main > section').forEach((section) => {
         const isAdminSection = section.classList.contains('admin-access')
             || section.classList.contains('admin-orders')
@@ -2425,7 +2469,10 @@ function openCheckout() {
 
 function updateCart() {
     const count = window.cart.reduce((total, item) => total + item.quantity, 0);
-    document.querySelectorAll('.cart-count').forEach((element) => (element.textContent = count));
+    document.querySelectorAll('.cart-count').forEach((element) => {
+        element.textContent = count;
+        element.dataset.digits = String(count).length;
+    });
     itemsElement.innerHTML = window.cart.length
         ? window.cart.map((item, index) => `
             <div class="cart-item">

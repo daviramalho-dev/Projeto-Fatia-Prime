@@ -13,61 +13,166 @@
 }
 
 :root {
+    color-scheme: dark;
+
+    /* Fatia Prime's charcoal-and-yellow foundation. Keep surfaces close, never flat. */
+    --color-background: #151311;
+    --color-surface: #1d1a17;
+    --color-surface-subtle: #211e1a;
+    --color-surface-elevated: #28231d;
+    --color-card: #211d19;
+    --color-input: #110f0d;
+    --color-border: #39322a;
+    --color-border-strong: #51463a;
+    --color-border-light: #463c31;
+
+    --color-text: #f5efe7;
+    --color-text-secondary: #cfc4b7;
+    --color-text-muted: #9f9488;
+    --color-text-on-dark: #f5efe7;
+    --color-text-inverse: #17130e;
+    --color-placeholder: #877b70;
+
     --color-primary: #f5c400;
-    --color-primary-dark: #d4a900;
-    --color-primary-light: #ffd633;
-    --color-theme-fill: #f5c400;
-    --color-theme-on-fill: #090909;
-    --color-bg-dark: #0b0b0b;
-    --color-bg-darker: #090909;
-    --color-bg-medium: #101010;
-    --color-bg-light: #1a1a1a;
-    --color-bg-lighter: #202020;
-    --color-text-primary: #ffffff;
-    --color-text-secondary: #ddd;
-    --color-text-tertiary: #888;
-    --color-border: #2a2a2a;
-    --color-border-light: #333;
-    --color-success: #6de59b;
-    --color-error: #ff8a80;
-    --color-warning: #ffb74d;
-    --color-theme-input: #090909;
-    --color-theme-input-border: #444;
-    --color-theme-surface: #111;
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-    --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 8px;
+    --color-primary-hover: #ffd633;
+    --color-primary-active: #d9aa00;
+    --color-primary-soft: rgba(245, 196, 0, .12);
+    --color-primary-border: rgba(245, 196, 0, .42);
+    --color-primary-soft-border: rgba(245, 196, 0, .35);
+    --color-focus-ring: rgba(245, 196, 0, .4);
+    --color-primary-shadow: rgba(245, 196, 0, .16);
+    --color-on-primary: #17130e;
+
+    --color-success: #79d9a0;
+    --color-success-border: rgba(121, 217, 160, .4);
+    --color-success-soft: rgba(121, 217, 160, .12);
+    --color-error: #ff9b91;
+    --color-error-border: rgba(255, 155, 145, .4);
+    --color-error-focus: rgba(255, 138, 128, .55);
+    --color-error-soft: rgba(255, 155, 145, .12);
+    --color-warning: #f4b965;
+    --color-warning-soft: rgba(244, 185, 101, .14);
+    --color-info: #8fc8f5;
+    --color-info-border: rgba(143, 200, 245, .38);
+    --color-info-soft: rgba(143, 200, 245, .13);
+
+    --color-focus: #ffe27a;
+    --color-border-focus: rgba(255, 226, 122, .62);
+    --color-on-status: #17130e;
+    --color-status-progress: #8fc8f5;
+    --color-status-finished: #79d9a0;
+    --color-overlay: rgba(8, 7, 6, .72);
+    --color-hero-overlay: linear-gradient(90deg, rgba(10, 8, 6, .94) 0%, rgba(10, 8, 6, .76) 43%, rgba(10, 8, 6, .26) 100%);
+    --color-placeholder-surface: #29231a;
+    --color-placeholder-text: #f2e7d5;
+    --color-whatsapp: #25d366;
+    --color-whatsapp-hover: #1ebe5d;
+
+    --shadow-card: 0 8px 22px rgba(0, 0, 0, .18);
+    --shadow-panel: 0 18px 44px rgba(0, 0, 0, .28);
+    --shadow-focus: 0 0 0 3px rgba(245, 196, 0, .22);
+    --shadow-sm: var(--shadow-card);
+    --shadow-md: 0 12px 30px rgba(0, 0, 0, .24);
+    --shadow-lg: var(--shadow-panel);
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-pill: 999px;
+
+    /* Backward-compatible aliases keep the existing layout selectors small. */
+    --color-bg-dark: var(--color-background);
+    --color-bg-darker: var(--color-input);
+    --color-bg-medium: var(--color-surface);
+    --color-bg-light: var(--color-surface-subtle);
+    --color-bg-lighter: var(--color-surface-elevated);
+    --color-text-primary: var(--color-text);
+    --color-text-tertiary: var(--color-text-muted);
+    --color-theme-fill: var(--color-primary);
+    --color-theme-on-fill: var(--color-on-primary);
+    --color-theme-input: var(--color-input);
+    --color-theme-input-border: var(--color-border-strong);
+    --color-theme-surface: var(--color-card);
+    --color-primary-dark: var(--color-primary-active);
+    --color-primary-light: var(--color-primary-hover);
 }
 
+html[data-theme="light"],
 body[data-theme="light"] {
     color-scheme: light;
-    --color-primary: #805f00;
-    --color-primary-dark: #674d00;
-    --color-primary-light: #f2cd45;
-    --color-theme-fill: #f5c400;
-    --color-theme-on-fill: #171a16;
-    --color-bg-dark: #f4f6f2;
-    --color-bg-darker: #ffffff;
-    --color-bg-medium: #ffffff;
-    --color-bg-light: #eef1eb;
-    --color-bg-lighter: #e1e5de;
-    --color-text-primary: #222722;
-    --color-text-secondary: #454c46;
-    --color-text-tertiary: #5d665f;
-    --color-border: #d4dad2;
-    --color-border-light: #c2cac1;
-    --color-success: #176b3c;
-    --color-error: #b3261e;
-    --color-warning: #805300;
-    --color-theme-input: #ffffff;
-    --color-theme-input-border: #b9c2b8;
-    --color-theme-surface: #ffffff;
-    --shadow-sm: 0 2px 8px rgba(25, 35, 25, .08);
-    --shadow-md: 0 4px 16px rgba(25, 35, 25, .12);
-    --shadow-lg: 0 8px 32px rgba(25, 35, 25, .16);
+    --color-background: #eee9df;
+    --color-surface: #e6e0d5;
+    --color-surface-subtle: #f1ece3;
+    --color-surface-elevated: #f7f3ec;
+    --color-card: #f3eee5;
+    --color-input: #e9e3d8;
+    --color-border: #d4cabb;
+    --color-border-strong: #b9aa98;
+    --color-border-light: #ded5c9;
+
+    --color-text: #2b2925;
+    --color-text-secondary: #5d574f;
+    --color-text-muted: #776f65;
+    --color-text-on-dark: #f5efe7;
+    --color-text-inverse: #fffaf1;
+    --color-placeholder: #777066;
+
+    --color-primary: #8a6100;
+    --color-primary-hover: #6f4d00;
+    --color-primary-active: #5c4000;
+    --color-primary-soft: #f6e8b7;
+    --color-primary-border: #b99336;
+    --color-primary-soft-border: #d1b66f;
+    --color-focus-ring: #b99336;
+    --color-primary-shadow: rgba(138, 97, 0, .16);
+    --color-on-primary: #fff9ec;
+
+    --color-success: #247348;
+    --color-success-border: #8fc5a3;
+    --color-success-soft: #dcefe2;
+    --color-error: #b3342b;
+    --color-error-border: #d89991;
+    --color-error-focus: #d89991;
+    --color-error-soft: #f8dfdc;
+    --color-warning: #8b5c00;
+    --color-warning-soft: #f6e7c2;
+    --color-info: #28638e;
+    --color-info-border: #8bb5d0;
+    --color-info-soft: #dcebf5;
+
+    --color-focus: #825a00;
+    --color-border-focus: #b99336;
+    --color-on-status: #fffaf1;
+    --color-status-progress: #28638e;
+    --color-status-finished: #247348;
+    --color-overlay: rgba(38, 31, 23, .52);
+    --color-hero-overlay: linear-gradient(90deg, rgba(24, 18, 12, .91) 0%, rgba(24, 18, 12, .73) 44%, rgba(24, 18, 12, .24) 100%);
+    --color-placeholder-surface: #d9d0c2;
+    --color-placeholder-text: #3d372f;
+    --color-whatsapp: #168447;
+    --color-whatsapp-hover: #0f6f3b;
+
+    --shadow-card: 0 7px 20px rgba(65, 52, 36, .10);
+    --shadow-panel: 0 16px 36px rgba(65, 52, 36, .14);
+    --shadow-focus: 0 0 0 3px rgba(138, 97, 0, .18);
+    --shadow-sm: var(--shadow-card);
+    --shadow-md: 0 10px 26px rgba(65, 52, 36, .12);
+    --shadow-lg: var(--shadow-panel);
+
+    --color-bg-dark: var(--color-background);
+    --color-bg-darker: var(--color-input);
+    --color-bg-medium: var(--color-surface);
+    --color-bg-light: var(--color-surface-subtle);
+    --color-bg-lighter: var(--color-surface-elevated);
+    --color-text-primary: var(--color-text);
+    --color-text-tertiary: var(--color-text-muted);
+    --color-theme-fill: var(--color-primary);
+    --color-theme-on-fill: var(--color-on-primary);
+    --color-theme-input: var(--color-input);
+    --color-theme-input-border: var(--color-border-strong);
+    --color-theme-surface: var(--color-card);
+    --color-primary-dark: var(--color-primary-active);
+    --color-primary-light: var(--color-primary-hover);
 }
 
 body[data-theme="dark"] {
@@ -80,9 +185,10 @@ html {
 }
 
 body {
-    background: var(--color-bg-dark);
-    color: var(--color-text-primary);
+    background: var(--color-background);
+    color: var(--color-text);
     font-family: "Montserrat", sans-serif;
+    transition: background-color .25s ease, color .25s ease;
 }
 
 a {
@@ -96,9 +202,43 @@ button {
     border: 0;
 }
 
-button:disabled {
+button:disabled,
+[aria-busy="true"] {
     cursor: not-allowed;
-    opacity: .65;
+}
+
+button:disabled {
+    opacity: .58;
+    filter: saturate(.55);
+}
+
+[aria-busy="true"] {
+    position: relative;
+    opacity: .72;
+}
+
+[aria-busy="true"]::after {
+    width: 1em;
+    height: 1em;
+    margin-left: .65em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    content: "";
+    animation: control-spin .7s linear infinite;
+}
+
+@keyframes control-spin {
+    to { transform: rotate(360deg); }
+}
+
+:is(input, select, textarea) {
+    accent-color: var(--color-primary);
+}
+
+:is(input, select, textarea)::placeholder {
+    color: var(--color-placeholder);
+    opacity: 1;
 }
 
 .public-header :is(a, button):focus-visible,
@@ -107,8 +247,9 @@ button:disabled {
 .checkout-panel :is(a, button, input, select, textarea):focus-visible,
 .confirmation-panel :is(a, button, input, select, textarea):focus-visible,
 .pizza-customizer :is(a, button, input, select, textarea):focus-visible {
-    outline: 2px solid var(--color-primary);
+    outline: 2px solid var(--color-focus);
     outline-offset: 3px;
+    box-shadow: var(--shadow-focus);
 }
 
 .visually-hidden {
@@ -166,7 +307,7 @@ button:disabled {
     font-size: 34px;
     letter-spacing: 2px;
 
-    color: white;
+    color: var(--color-text);
 }
 
 .logo-prime {
@@ -189,15 +330,16 @@ button:disabled {
 }
 
 .header nav a {
-    color: #cfcfcf;
+    color: var(--color-text-secondary);
 
     font-size: 13px;
     font-weight: 600;
 
-    transition: all 0.25s ease;
+    transition: color .2s ease, opacity .2s ease;
 }
 
-.header nav a:hover {
+.header nav a:hover,
+.header nav a:focus-visible {
     color: var(--color-primary);
 }
 
@@ -244,7 +386,7 @@ button:disabled {
 }
 
 .admin-nav a {
-    color: #cfcfcf;
+    color: var(--color-text-secondary);
     font-size: 12px;
     font-weight: 700;
     transition: color .2s ease;
@@ -255,50 +397,273 @@ button:disabled {
     color: var(--color-primary);
 }
 
-.admin-logout {
-    padding: 10px 16px;
-    border: 1px solid var(--color-primary);
-    background: transparent;
+.theme-toggle {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    place-items: center;
+    flex: 0 0 66px;
+    width: 66px;
+    min-width: 66px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    background: var(--color-input);
+    color: var(--color-text-muted);
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.theme-toggle::before {
+    position: absolute;
+    top: 50%;
+    left: 2px;
+    z-index: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    background: var(--color-primary-soft);
+    content: "";
+    transform: translate(32px, -50%);
+    transition: transform .2s ease, background-color .2s ease;
+}
+
+.theme-toggle[aria-pressed="true"]::before {
+    transform: translateY(-50%);
+}
+
+.theme-toggle:hover:not(:disabled) {
+    border-color: var(--color-primary-border);
     color: var(--color-primary);
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 1px;
-    transition: background .2s ease, color .2s ease;
+    transform: translateY(-1px);
 }
 
-.admin-logout:hover,
-.admin-logout:focus-visible {
-    background: var(--color-primary);
-    color: var(--color-bg-darker);
+.theme-toggle:active:not(:disabled) {
+    transform: translateY(1px);
 }
 
+.theme-toggle:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
+    box-shadow: var(--shadow-focus);
+}
+
+.theme-toggle-icon {
+    position: relative;
+    z-index: 1;
+    width: 18px;
+    height: 18px;
+    justify-self: center;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+    opacity: .5;
+    transition: opacity .2s ease, color .2s ease;
+}
+
+.theme-toggle-icon-sun {
+    grid-column: 1;
+}
+
+.theme-toggle-icon-moon {
+    grid-column: 2;
+}
+
+.theme-toggle[aria-pressed="true"] .theme-toggle-icon-sun {
+    opacity: 1;
+    color: var(--color-primary);
+}
+
+.theme-toggle[aria-pressed="false"] .theme-toggle-icon-moon {
+    opacity: 1;
+    color: var(--color-primary);
+}
 
 /* BUTTON */
 
-.btn-pedido {
+.btn-pedido,
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-card,
+.btn-menu-add,
+.admin-logout,
+.catalog-retry-button {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    border: none;
-
-    background: var(--color-primary);
-    color: var(--color-bg-darker);
-
-    padding: 13px 23px;
-
-    font-weight: 800;
-    font-size: 12px;
-
+    justify-content: center;
+    min-height: 44px;
     border-radius: var(--radius-sm);
-
-    transition: all 0.25s ease;
+    font-family: inherit;
+    font-weight: 800;
+    letter-spacing: .06em;
+    line-height: 1.1;
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s ease;
 }
 
-.btn-pedido:hover {
-    background: var(--color-text-primary);
-    transform: translateY(-2px);
+.btn-pedido,
+.btn-primary {
+    border: 1px solid var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    box-shadow: 0 5px 14px var(--color-primary-shadow);
 }
 
+.btn-pedido {
+    gap: 8px;
+    flex: 0 0 auto;
+    min-width: max-content;
+    padding: 10px 18px;
+    font-size: 12px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.btn-pedido-label {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    line-height: 1;
+}
+
+.btn-pedido .cart-count {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--color-on-primary) 22%, transparent);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-on-primary) 12%, transparent);
+    color: var(--color-on-primary);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1;
+    text-align: center;
+}
+
+.btn-pedido .cart-count[data-digits]:not([data-digits="1"]) {
+    width: auto;
+    min-width: 20px;
+    padding: 0 5px;
+    border-radius: var(--radius-pill);
+}
+
+.btn-pedido:hover:not(:disabled) .cart-count {
+    border-color: color-mix(in srgb, var(--color-on-primary) 36%, transparent);
+    background: color-mix(in srgb, var(--color-on-primary) 18%, transparent);
+}
+
+.btn-pedido:active:not(:disabled) .cart-count {
+    background: color-mix(in srgb, var(--color-on-primary) 24%, transparent);
+}
+
+.btn-primary {
+    padding: 13px 24px;
+    font-size: 12px;
+}
+
+.btn-pedido:hover:not(:disabled),
+.btn-primary:hover:not(:disabled) {
+    border-color: var(--color-primary-hover);
+    background: var(--color-primary-hover);
+    color: var(--color-on-primary);
+    box-shadow: 0 7px 18px var(--color-primary-shadow);
+    transform: translateY(-1px);
+}
+
+.btn-pedido:active:not(:disabled),
+.btn-primary:active:not(:disabled) {
+    border-color: var(--color-primary-active);
+    background: var(--color-primary-active);
+    transform: translateY(1px);
+}
+
+.btn-secondary,
+.btn-danger,
+.btn-card,
+.btn-menu-add,
+.admin-logout,
+.catalog-retry-button {
+    border: 1px solid var(--color-border-strong);
+    background: transparent;
+    color: var(--color-text-secondary);
+    padding: 11px 18px;
+    font-size: 11px;
+}
+
+.btn-secondary {
+    border-color: var(--color-primary-border);
+    color: var(--color-primary);
+}
+
+.btn-secondary:hover:not(:disabled),
+.btn-card:hover:not(:disabled),
+.btn-menu-add:hover:not(:disabled),
+.admin-logout:hover:not(:disabled),
+.catalog-retry-button:hover:not(:disabled) {
+    border-color: var(--color-primary-border);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    transform: translateY(-1px);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+}
+
+.btn-secondary:active:not(:disabled),
+.btn-card:active:not(:disabled),
+.btn-menu-add:active:not(:disabled),
+.admin-logout:active:not(:disabled),
+.catalog-retry-button:active:not(:disabled) {
+    border-color: var(--color-border-strong);
+    background: var(--color-surface-elevated);
+    color: var(--color-text);
+    transform: translateY(1px);
+}
+
+.btn-secondary:active:not(:disabled) {
+    border-color: var(--color-primary-active);
+    background: var(--color-primary-active);
+    color: var(--color-on-primary);
+}
+
+.btn-danger {
+    border-color: var(--color-error);
+    background: var(--color-error-soft);
+    color: var(--color-error);
+}
+
+.btn-danger:hover:not(:disabled),
+.btn-danger:active:not(:disabled) {
+    border-color: var(--color-error);
+    background: var(--color-error);
+    color: var(--color-text-inverse);
+}
+
+:is(.btn-pedido, .btn-primary, .btn-secondary, .btn-danger, .btn-card, .btn-menu-add, .admin-logout, .catalog-retry-button):focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    box-shadow: var(--shadow-focus);
+}
+
+:is(.btn-pedido, .btn-primary, .btn-secondary, .btn-danger, .btn-card, .btn-menu-add, .admin-logout, .catalog-retry-button):disabled,
+:is(.btn-pedido, .btn-primary, .btn-secondary, .btn-danger, .btn-card, .btn-menu-add, .admin-logout, .catalog-retry-button)[aria-busy="true"] {
+    transform: none;
+    box-shadow: none;
+}
 
 /* =========================
    HERO
@@ -320,7 +685,7 @@ button:disabled {
 .hero-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.75) 42%, rgba(0, 0, 0, 0.25) 100%);
+    background: var(--color-hero-overlay);
 }
 
 .hero-content {
@@ -362,90 +727,18 @@ button:disabled {
     padding: 12px 0;
     border: 0;
     background: transparent;
-    color: #d0d0d0;
+    color: var(--color-text-secondary);
     font-size: 11px;
     letter-spacing: .8px;
 }
 
 .hero .btn-secondary:hover {
     background: transparent;
-    color: #fff;
+    color: var(--color-text);
     text-decoration: underline;
     text-underline-offset: 5px;
 }
 
-
-/* =========================
-   BUTTONS
-========================= */
-
-.btn-primary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 15px 25px;
-    background: var(--color-primary);
-    color: var(--color-bg-dark);
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 1px;
-    border-radius: var(--radius-sm);
-    border: 0;
-    transition: all 0.25s ease;
-    box-shadow: 0 2px 8px rgba(245, 196, 0, 0.3);
-}
-
-.btn-primary:hover {
-    background: var(--color-primary-light);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(245, 196, 0, 0.4);
-}
-
-.btn-primary:active {
-    transform: translateY(0);
-}
-
-.btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 15px 25px;
-    border: 1px solid rgba(245, 196, 0, .3);
-    background: rgba(245, 196, 0, .06);
-    color: #f5d966;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    border-radius: var(--radius-sm);
-    transition: all 0.25s ease;
-}
-
-.btn-secondary:hover {
-    border-color: var(--color-primary);
-    background: rgba(245, 196, 0, .12);
-    color: var(--color-primary);
-}
-
-.btn-danger {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 15px 25px;
-    border: 1px solid rgba(255, 138, 128, .3);
-    background: rgba(255, 138, 128, .06);
-    color: #ff9d94;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    border-radius: var(--radius-sm);
-    transition: all 0.25s ease;
-}
-
-.btn-danger:hover {
-    border-color: var(--color-error);
-    background: rgba(255, 138, 128, .12);
-    color: var(--color-error);
-}
 
 
 /* =========================
@@ -532,13 +825,15 @@ button:disabled {
     overflow: hidden;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    background: #111;
-    transition: border-color .2s ease;
-    box-shadow: var(--shadow-sm);
+    background: var(--color-card);
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    box-shadow: var(--shadow-card);
 }
 
 .pizza-card:hover {
-    border-color: #4a4a4a;
+    border-color: var(--color-primary-border);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
 }
 
 
@@ -549,7 +844,7 @@ button:disabled {
     overflow: hidden;
     width: 100%;
     height: clamp(190px, 21vw, 270px);
-    background: #141414;
+    background: var(--color-surface-subtle);
 }
 
 .pizza-image img {
@@ -621,27 +916,22 @@ button:disabled {
 }
 
 .btn-card {
-    border: 1px solid var(--color-border-light);
-    background: transparent;
-    color: white;
+    border-color: var(--color-border-strong);
+    background: var(--color-surface-elevated);
+    color: var(--color-text);
     font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 1px;
-    transition: background-color .2s ease, border-color .2s ease, color .2s ease;
 }
 
 .btn-card:hover {
     background: var(--color-primary);
-
-    color: var(--color-bg-darker);
-
+    color: var(--color-on-primary);
     border-color: var(--color-primary);
 }
 
 .btn-card.is-added,
 .btn-menu-add.is-added {
     border-color: var(--color-success);
-    background: rgba(109, 229, 155, .1);
+    background: var(--color-success-soft);
     color: var(--color-success);
 }
 
@@ -663,7 +953,7 @@ button:disabled {
     display: flex;
     align-items: center;
     position: relative;
-    background: linear-gradient(135deg, #0a0a0a 0%, #141414 50%, #0f0f0f 100%);
+    background: linear-gradient(135deg, var(--color-background) 0%, var(--color-surface-elevated) 50%, var(--color-surface) 100%);
     overflow: hidden;
 }
 
@@ -691,7 +981,7 @@ button:disabled {
 }
 
 .banner p {
-    color: #ccc;
+    color: var(--color-text-secondary);
 
     max-width: 500px;
 
@@ -732,7 +1022,7 @@ button:disabled {
     align-content: start;
     gap: 7px;
     min-width: 0;
-    color: #dedede;
+    color: var(--color-text-secondary);
     font-size: 12px;
     font-weight: 700;
 }
@@ -743,7 +1033,7 @@ button:disabled {
     min-width: 0;
     min-height: 44px;
     padding: 10px 12px;
-    border: 1px solid #454545;
+    border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-sm);
     background: var(--color-bg-dark);
     color: var(--color-text-primary);
@@ -751,7 +1041,7 @@ button:disabled {
 }
 
 .catalog-controls input::placeholder {
-    color: #a2a2a2;
+    color: var(--color-placeholder);
     opacity: 1;
 }
 
@@ -809,7 +1099,7 @@ button:disabled {
     padding: 12px 14px;
     border-left: 3px solid var(--color-primary);
     background: var(--color-bg-medium);
-    color: #f3d968;
+    color: var(--color-warning);
     font-size: 13px;
     line-height: 1.5;
     overflow-wrap: anywhere;
@@ -870,7 +1160,7 @@ button:disabled {
 }
 
 .menu-text p {
-    color: #858585;
+    color: var(--color-text-muted);
     font-size: 12px;
     line-height: 1.5;
 }
@@ -999,9 +1289,10 @@ button:disabled {
 
 .admin-login-panel {
     padding: 28px;
-    background: var(--color-bg-medium);
+    background: var(--color-card);
     border: 1px solid var(--color-border);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, .22);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-panel);
 }
 
 .admin-login-heading {
@@ -1053,7 +1344,7 @@ button:disabled {
 #admin-login-form input {
     width: 100%;
     padding: 11px 12px;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     outline: 0;
     background: var(--color-bg-darker);
     color: var(--color-text-primary);
@@ -1063,12 +1354,12 @@ button:disabled {
 
 #admin-login-form input:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 1px rgba(245, 196, 0, .4);
+    box-shadow: 0 0 0 1px var(--color-border-focus);
 }
 
 #admin-login-form input.is-invalid {
     border-color: var(--color-error);
-    box-shadow: 0 0 0 1px rgba(255, 138, 128, .55);
+    box-shadow: 0 0 0 1px var(--color-error-focus);
 }
 
 .admin-password-field {
@@ -1122,7 +1413,7 @@ button:disabled {
 
 .admin-login-note {
     margin-top: 16px;
-    color: #666;
+    color: var(--color-text-muted);
     font-size: 10px;
     line-height: 1.6;
 }
@@ -1203,9 +1494,10 @@ button:disabled {
     max-width: 1180px;
     margin: auto;
     padding: 24px;
-    background: var(--color-bg-medium);
+    background: var(--color-surface);
     border: 1px solid var(--color-border);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, .2);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-panel);
 }
 
 .admin-summary {
@@ -1259,7 +1551,7 @@ button:disabled {
 }
 
 .admin-summary-card.is-progress strong {
-    color: #64b5f6;
+    color: var(--color-status-progress);
 }
 
 .admin-summary-card.is-finished strong {
@@ -1288,7 +1580,7 @@ button:disabled {
     width: 100%;
     min-height: 42px;
     padding: 10px 12px;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     outline: 0;
     background: var(--color-bg-darker);
     color: var(--color-text-primary);
@@ -1298,7 +1590,7 @@ button:disabled {
 .admin-orders-toolbar input:focus,
 .admin-orders-toolbar select:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 1px rgba(245, 196, 0, .4);
+    box-shadow: 0 0 0 1px var(--color-border-focus);
 }
 
 .admin-orders-message {
@@ -1340,7 +1632,7 @@ button:disabled {
 
 .admin-order-latest {
     padding: 5px 7px;
-    background: rgba(245, 196, 0, .12);
+    background: var(--color-primary-soft);
     color: var(--color-primary);
     font-size: 9px;
     font-weight: 800;
@@ -1405,7 +1697,7 @@ button:disabled {
 .admin-order-details-button {
     min-height: 38px;
     padding: 10px 12px;
-    border-color: #444;
+    border-color: var(--color-border);
     font-size: 12px;
 }
 
@@ -1500,7 +1792,7 @@ button:disabled {
 .admin-status-editor select {
     min-height: 40px;
     padding: 9px 12px;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     outline: 0;
     background: var(--color-bg-darker);
     color: var(--color-text-primary);
@@ -1509,7 +1801,7 @@ button:disabled {
 
 .admin-status-editor select:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 1px rgba(245, 196, 0, .4);
+    box-shadow: 0 0 0 1px var(--color-border-focus);
 }
 
 .admin-status-save {
@@ -1658,9 +1950,10 @@ button:disabled {
 .admin-catalog-panel {
     min-width: 0;
     padding: 24px;
-    background: var(--color-bg-medium);
+    background: var(--color-surface);
     border: 1px solid var(--color-border);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, .18);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-panel);
 }
 
 .admin-catalog-panel-heading {
@@ -1763,7 +2056,7 @@ button:disabled {
     width: 100%;
     min-height: 42px;
     padding: 10px 12px;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     background: var(--color-bg-darker);
     color: var(--color-text-primary);
     font: inherit;
@@ -1798,7 +2091,7 @@ button:disabled {
     min-width: 0;
     min-height: 42px;
     padding: 10px 12px;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     background: var(--color-bg-darker);
     color: var(--color-text-primary);
     font: inherit;
@@ -1829,7 +2122,7 @@ button:disabled {
     justify-content: space-between;
     gap: 18px;
     padding: 16px;
-    background: linear-gradient(135deg, var(--color-bg-medium), #111111);
+    background: linear-gradient(135deg, var(--color-bg-medium), var(--color-input));
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     transition: all 0.25s ease;
@@ -1875,7 +2168,7 @@ button:disabled {
 
 .admin-product-state {
     padding: 4px 7px;
-    border: 1px solid #555;
+    border: 1px solid var(--color-border-strong);
     color: var(--color-text-tertiary);
     font-size: 9px;
     font-weight: 800;
@@ -1883,12 +2176,12 @@ button:disabled {
 }
 
 .admin-product-state.is-active {
-    border-color: rgba(109, 229, 155, .4);
+    border-color: var(--color-success-border);
     color: var(--color-success);
 }
 
 .admin-product-state.is-inactive {
-    border-color: rgba(255, 138, 128, .4);
+    border-color: var(--color-error-border);
     color: var(--color-error);
 }
 
@@ -1961,7 +2254,7 @@ button:disabled {
 #admin-product-form select {
     width: 100%;
     padding: 10px 12px;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     outline: 0;
     background: var(--color-bg-darker);
     color: var(--color-text-primary);
@@ -1973,7 +2266,7 @@ button:disabled {
 #admin-product-form textarea:focus,
 #admin-product-form select:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 1px rgba(245, 196, 0, .4);
+    box-shadow: 0 0 0 1px var(--color-border-focus);
 }
 
 .admin-product-form-message {
@@ -2034,7 +2327,7 @@ footer {
 }
 
 footer p {
-    color: #666;
+    color: var(--color-text-muted);
 
     font-size: 12px;
 
@@ -2066,9 +2359,9 @@ footer p {
 .copyright {
     padding-top: 25px;
 
-    border-top: 1px solid #1d1d1d;
+    border-top: 1px solid var(--color-border);
 
-    color: #555;
+    color: var(--color-border-strong);
 
     font-size: 10px;
 }
@@ -2084,18 +2377,39 @@ footer p {
     gap: 8px;
     padding: 13px 18px;
     border-radius: 999px;
-    background: #25d366;
+    background: var(--color-whatsapp);
     color: var(--color-text-primary);
     font-size: 12px;
     font-weight: 800;
     text-decoration: none;
-    box-shadow: 0 8px 22px rgba(0, 0, 0, .28);
-    transition: transform .2s ease, background .2s ease;
+    box-shadow: var(--shadow-md);
+    transition: transform .2s ease, background .2s ease, opacity .24s ease, visibility 0s linear 0s;
+}
+
+.whatsapp-float:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
+    box-shadow: var(--shadow-focus), var(--shadow-md);
 }
 
 .whatsapp-float:hover {
     transform: translateY(-3px);
-    background: #1ebe5d;
+    background: var(--color-whatsapp-hover);
+}
+
+@media (max-width: 600px) {
+    .whatsapp-float {
+        right: 16px;
+        bottom: calc(16px + env(safe-area-inset-bottom));
+    }
+
+    .whatsapp-float.is-scroll-hidden {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(12px) scale(.96);
+        transition-delay: 0s, 0s, 0s, .24s;
+    }
 }
 
 .whatsapp-icon {
@@ -2153,7 +2467,7 @@ footer p {
     position: fixed;
     inset: 0;
     z-index: 1090;
-    background: rgba(0, 0, 0, .67);
+    background: var(--color-overlay);
     opacity: 0;
     pointer-events: none;
     transition: opacity .3s ease;
@@ -2174,8 +2488,8 @@ footer p {
     width: min(420px, 100%);
     height: 100vh;
     padding: 25px;
-    background: var(--color-bg-medium);
-    box-shadow: -8px 0 30px rgba(0, 0, 0, .53);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-panel);
     transform: translateX(105%);
     transition: transform .34s cubic-bezier(.2, .75, .25, 1);
 }
@@ -2196,7 +2510,7 @@ footer p {
 .cart-item { display: flex; justify-content: space-between; gap: 12px; padding: 15px 0; border-bottom: 1px solid var(--color-border); font-size: 13px; }
 .cart-item small { display: block; margin-top: 5px; color: var(--color-text-tertiary); }
 .cart-item-controls { display: flex; align-items: center; gap: 9px; }
-.cart-item-controls button { width: 25px; height: 25px; border: 1px solid #555; background: transparent; color: var(--color-text-primary); font-size: 17px; }
+.cart-item-controls button { width: 25px; height: 25px; border: 1px solid var(--color-border-strong); background: transparent; color: var(--color-text-primary); font-size: 17px; }
 .cart-footer { padding-top: 18px; border-top: 1px solid var(--color-border); }
 .cart-total { margin-bottom: 17px; font-size: 15px; }
 .cart-total strong, .checkout-total strong { color: var(--color-primary); font-size: 20px; }
@@ -2255,7 +2569,7 @@ footer p {
 }
 
 .cart-footer label { display: block; margin: 12px 0; color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
-.cart-footer input, .cart-footer textarea { width: 100%; margin-top: 6px; padding: 10px; border: 1px solid #444; background: var(--color-bg-darker); color: var(--color-text-primary); font: inherit; resize: vertical; }
+.cart-footer input, .cart-footer textarea { width: 100%; margin-top: 6px; padding: 10px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-input); color: var(--color-text-primary); font: inherit; resize: vertical; }
 .cart-quote-button,
 .checkout-button { width: 100%; border: 0; margin-top: 5px; }
 
@@ -2269,8 +2583,8 @@ footer p {
     width: min(520px, 100%);
     height: 100vh;
     padding: 25px;
-    background: #111111;
-    box-shadow: -8px 0 30px rgba(0, 0, 0, .58);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-panel);
     transform: translateX(110%);
     transition: transform .3s ease;
     overflow-y: auto;
@@ -2319,7 +2633,7 @@ footer p {
     justify-content: space-between;
     gap: 12px;
     font-size: 13px;
-    color: #f3f3f3;
+    color: var(--color-text);
 }
 
 .pizza-item-layout {
@@ -2340,7 +2654,7 @@ footer p {
 }
 
 .pizza-item-split-visual {
-    border: 2px solid #28261f;
+    border: 2px solid var(--color-border-strong);
 }
 
 .pizza-item-split-visual::after {
@@ -2424,8 +2738,8 @@ footer p {
 .checkout-form-grid select {
     width: 100%;
     padding: 10px 12px;
-    border: 1px solid #444;
-    background: var(--color-bg-darker);
+    border: 1px solid var(--color-border);
+    background: var(--color-input);
     color: var(--color-text-primary);
     font: inherit;
     resize: vertical;
@@ -2433,8 +2747,9 @@ footer p {
 
 .checkout-address-section {
     padding: 16px;
-    background: var(--color-bg-medium);
+    background: var(--color-card);
     border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
 }
 
 .checkout-address-heading {
@@ -2478,7 +2793,7 @@ footer p {
 .checkout-address-grid select {
     min-width: 0;
     padding: 10px 12px;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     outline: 0;
     background: var(--color-bg-darker);
     color: var(--color-text-primary);
@@ -2488,7 +2803,7 @@ footer p {
 .checkout-address-grid input:focus,
 .checkout-address-grid select:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 1px rgba(245, 196, 0, .4);
+    box-shadow: 0 0 0 1px var(--color-border-focus);
 }
 
 .checkout-message {
@@ -2511,7 +2826,7 @@ footer p {
 .checkout-form-grid textarea.is-invalid,
 .checkout-form-grid select.is-invalid {
     border-color: var(--color-error);
-    box-shadow: 0 0 0 1px rgba(255, 138, 128, 0.55);
+    box-shadow: 0 0 0 1px var(--color-error-focus);
 }
 
 .checkout-submit {
@@ -2526,8 +2841,8 @@ footer p {
     width: min(460px, 100%);
     height: 100vh;
     background: var(--color-bg-medium);
-    border-left: 1px solid #282828;
-    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+    border-left: 1px solid var(--color-border);
+    box-shadow: var(--shadow-panel);
     padding: 24px 20px 18px;
     transform: translateX(104%);
     transition: transform 0.3s ease;
@@ -2579,8 +2894,8 @@ footer p {
     font-weight: 700;
     letter-spacing: 0.5px;
     color: var(--color-text-primary);
-    background: rgba(245, 196, 0, 0.08);
-    border: 1px solid rgba(245, 196, 0, 0.35);
+    background: var(--color-primary-soft);
+    border: 1px solid var(--color-primary-soft-border);
     border-radius: 10px;
     padding: 10px 12px;
 }
@@ -2717,7 +3032,7 @@ footer p {
 .order-query-grid input {
     width: 100%;
     padding: 10px 12px;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     background: var(--color-bg-darker);
     color: var(--color-text-primary);
     font: inherit;
@@ -2807,7 +3122,7 @@ footer p {
     place-items: center;
     width: 30px;
     height: 30px;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     border-radius: 50%;
     color: var(--color-text-tertiary);
     font-size: 12px;
@@ -2822,7 +3137,7 @@ footer p {
 .order-progress-step.is-complete .order-progress-marker,
 .order-progress-step.is-current .order-progress-marker {
     border-color: var(--color-primary);
-    background: rgba(245, 196, 0, .14);
+    background: var(--color-primary-shadow);
     color: var(--color-primary);
 }
 
@@ -2849,21 +3164,28 @@ footer p {
 }
 
 .status-received {
-    background: rgba(245, 196, 0, 0.12);
+    background: var(--color-primary-soft);
     color: var(--color-primary);
-    border: 1px solid rgba(245, 196, 0, 0.38);
+    border: 1px solid var(--color-primary-border);
+}
+
+.status-received,
+.status-progress,
+.status-finished {
+    min-height: 32px;
+    padding: 7px 11px;
 }
 
 .status-progress {
-    background: rgba(98, 184, 255, 0.12);
-    color: #8ec8ff;
-    border: 1px solid rgba(98, 184, 255, 0.38);
+    background: var(--color-info-soft);
+    color: var(--color-status-progress);
+    border: 1px solid var(--color-info-border);
 }
 
 .status-finished {
-    background: rgba(109, 229, 155, 0.12);
-    color: #7fe7a5;
-    border: 1px solid rgba(109, 229, 155, 0.38);
+    background: var(--color-success-soft);
+    color: var(--color-status-finished);
+    border: 1px solid var(--color-success-border);
 }
 
 .order-query-details {
@@ -2874,7 +3196,7 @@ footer p {
 }
 
 .order-query-meta {
-    background: #0f0f0f;
+    background: var(--color-card);
     border: 1px solid var(--color-border);
     border-radius: 10px;
     padding: 12px;
@@ -2893,7 +3215,7 @@ footer p {
 }
 
 .order-query-summary {
-    background: #0f0f0f;
+    background: var(--color-card);
     border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 16px;
@@ -3059,7 +3381,7 @@ footer p {
 
     .whatsapp-float {
         right: 16px;
-        bottom: 16px;
+        bottom: calc(16px + env(safe-area-inset-bottom));
         padding: 12px 15px;
     }
 
@@ -3306,14 +3628,14 @@ footer p {
     margin: auto;
     padding: 0;
     overflow: hidden;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     background: var(--color-bg-medium);
     color: var(--color-text-primary);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, .65);
+    box-shadow: var(--shadow-panel);
 }
 
 .pizza-customizer::backdrop {
-    background: rgba(0, 0, 0, .76);
+    background: var(--color-overlay);
     backdrop-filter: blur(3px);
 }
 
@@ -3374,7 +3696,7 @@ footer p {
     width: 42px;
     height: 42px;
     flex: 0 0 auto;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     background: transparent;
     color: var(--color-text-primary);
     font-size: 28px;
@@ -3419,8 +3741,8 @@ footer p {
     gap: 8px;
     min-height: 44px;
     padding: 0 14px;
-    border: 1px solid #484848;
-    color: #eee;
+    border: 1px solid var(--color-border-strong);
+    color: var(--color-text);
     font-size: 13px;
     cursor: pointer;
 }
@@ -3442,7 +3764,7 @@ footer p {
     width: 100%;
     min-height: 46px;
     padding: 10px 12px;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     background: var(--color-bg-darker);
     color: var(--color-text-primary);
     font: inherit;
@@ -3467,7 +3789,7 @@ footer p {
     width: 100%;
     min-height: 46px;
     padding: 10px 38px 10px 12px;
-    border: 1px solid #444;
+    border: 1px solid var(--color-border);
     background: var(--color-bg-darker);
     color: var(--color-text-primary);
     font: inherit;
@@ -3499,9 +3821,9 @@ footer p {
     display: grid;
     max-height: 220px;
     overflow-y: auto;
-    border: 1px solid #555;
+    border: 1px solid var(--color-border-strong);
     background: var(--color-bg-medium);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, .45);
+    box-shadow: var(--shadow-md);
 }
 
 .custom-select-options[hidden] {
@@ -3514,14 +3836,14 @@ footer p {
     border: 0;
     border-bottom: 1px solid var(--color-border);
     background: transparent;
-    color: #eee;
+    color: var(--color-text);
     font: inherit;
     text-align: left;
 }
 
 .custom-select-options button[aria-selected="true"],
 .custom-select-options button:hover:not(:disabled) {
-    background: rgba(245, 196, 0, .12);
+    background: var(--color-primary-soft);
     color: var(--color-primary);
 }
 
@@ -3551,7 +3873,7 @@ footer p {
     gap: 8px;
     min-height: 48px;
     padding: 9px 10px;
-    border: 1px solid #383838;
+    border: 1px solid var(--color-border);
     color: var(--color-text-secondary);
     font-size: 12px;
 }
@@ -3585,7 +3907,7 @@ footer p {
 .pizza-customizer-quantity button {
     width: 42px;
     height: 42px;
-    border: 1px solid #555;
+    border: 1px solid var(--color-border-strong);
     background: transparent;
     color: var(--color-text-primary);
     font-size: 22px;
@@ -3619,7 +3941,7 @@ footer p {
 
 .customizer-summary-split-visual {
     width: min(100%, 112px);
-    border: 3px solid #28261f;
+    border: 3px solid var(--color-border-strong);
 }
 
 .pizza-customizer-summary p {
@@ -3672,13 +3994,13 @@ footer p {
     aspect-ratio: 1;
     overflow: hidden;
     border-radius: 50%;
-    background: #161616;
+    background: var(--color-surface-subtle);
 }
 
 .customizer-split-visual {
     width: min(100%, 220px);
-    border: 5px solid #28261f;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+    border: 5px solid var(--color-border-strong);
+    box-shadow: var(--shadow-md);
 }
 
 .pizza-split-image {
@@ -3705,8 +4027,8 @@ footer p {
     left: 50%;
     width: 2px;
     content: "";
-    background: rgba(255, 255, 255, .72);
-    box-shadow: 0 0 4px rgba(0, 0, 0, .8);
+    background: var(--color-text-on-dark);
+    box-shadow: 0 0 4px var(--color-overlay);
     transform: translateX(-50%);
     pointer-events: none;
 }
@@ -3876,8 +4198,8 @@ footer p {
     justify-content: flex-end;
     gap: 5px;
     padding: 20px;
-    background: #171717;
-    color: #f2f2f2;
+    background: var(--color-placeholder-surface);
+    color: var(--color-placeholder-text);
 }
 
 .pizza-image-placeholder strong,
@@ -3890,7 +4212,7 @@ footer p {
 
 .pizza-image-placeholder small,
 .customizer-product-placeholder small {
-    color: #aaa;
+    color: var(--color-text-secondary);
     font-size: 10px;
     font-weight: 700;
     letter-spacing: .08em;
@@ -3917,9 +4239,9 @@ footer p {
     height: auto;
     aspect-ratio: 1;
     object-fit: cover;
-    border: 5px solid #28261f;
+    border: 5px solid var(--color-border-strong);
     border-radius: 50%;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+    box-shadow: var(--shadow-md);
 }
 
 .customizer-product-visual .customizer-product-placeholder {
@@ -3967,7 +4289,7 @@ footer p {
 }
 
 .admin-orders-live-status {
-    color: #bdbdbd;
+    color: var(--color-text-secondary);
     font-size: 12px;
 }
 
@@ -3999,6 +4321,7 @@ footer p {
     }
 
     .cart-count.is-pulsing,
+    [aria-busy="true"]::after,
     .pizza-customizer[open],
     .pizza-customizer[open]::backdrop {
         animation: none;
@@ -4011,15 +4334,26 @@ footer p {
     .pizza-customizer,
     .pizza-card,
     .pizza-image img,
+    .btn-pedido,
     .btn-card,
     .btn-menu-add,
-    .public-header nav {
+    .public-header nav,
+    .whatsapp-float {
         transition: none;
     }
 
     .pizza-card:hover,
     .pizza-card:hover .pizza-image img,
-    .btn-pedido:hover {
+    .btn-pedido:hover,
+    .btn-primary:hover,
+    .btn-secondary:hover,
+    .btn-card:hover,
+    .btn-menu-add:hover,
+    .admin-logout:hover,
+    .catalog-retry-button:hover,
+    .theme-toggle:hover,
+    .whatsapp-float:hover,
+    .pizza-card:hover {
         transform: none;
     }
 }
@@ -4043,20 +4377,20 @@ footer p {
     justify-content: center;
     gap: 6px;
     padding: 18px 12px;
-    color: #f4f4f4;
+    color: var(--color-text-on-dark);
     text-align: center;
 }
 
 .pizza-split-fallback-first {
     clip-path: inset(0 50% 0 0);
     padding-right: 58px;
-    background: linear-gradient(135deg, #3a3016, #211c10);
+    background: linear-gradient(135deg, var(--color-placeholder-surface), var(--color-card));
 }
 
 .pizza-split-fallback-second {
     clip-path: inset(0 0 0 50%);
     padding-left: 58px;
-    background: linear-gradient(135deg, #2c2c2c, #1c1c1c);
+    background: linear-gradient(135deg, var(--color-surface-elevated), var(--color-surface));
 }
 
 .pizza-split-fallback strong {
@@ -4074,7 +4408,7 @@ footer p {
 
 .pizza-type-choices label:has(input:checked) {
     border-color: var(--color-primary);
-    background: rgba(245, 196, 0, .1);
+    background: var(--color-primary-soft);
     color: var(--color-primary);
 }
 
@@ -4112,202 +4446,26 @@ footer p {
     }
 }
 
-body[data-theme="light"] .header nav a,
-body[data-theme="light"] .admin-nav a,
-body[data-theme="light"] .catalog-controls > label,
-body[data-theme="light"] .menu-text p,
-body[data-theme="light"] .admin-orders-live-status,
-body[data-theme="light"] .footer-links a,
-body[data-theme="light"] .admin-login-note {
-    color: var(--color-text-secondary);
-}
-
-body[data-theme="light"] .logo-fatia {
-    color: var(--color-text-primary);
-}
-
-body[data-theme="light"] .hero h1 {
-    color: #ffffff;
+/* The token contract above carries both themes; only image-specific treatment stays here. */
+body[data-theme="light"] .hero h1,
+body[data-theme="light"] .hero p {
+    color: var(--color-text-inverse);
 }
 
 body[data-theme="light"] .hero h1 span {
-    color: #ffd633;
-}
-
-body[data-theme="light"] .hero p {
-    color: #f1f1eb;
-}
-
-body[data-theme="light"] .pizza-card,
-body[data-theme="light"] .admin-product-card,
-body[data-theme="light"] .checkout-panel,
-body[data-theme="light"] .order-query-meta,
-body[data-theme="light"] .order-query-summary {
-    background: var(--color-theme-surface);
+    color: var(--color-primary-hover);
 }
 
 body[data-theme="light"] .pizza-image,
 body[data-theme="light"] .pizza-image-placeholder,
 body[data-theme="light"] .customizer-product-placeholder {
-    background-color: #e8ece5;
-    color: #263028;
+    background-color: var(--color-placeholder-surface);
+    color: var(--color-placeholder-text);
 }
 
 body[data-theme="light"] .pizza-image-placeholder small,
 body[data-theme="light"] .customizer-product-placeholder small {
-    color: #465148;
-}
-
-body[data-theme="light"] .btn-pedido,
-body[data-theme="light"] .btn-primary,
-body[data-theme="light"] .badge,
-body[data-theme="light"] .menu-filter-button.is-active,
-body[data-theme="light"] .menu-filter-button:hover,
-body[data-theme="light"] .btn-card:hover,
-body[data-theme="light"] .btn-menu-add:hover,
-body[data-theme="light"] .admin-order-new,
-body[data-theme="light"] .admin-order-card-side button:hover,
-body[data-theme="light"] .admin-product-card-actions button:hover,
-body[data-theme="light"] .admin-status-save:hover {
-    background-color: var(--color-theme-fill);
-    color: var(--color-theme-on-fill);
-}
-
-body[data-theme="light"] .hero .btn-primary {
-    color: var(--color-theme-on-fill);
-}
-
-body[data-theme="light"] .banner {
-    background: linear-gradient(135deg, #e7ebe4 0%, #f8f9f6 52%, #e5e9e2 100%);
-}
-
-body[data-theme="light"] .banner p,
-body[data-theme="light"] .checkout-items li {
     color: var(--color-text-secondary);
-}
-
-body[data-theme="light"] .catalog-feedback {
-    background: #fff8d9;
-    color: #554200;
-}
-
-body[data-theme="light"] .cart-panel,
-body[data-theme="light"] .confirmation-panel,
-body[data-theme="light"] .pizza-customizer,
-body[data-theme="light"] .pizza-customizer-header,
-body[data-theme="light"] .custom-select-options {
-    background: var(--color-bg-medium);
-    color: var(--color-text-primary);
-}
-
-body[data-theme="light"] .pizza-type-choices label,
-body[data-theme="light"] .custom-select-options button,
-body[data-theme="light"] .customizer-addon-option {
-    border-color: var(--color-border-light);
-    color: var(--color-text-primary);
-}
-
-body[data-theme="light"] .pizza-type-choices label:has(input:checked),
-body[data-theme="light"] .custom-select-options button[aria-selected="true"],
-body[data-theme="light"] .custom-select-options button:hover:not(:disabled) {
-    background: #fff5c2;
-    color: var(--color-primary-dark);
-}
-
-body[data-theme="light"] .checkout-items li,
-body[data-theme="light"] .cart-item-controls button,
-body[data-theme="light"] .pizza-customizer-close,
-body[data-theme="light"] .pizza-customizer-quantity button,
-body[data-theme="light"] .order-progress-marker {
-    border-color: var(--color-border-light);
-}
-
-body[data-theme="light"] .confirmation-code {
-    background: #fff8dc;
-    border-color: #d7bd60;
-}
-
-body[data-theme="light"] .confirmation-section,
-body[data-theme="light"] .confirmation-customer,
-body[data-theme="light"] .admin-summary-card,
-body[data-theme="light"] .admin-status-editor,
-body[data-theme="light"] .admin-order-customer div,
-body[data-theme="light"] .admin-order-customer p,
-body[data-theme="light"] .admin-order-products,
-body[data-theme="light"] .admin-catalog-panel,
-body[data-theme="light"] .admin-category-card,
-body[data-theme="light"] .admin-pizza-option,
-body[data-theme="light"] .order-query-panel,
-body[data-theme="light"] .order-query-result {
-    background-color: var(--color-bg-medium);
-}
-
-body[data-theme="light"] .status-progress {
-    background: rgba(38, 100, 156, .1);
-    color: #245d91;
-    border-color: rgba(38, 100, 156, .35);
-}
-
-body[data-theme="light"] .status-finished {
-    background: rgba(23, 107, 60, .1);
-    color: #176b3c;
-    border-color: rgba(23, 107, 60, .35);
-}
-
-body[data-theme="light"] .status-received {
-    background: #fff5c2;
-    color: var(--color-primary-dark);
-    border-color: #d7bd60;
-}
-
-body[data-theme="light"] .cart-backdrop,
-body[data-theme="light"] .pizza-customizer::backdrop {
-    background: rgba(20, 27, 21, .48);
-}
-
-body[data-theme="light"] :is(input, select, textarea) {
-    border-color: var(--color-theme-input-border);
-    background-color: var(--color-theme-input);
-    color: var(--color-text-primary);
-}
-
-body[data-theme="light"] :is(input, textarea)::placeholder {
-    color: #626a63;
-    opacity: 1;
-}
-
-body[data-theme="light"] :is(label, legend) {
-    color: var(--color-text-secondary);
-}
-
-body[data-theme="light"] .admin-login-message.success,
-body[data-theme="light"] .admin-category-message.success,
-body[data-theme="light"] .admin-product-form-message.success,
-body[data-theme="light"] .admin-pizza-option-message.success,
-body[data-theme="light"] .admin-status-message.success,
-body[data-theme="light"] .delivery-quote-message.success,
-body[data-theme="light"] .address-lookup-message.success,
-body[data-theme="light"] .order-query-message.success {
-    color: #176b3c;
-}
-
-body[data-theme="light"] .admin-login-message.error,
-body[data-theme="light"] .admin-category-message,
-body[data-theme="light"] .admin-product-form-message,
-body[data-theme="light"] .admin-pizza-option-message.error,
-body[data-theme="light"] .admin-status-message,
-body[data-theme="light"] .checkout-message,
-body[data-theme="light"] .order-query-message.error {
-    color: #a5211b;
-}
-
-body[data-theme="light"] footer p,
-body[data-theme="light"] .copyright {
-    color: #58615a;
-}
-
-body[data-theme="light"] .copyright {
-    border-color: var(--color-border);
 }
 
 @media (max-width: 900px) {
@@ -4431,12 +4589,6 @@ body[data-theme="light"] .copyright {
 
     .public-header-actions {
         gap: 6px;
-    }
-
-    .theme-toggle {
-        min-width: 62px;
-        min-height: 44px;
-        padding: 0 8px;
     }
 
     .btn-pedido {
