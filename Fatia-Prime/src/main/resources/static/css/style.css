@@ -1224,6 +1224,7 @@ button:disabled {
     border-radius: 50%;
     background: var(--color-surface-subtle);
     object-fit: contain;
+    object-position: center;
     padding: 6px;
     box-sizing: border-box;
     display: flex;
