@@ -824,7 +824,7 @@ async function loadProductImageAssociations() {
         const validAssociations = (entries, pattern) => entries.every(([, filename]) => pattern.test(filename))
             && new Set(entries.map(([name]) => normalizeCatalogSearch(name))).size === entries.length
             && new Set(entries.map(([, filename]) => filename)).size === entries.length;
-        if (!validAssociations(cardapioEntries, /^cardapio\/[a-z0-9-]+-cardapio\.(?:png|jpe?g)$/i)
+        if (!validAssociations(cardapioEntries, /^cardapio\/[a-z0-9-]+-cardapio\.(?:png|jpe?g|webp)$/i)
             || !validAssociations(meiaEntries, /^meia\/[a-z0-9-]+-meia\.png$/i)) {
             throw new Error('Manifesto de imagens contém associações inválidas.');
         }
