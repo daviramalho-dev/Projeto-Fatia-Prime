@@ -144,6 +144,27 @@ window.addEventListener('scroll', schedulePublicWhatsappScrollState, { passive: 
 window.addEventListener('resize', schedulePublicWhatsappScrollState, { passive: true });
 publicWhatsapp?.addEventListener('focusin', resetPublicWhatsappScrollState);
 const catalogFeedback = document.querySelector('.catalog-feedback');
+let catalogFeedbackTimer = null;
+const nativeDialogShowModal = pizzaCustomizer?.showModal.bind(pizzaCustomizer);
+const nativeDialogClose = pizzaCustomizer?.close.bind(pizzaCustomizer);
+let customizerCloseTimer = null;
+
+function closePizzaCustomizer() {
+    if (!pizzaCustomizer?.open) return;
+    window.clearTimeout(customizerCloseTimer);
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+        nativeDialogClose?.();
+        return;
+    }
+    pizzaCustomizer.classList.remove('is-closing');
+    void pizzaCustomizer.offsetWidth;
+    pizzaCustomizer.classList.add('is-closing');
+    customizerCloseTimer = window.setTimeout(() => {
+        nativeDialogClose?.();
+        pizzaCustomizer.classList.remove('is-closing');
+    }, 180);
+}
+
 const catalogSearch = document.querySelector('#catalog-search');
 const catalogResults = document.querySelector('.catalog-results');
 const catalogClearFilters = document.querySelector('.catalog-clear-filters');
@@ -633,22 +654,41 @@ function addCartItem(item) {
     const existing = window.cart.find((entry) => entry.key === item.key);
     if (existing) existing.quantity = Math.min(50, existing.quantity + item.quantity);
     else window.cart.push(item);
-    updateCart();
-    document.querySelectorAll('.cart-count').forEach((element) => {
-        element.classList.remove('is-pulsing');
-        void element.offsetWidth;
-        element.classList.add('is-pulsing');
-    });
+    updateCart(true);
     openCart();
+    return existing || item;
 }
 
-function showAddedFeedback(button) {
+function getCartFeedbackName(item, fallback = 'Item') {
+    if (!item) return fallback;
+    if (item.itemType !== 'PIZZA') return item.name || fallback;
+    const firstFlavor = item.firstFlavor?.name || 'sabor não informado';
+    if (item.secondFlavor?.name) {
+        return `Pizza meio a meio: ${firstFlavor} + ${item.secondFlavor.name}`;
+    }
+    return `Pizza inteira: ${firstFlavor}`;
+}
+
+function showAddedFeedback(button, addedItem = null) {
     if (!button) return;
     const currentTimer = buttonFeedbackTimers.get(button);
     if (currentTimer) window.clearTimeout(currentTimer);
     if (!button.dataset.defaultLabel) button.dataset.defaultLabel = button.textContent.trim();
+    const cartItem = addedItem || window.cart.find((item) => item.name === button.dataset.product);
+    const productName = getCartFeedbackName(cartItem, button.dataset.product || 'Item');
+    const quantity = cartItem?.quantity || 1;
+    const itemTotal = cartItem ? money.format(cartItem.price * cartItem.quantity) : money.format(0);
     button.textContent = 'ADICIONADO ✓';
     button.classList.add('is-added');
+    if (catalogFeedback) {
+        catalogFeedback.textContent = `${productName} adicionado · ${quantity} ${quantity === 1 ? 'unidade' : 'unidades'} · ${itemTotal}`;
+        catalogFeedback.hidden = false;
+        window.clearTimeout(catalogFeedbackTimer);
+        catalogFeedbackTimer = window.setTimeout(() => {
+            catalogFeedback.textContent = '';
+            catalogFeedback.hidden = true;
+        }, 2400);
+    }
     const timer = window.setTimeout(() => {
         button.textContent = button.dataset.defaultLabel;
         button.classList.remove('is-added');
@@ -808,8 +848,23 @@ function getNormalizedProductImageName(productName) {
     const aliases = {
         'bacon com barbecue': 'bacon-e-barbecue',
         'costela com catupiry': 'costela-catupiry',
+        'coca-cola original': 'coca',
+        'coca-cola zero': 'coca-zero',
+        'pepsi original': 'pepsi',
+        'guarana antarctica': 'guarana',
     };
     return aliases[normalizedName] || normalizedName.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function renderCategoryFallbackIcon(product) {
+    const type = product?.type || 'SALGADA';
+    if (type === 'BEBIDA') {
+        return `<svg class="category-icon category-icon-drink" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 6h10v13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V6Z"/><path d="M9 3h6v3H9z"/><line x1="7" y1="10" x2="17" y2="10"/></svg>`;
+    }
+    if (type === 'DOCE') {
+        return `<svg class="category-icon category-icon-sweet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L3 21h18L12 2z"/><circle cx="12" cy="13" r="1.5" fill="currentColor"/><circle cx="9" cy="17" r="1" fill="currentColor"/><circle cx="15" cy="17" r="1" fill="currentColor"/></svg>`;
+    }
+    return `<svg class="category-icon category-icon-pizza" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 20c3.5 2 16.5 2 20 0L12 2z"/><circle cx="12" cy="11" r="1.5" fill="currentColor"/><circle cx="9" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/></svg>`;
 }
 
 function reportMissingProductImage(context, product, imagePath) {
@@ -880,8 +935,8 @@ function renderPublicCatalog() {
                 );
             }
             return `
-            <div class="menu-item${menuImage ? ' has-image' : ''}" data-category="${escapeHtml(product.categoryId)}">
-                ${menuImage ? `<img class="menu-item-image" data-menu-product-image src="${escapeHtml(menuImage)}" alt="${escapeHtml(product.name)}" loading="lazy" width="96" height="96">` : ''}
+            <div class="menu-item has-image" data-category="${escapeHtml(product.categoryId)}" data-product-type="${escapeHtml(product.type)}">
+                ${menuImage ? `<img class="menu-item-image" data-menu-product-image src="${escapeHtml(menuImage)}" alt="${escapeHtml(product.name)}" loading="lazy" width="96" height="96">` : `<span class="menu-item-image menu-item-fallback" aria-hidden="true">${renderCategoryFallbackIcon(product)}</span>`}
                 <div class="menu-text"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div>
                 <div class="menu-actions"><strong>${money.format(product.price)}</strong><button class="btn-menu-add" type="button" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">ADICIONAR</button></div>
             </div>`;
@@ -892,8 +947,12 @@ function renderPublicCatalog() {
         menuList.querySelectorAll('img[data-menu-product-image]').forEach((image) => {
             image.addEventListener('error', () => {
                 console.error('Falha ao carregar imagem do cardápio.', { product: image.alt, src: image.src });
-                image.closest('.menu-item')?.classList.remove('has-image');
-                image.remove();
+                const fallback = document.createElement('span');
+                fallback.className = 'menu-item-image menu-item-fallback';
+                fallback.setAttribute('aria-hidden', 'true');
+                const productType = image.closest('.menu-item')?.dataset.productType || 'SALGADA';
+                fallback.innerHTML = renderCategoryFallbackIcon({ type: productType });
+                image.replaceWith(fallback);
             }, { once: true });
         });
     }
@@ -914,7 +973,7 @@ function renderFeaturedProductCard(product) {
             </div>
             <div class="pizza-card-footer">
                 <strong>${money.format(product.price)}</strong>
-                <button class="btn-card" type="button" data-product-id="${product.id}">ADICIONAR</button>
+                <button class="btn-card" type="button" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}">ADICIONAR</button>
             </div>
         </article>`;
 }
@@ -943,13 +1002,9 @@ function renderProductVisual(product, presentation) {
 
 function renderHalfAndHalfPizzaVisual(firstProduct, secondProduct, visualClass) {
     const renderHalf = (product, side) => {
-        const image = getHalfPizzaImage(product);
+        const normalizedName = normalizeCatalogSearch(product.name);
+        const image = halfPizzaImages.has(normalizedName) ? halfPizzaImages.get(normalizedName) : '';
         if (!image) {
-            reportMissingProductImage(
-                'meia a meia',
-                product,
-                `assets/meia/${getNormalizedProductImageName(product.name)}-meia.png`
-            );
             return `<span class="pizza-split-fallback pizza-split-fallback-${side}" aria-hidden="true"><strong>${escapeHtml(product.name)}</strong></span>`;
         }
         return `<img class="pizza-split-image pizza-split-image-${side}" data-split-name="${escapeHtml(product.name)}" src="${escapeHtml(image)}" alt="" loading="lazy">`;
@@ -2559,11 +2614,16 @@ function openCheckout() {
     }
 }
 
-function updateCart() {
+function updateCart(shouldPulse = false) {
     const count = window.cart.reduce((total, item) => total + item.quantity, 0);
     document.querySelectorAll('.cart-count').forEach((element) => {
         element.textContent = count;
         element.dataset.digits = String(count).length;
+        if (shouldPulse) {
+            element.classList.remove('is-pulsing');
+            void element.offsetWidth;
+            element.classList.add('is-pulsing');
+        }
     });
     itemsElement.innerHTML = window.cart.length
         ? window.cart.map((item, index) => `
@@ -2597,7 +2657,7 @@ async function addProduct(element) {
     }
 
     if (product.type === 'BEBIDA') {
-        addCartItem({
+        const addedDrink = addCartItem({
             itemType: 'BEBIDA',
             name: product.name,
             productId: product.id,
@@ -2610,7 +2670,7 @@ async function addProduct(element) {
             addons: [],
             sauces: [],
         });
-        showAddedFeedback(element);
+        showAddedFeedback(element, addedDrink);
         return;
     }
     if (!pizzaCustomizer) return;
@@ -2654,7 +2714,7 @@ async function addProduct(element) {
         customizerQuantity = 1;
         pizzaCustomizer.querySelector('input[name="pizzaType"][value="INTEIRA"]').checked = true;
         renderPizzaCustomizerSummary();
-        pizzaCustomizer.showModal();
+        nativeDialogShowModal?.();
     } catch (error) {
         customizerTrigger = null;
         if (catalogFeedback) {
@@ -2866,9 +2926,9 @@ function addCustomizedPizza() {
             + normalizedSauces.reduce((total, sauce) => total + sauce.price, 0),
         quantity: customizerQuantity,
     };
-    pizzaCustomizer.close();
-    addCartItem(pizza);
-    showAddedFeedback(customizerTrigger);
+    closePizzaCustomizer();
+    const addedPizza = addCartItem(pizza);
+    showAddedFeedback(customizerTrigger, addedPizza);
     customizerTrigger = null;
 }
 
@@ -2876,6 +2936,20 @@ function applyCategoryFilter(category) {
     selectedCatalogCategory = category;
     renderCategoryFilters(publicCategories, 'public');
     renderPublicCatalog();
+}
+
+const revealSections = [...document.querySelectorAll('.section-reveal')];
+if ('IntersectionObserver' in window) {
+    const sectionRevealObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+        });
+    }, { threshold: 0.12 });
+    revealSections.forEach((section) => sectionRevealObserver.observe(section));
+} else {
+    revealSections.forEach((section) => section.classList.add('is-visible'));
 }
 
 loadPublicCatalog();
@@ -2935,9 +3009,9 @@ publicMenuFilters?.addEventListener('click', (event) => {
 catalogSearch?.addEventListener('input', renderPublicCatalog);
 catalogClearFilters?.addEventListener('click', resetCatalogFilters);
 
-pizzaCustomizer?.querySelector('.pizza-customizer-close')?.addEventListener('click', () => pizzaCustomizer.close());
+pizzaCustomizer?.querySelector('.pizza-customizer-close')?.addEventListener('click', closePizzaCustomizer);
 pizzaCustomizer?.addEventListener('click', (event) => {
-    if (event.target === pizzaCustomizer) pizzaCustomizer.close();
+    if (event.target === pizzaCustomizer) closePizzaCustomizer();
 });
 pizzaCustomizer?.addEventListener('change', (event) => {
     if (event.target.matches('input[name="pizzaType"], .customizer-first-flavor, .customizer-second-flavor, .customizer-border, .customizer-addon-list input, .customizer-sauce-list input')) {
@@ -2989,7 +3063,7 @@ itemsElement.addEventListener('click', (event) => {
 
     item.quantity = Math.min(50, item.quantity + Number(button.dataset.step));
     if (item.quantity <= 0) window.cart.splice(index, 1);
-    updateCart();
+    updateCart(true);
 });
 
 document.querySelector('.checkout-button').addEventListener('click', () => {
