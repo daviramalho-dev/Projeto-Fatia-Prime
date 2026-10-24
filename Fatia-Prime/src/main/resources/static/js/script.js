@@ -9,7 +9,6 @@ const ORDER_STATUSES = ['Pedido recebido', 'Pedido em andamento', 'Pedido conclu
 const PRODUCT_CATEGORIES = ['classicas', 'carnes', 'frango', 'queijos'];
 const PUBLIC_CATEGORY_ORDER = ['classicas', 'carnes', 'frango', 'queijos', 'doces', 'bebidas'];
 const CATALOG_EAGER_IMAGE_COUNT = 6;
-const CATALOG_PRELOAD_LIMIT = 14;
 const CATALOG_PRELOAD_IMAGE_COUNT = 6;
 const catalogPreloadedImages = new Set();
 let catalogPreloadTimer = null;
@@ -816,6 +815,16 @@ async function loadPublicCatalog() {
     }
 }
 
+function getDerivedImagePath(imagePath, variant) {
+    const match = String(imagePath || '').match(/^(assets\/)(cardapio|meia)\/([^/]+)\.[a-z0-9]+$/i);
+    return match ? `${match[1]}${match[2]}/${variant}/${match[3]}.webp` : '';
+}
+
+function getCatalogThumbnailSource(product) {
+    const image = product.image || catalogProductImages.get(normalizeCatalogSearch(product.name)) || '';
+    return product.image ? image : getDerivedImagePath(image, 'thumbs') || image;
+}
+
 async function loadProductImageAssociations() {
     try {
         const manifest = await fetchApiJson('/assets/image-associations.json');
@@ -1014,7 +1023,7 @@ function renderPublicCatalog() {
     const menuGroups = groupCatalogProducts(menuProducts);
     const catalogImageSources = menuGroups
         .flatMap((group) => group.products)
-        .map((product) => catalogProductImages.get(normalizeCatalogSearch(product.name)))
+        .map((product) => getCatalogThumbnailSource(product))
         .filter(Boolean);
     if (featuredSection) featuredSection.hidden = filtersActive || products.length === 0;
     if (catalogResults) {
@@ -1033,7 +1042,8 @@ function renderPublicCatalog() {
                     <span class="menu-category-count">${escapeHtml(getCatalogItemCountLabel(group.products.length))}</span>
                 </h3>
                 <div class="menu-category-items">${group.products.map((product) => {
-                    const menuImage = catalogProductImages.get(normalizeCatalogSearch(product.name));
+                    const originalMenuImage = product.image || catalogProductImages.get(normalizeCatalogSearch(product.name));
+                    const menuImage = getCatalogThumbnailSource(product);
                     if (!menuImage && product.type !== 'BEBIDA') {
                         reportMissingProductImage(
                             'cardápio',
@@ -1044,9 +1054,10 @@ function renderPublicCatalog() {
                     const imageIndex = catalogImageSources.indexOf(menuImage);
                     const imageLoading = imageIndex > -1 && imageIndex < CATALOG_EAGER_IMAGE_COUNT ? 'eager' : 'lazy';
                     const imagePriority = imageIndex > -1 && imageIndex < CATALOG_EAGER_IMAGE_COUNT ? ' fetchpriority="high"' : '';
+                    const imageFallback = originalMenuImage && menuImage !== originalMenuImage ? ` data-original-src="${escapeHtml(originalMenuImage)}"` : '';
                     return `
                     <div class="menu-item has-image" data-category="${escapeHtml(product.categoryId)}" data-product-type="${escapeHtml(product.type)}">
-                        ${menuImage ? `<img class="menu-item-image" data-menu-product-image src="${escapeHtml(menuImage)}" alt="${escapeHtml(product.name)}" loading="${imageLoading}"${imagePriority} width="96" height="96">` : `<span class="menu-item-image menu-item-fallback" aria-hidden="true">${renderCategoryFallbackIcon(product)}</span>`}
+                        ${menuImage ? `<img class="menu-item-image" data-menu-product-image src="${escapeHtml(menuImage)}"${imageFallback} alt="${escapeHtml(product.name)}" loading="${imageLoading}"${imagePriority} width="96" height="96">` : `<span class="menu-item-image menu-item-fallback" aria-hidden="true">${renderCategoryFallbackIcon(product)}</span>`}
                         <div class="menu-text"><h4>${escapeHtml(product.name)}</h4><p>${escapeHtml(product.description)}</p></div>
                         <div class="menu-actions"><strong>${money.format(product.price)}</strong><button class="btn-menu-add" type="button" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">ADICIONAR</button></div>
                     </div>`;
@@ -1059,6 +1070,12 @@ function renderPublicCatalog() {
             image.addEventListener('load', () => image.classList.add('is-loaded'), { once: true });
             if (image.complete && image.naturalWidth > 0) image.classList.add('is-loaded');
             image.addEventListener('error', () => {
+                const originalSrc = image.dataset.originalSrc;
+                if (originalSrc && image.dataset.originalTried !== 'true') {
+                    image.dataset.originalTried = 'true';
+                    image.src = originalSrc;
+                    return;
+                }
                 console.error('Falha ao carregar imagem do cardápio.', { product: image.alt, src: image.src });
                 const fallback = document.createElement('span');
                 fallback.className = 'menu-item-image menu-item-fallback';
@@ -1068,7 +1085,7 @@ function renderPublicCatalog() {
                 image.replaceWith(fallback);
             }, { once: true });
         });
-        scheduleCatalogImagePreload(catalogImageSources.slice(CATALOG_EAGER_IMAGE_COUNT, CATALOG_PRELOAD_LIMIT));
+        scheduleCatalogImagePreload(catalogImageSources.slice(CATALOG_EAGER_IMAGE_COUNT));
     }
 }
 
@@ -1096,38 +1113,56 @@ function getCustomizerProductImage(product) {
     return product.image || catalogProductImages.get(normalizeCatalogSearch(product.name)) || '';
 }
 
+function getCustomizerImageSource(product) {
+    const image = getCustomizerProductImage(product);
+    return image && !product.image ? getDerivedImagePath(image, 'medium') : image;
+}
+
 function getHalfPizzaImage(product) {
-    return halfPizzaImages.get(normalizeCatalogSearch(product.name)) || '';
+    const image = halfPizzaImages.get(normalizeCatalogSearch(product.name)) || '';
+    return image ? getDerivedImagePath(image, 'thumbs') : '';
 }
 
 function getHalfPizzaFallbackImage(product) {
-    return normalizeCatalogSearch(product.name) === 'atum'
-        ? catalogProductImages.get('atum') || ''
-        : '';
+    if (normalizeCatalogSearch(product.name) !== 'atum') return '';
+    const image = catalogProductImages.get('atum') || '';
+    return getDerivedImagePath(image, 'thumbs') || image;
 }
 
 function renderProductVisual(product, presentation) {
     const visualClass = presentation === 'featured' ? 'pizza-image-placeholder' : 'customizer-product-placeholder';
     const image = presentation === 'featured'
         ? product.image
-        : getCustomizerProductImage(product);
+        : getCustomizerImageSource(product);
     if (image) {
         const imageClass = presentation === 'featured' ? ''
             : 'customizer-product-image';
+        const originalImage = getCustomizerProductImage(product);
+        const originalAttribute = imageClass && originalImage !== image
+            ? ` data-original-src="${escapeHtml(originalImage)}"`
+            : '';
+        const productTypeAttribute = imageClass ? ` data-product-type="${escapeHtml(product.type || 'SALGADA')}"` : '';
+        const productNameAttribute = imageClass ? ` data-product-name="${escapeHtml(product.name)}"` : '';
         const dimension = presentation === 'featured' ? '800' : '520';
-        return `<img${imageClass ? ` class="${imageClass}"` : ''} src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}" loading="lazy" width="${dimension}" height="${dimension}">`;
+        return `<img${imageClass ? ` class="${imageClass}"` : ''} src="${escapeHtml(image)}"${originalAttribute}${productTypeAttribute}${productNameAttribute} alt="${escapeHtml(product.name)}" loading="lazy" width="${dimension}" height="${dimension}">`;
     }
     return `<span class="${visualClass}"><strong>${escapeHtml(product.name)}</strong>${product.categoryName ? `<small>${escapeHtml(product.categoryName)}</small>` : ''}</span>`;
 }
 
 function renderHalfAndHalfPizzaVisual(firstProduct, secondProduct, visualClass) {
     const renderHalf = (product, side) => {
+        const originalImage = getHalfPizzaImage(product)
+            ? halfPizzaImages.get(normalizeCatalogSearch(product.name))
+            : catalogProductImages.get(normalizeCatalogSearch(product.name)) || '';
         const image = getHalfPizzaImage(product) || getHalfPizzaFallbackImage(product);
         if (!image) {
             return `<span class="pizza-split-fallback pizza-split-fallback-${side}" aria-hidden="true"><strong>${escapeHtml(product.name)}</strong></span>`;
         }
         const fallbackClass = getHalfPizzaImage(product) ? '' : ' is-cardapio-fallback';
-        return `<img class="pizza-split-image pizza-split-image-${side}${fallbackClass}" data-split-name="${escapeHtml(product.name)}" src="${escapeHtml(image)}" alt="" loading="lazy">`;
+        const originalAttribute = originalImage && image !== originalImage
+            ? ` data-original-src="${escapeHtml(originalImage)}"`
+            : '';
+        return `<img class="pizza-split-image pizza-split-image-${side}${fallbackClass}" data-split-name="${escapeHtml(product.name)}" src="${escapeHtml(image)}"${originalAttribute} alt="" loading="lazy">`;
     };
     return `
         <span class="${visualClass}" role="img" aria-label="Pizza meio a meio: ${escapeHtml(firstProduct.name)} e ${escapeHtml(secondProduct.name)}">
@@ -1141,6 +1176,12 @@ document.addEventListener('error', (event) => {
     if (!(image instanceof HTMLImageElement) || !image.matches('.pizza-split-image')) return;
     const side = image.classList.contains('pizza-split-image-first') ? 'first' : 'second';
     const productName = image.dataset.splitName || image.alt;
+    const originalSrc = image.dataset.originalSrc;
+    if (originalSrc && image.dataset.originalTried !== 'true') {
+        image.dataset.originalTried = 'true';
+        image.src = originalSrc;
+        return;
+    }
     console.error('Falha ao carregar imagem meia a meia.', { product: productName, src: image.src });
     const fallback = document.createElement('span');
     fallback.className = `pizza-split-fallback pizza-split-fallback-${side}`;
@@ -1148,6 +1189,23 @@ document.addEventListener('error', (event) => {
     const label = document.createElement('strong');
     label.textContent = productName;
     fallback.append(label);
+    image.replaceWith(fallback);
+}, true);
+
+document.addEventListener('error', (event) => {
+    const image = event.target;
+    if (!(image instanceof HTMLImageElement) || !image.matches('.customizer-product-image')) return;
+    const originalSrc = image.dataset.originalSrc;
+    if (originalSrc && image.dataset.originalTried !== 'true') {
+        image.dataset.originalTried = 'true';
+        image.src = originalSrc;
+        return;
+    }
+    console.error('Falha ao carregar imagem inteira do customizador.', { product: image.alt, src: image.src });
+    const fallback = document.createElement('span');
+    fallback.className = 'customizer-product-placeholder';
+    fallback.setAttribute('aria-hidden', 'true');
+    fallback.innerHTML = renderCategoryFallbackIcon({ type: image.dataset.productType });
     image.replaceWith(fallback);
 }, true);
 
@@ -3095,16 +3153,6 @@ document.addEventListener('visibilitychange', () => {
         );
     }
 });
-
-document.addEventListener('error', (event) => {
-    const image = event.target;
-    if (!(image instanceof HTMLImageElement) || !image.matches('.pizza-split-image')) return;
-    const fallback = document.createElement('span');
-    fallback.className = `pizza-split-fallback ${image.classList.contains('pizza-split-image-first') ? 'pizza-split-fallback-first' : 'pizza-split-fallback-second'}`;
-    fallback.setAttribute('aria-hidden', 'true');
-    fallback.innerHTML = `<strong>${escapeHtml(image.dataset.splitName)}</strong>`;
-    image.replaceWith(fallback);
-}, true);
 
 adminSoundToggle?.addEventListener('click', () => {
     if (!window.AudioContext) {
