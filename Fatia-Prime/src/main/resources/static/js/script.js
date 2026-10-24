@@ -7,6 +7,11 @@ const PRODUCT_STORAGE_KEY = 'fatia-prime-products';
 const CHECKOUT_ADDRESS_STORAGE_KEY = 'fatia-prime-checkout-address';
 const ORDER_STATUSES = ['Pedido recebido', 'Pedido em andamento', 'Pedido concluído'];
 const PRODUCT_CATEGORIES = ['classicas', 'carnes', 'frango', 'queijos'];
+const PUBLIC_CATEGORY_ORDER = ['classicas', 'carnes', 'frango', 'queijos', 'doces', 'bebidas'];
+const CATALOG_EAGER_IMAGE_COUNT = 6;
+const CATALOG_PRELOAD_IMAGE_COUNT = 6;
+const catalogPreloadedImages = new Set();
+let catalogPreloadTimer = null;
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const panel = document.querySelector('.cart-panel');
 const checkoutPanel = document.querySelector('.checkout-panel');
@@ -780,12 +785,13 @@ async function loadPublicCatalog() {
         const [products, categories] = await Promise.all([
             fetchApiJson('/api/produtos'),
             fetchApiJson('/api/categorias'),
+            loadProductImageAssociations(),
         ]);
         if (!Array.isArray(products) || !Array.isArray(categories)) throw new Error('Resposta inválida do catálogo.');
-        await loadProductImageAssociations();
         publicCategories = categories
             .filter((category) => category && category.id != null && category.nome)
-            .map((category) => ({ id: category.id, name: String(category.nome).trim() }));
+            .map((category) => ({ id: category.id, name: String(category.nome).trim() }))
+            .sort((first, second) => getPublicCategoryOrder(first) - getPublicCategoryOrder(second));
         publicProducts = products.map((product) => normalizeApiProduct(product, publicCategories)).filter(Boolean);
         renderCategoryFilters(publicCategories, 'public');
         if (catalogFeedback) {
@@ -809,6 +815,16 @@ async function loadPublicCatalog() {
     }
 }
 
+function getDerivedImagePath(imagePath, variant) {
+    const match = String(imagePath || '').match(/^(assets\/)(cardapio|meia)\/([^/]+)\.[a-z0-9]+$/i);
+    return match ? `${match[1]}${match[2]}/${variant}/${match[3]}.webp` : '';
+}
+
+function getCatalogThumbnailSource(product) {
+    const image = product.image || catalogProductImages.get(normalizeCatalogSearch(product.name)) || '';
+    return product.image ? image : getDerivedImagePath(image, 'thumbs') || image;
+}
+
 async function loadProductImageAssociations() {
     try {
         const manifest = await fetchApiJson('/assets/image-associations.json');
@@ -824,7 +840,7 @@ async function loadProductImageAssociations() {
         const validAssociations = (entries, pattern) => entries.every(([, filename]) => pattern.test(filename))
             && new Set(entries.map(([name]) => normalizeCatalogSearch(name))).size === entries.length
             && new Set(entries.map(([, filename]) => filename)).size === entries.length;
-        if (!validAssociations(cardapioEntries, /^cardapio\/[a-z0-9-]+-cardapio\.(?:png|jpe?g)$/i)
+        if (!validAssociations(cardapioEntries, /^cardapio\/[a-z0-9-]+-cardapio\.(?:png|jpe?g|webp)$/i)
             || !validAssociations(meiaEntries, /^meia\/[a-z0-9-]+-meia\.png$/i)) {
             throw new Error('Manifesto de imagens contém associações inválidas.');
         }
@@ -874,12 +890,75 @@ function reportMissingProductImage(context, product, imagePath) {
     console.error(`Imagem ausente para ${context}: ${product.name}.`, imagePath);
 }
 
+function getCatalogItemCountLabel(count) {
+    return `${count} ${count === 1 ? 'item' : 'itens'}`;
+}
+
+function getCatalogCategoryCounts(products = publicProducts) {
+    return products.reduce((counts, product) => {
+        if (!product.active) return counts;
+        const categoryId = String(product.categoryId || '');
+        counts.set(categoryId, (counts.get(categoryId) || 0) + 1);
+        return counts;
+    }, new Map());
+}
+
+function getPublicCategoryOrder(category) {
+    const normalizedName = normalizeCatalogSearch(category?.name);
+    const position = PUBLIC_CATEGORY_ORDER.indexOf(normalizedName);
+    return position === -1 ? PUBLIC_CATEGORY_ORDER.length : position;
+}
+
+function groupCatalogProducts(products) {
+    const categoryOrder = new Map(publicCategories.map((category, index) => [String(category.id), getPublicCategoryOrder(category) * 1000 + index]));
+    const groups = new Map();
+    products.forEach((product, index) => {
+        const categoryId = String(product.categoryId || '');
+        const key = categoryId || 'uncategorized';
+        if (!groups.has(key)) {
+            const category = publicCategories.find((item) => String(item.id) === categoryId);
+            groups.set(key, {
+                categoryId,
+                categoryName: category?.name || product.categoryName || 'Sem categoria',
+                order: categoryOrder.get(categoryId) ?? publicCategories.length + index,
+                products: [],
+            });
+        }
+        groups.get(key).products.push(product);
+    });
+    return [...groups.values()].sort((first, second) => first.order - second.order);
+}
+
+function ensureActiveCatalogFilterVisible() {
+    const activeFilter = publicMenuFilters?.querySelector('.menu-filter-button.is-active');
+    if (!activeFilter || window.innerWidth > 768 || publicMenuFilters.scrollWidth <= publicMenuFilters.clientWidth) return;
+    activeFilter.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'nearest',
+        inline: 'nearest',
+    });
+}
+
 function renderCategoryFilters(categories, mode) {
     if (!publicMenuFilters || mode !== 'public') return;
+    const categoryCounts = getCatalogCategoryCounts();
+    const totalCount = [...categoryCounts.values()].reduce((total, count) => total + count, 0);
+    const renderFilterButton = (label, filter, count, isActive) => (
+        `<button class="menu-filter-button${isActive ? ' is-active' : ''}" type="button" data-filter="${escapeHtml(filter)}" aria-label="${escapeHtml(`${label}, ${getCatalogItemCountLabel(count)}`)}" aria-pressed="${isActive}">${escapeHtml(label)} · ${count}</button>`
+    );
     publicMenuFilters.innerHTML = [
-        `<button class="menu-filter-button${selectedCatalogCategory === 'all' ? ' is-active' : ''}" type="button" data-filter="all" aria-pressed="${selectedCatalogCategory === 'all'}">Todas</button>`,
-        ...categories.map((category) => `<button class="menu-filter-button${String(category.id) === selectedCatalogCategory ? ' is-active' : ''}" type="button" data-filter="${escapeHtml(category.id)}" aria-pressed="${String(category.id) === selectedCatalogCategory}">${escapeHtml(category.name)}</button>`),
+        renderFilterButton('Todas', 'all', totalCount, selectedCatalogCategory === 'all'),
+        ...categories.map((category) => {
+            const categoryId = String(category.id);
+            return renderFilterButton(
+                category.name,
+                categoryId,
+                categoryCounts.get(categoryId) || 0,
+                categoryId === selectedCatalogCategory
+            );
+        }),
     ].join('');
+    ensureActiveCatalogFilterVisible();
 }
 
 function showCatalogMessage(message) {
@@ -892,6 +971,32 @@ function showCatalogMessage(message) {
         catalogRetryButton.textContent = 'Tentar novamente';
         catalogFeedback.append(catalogRetryButton);
         catalogFeedback.hidden = false;
+    }
+}
+
+function preloadCatalogImages(images) {
+    const queue = images.filter((src) => src && !catalogPreloadedImages.has(src));
+    if (!queue.length) return;
+    const loadBatch = () => {
+        queue.splice(0, CATALOG_PRELOAD_IMAGE_COUNT).forEach((src) => {
+            catalogPreloadedImages.add(src);
+            const image = new Image();
+            image.decoding = 'async';
+            image.src = src;
+            image.decode?.().catch(() => {});
+        });
+        if (queue.length) window.setTimeout(loadBatch, 0);
+    };
+    loadBatch();
+}
+
+function scheduleCatalogImagePreload(images) {
+    window.clearTimeout(catalogPreloadTimer);
+    const preload = () => preloadCatalogImages(images);
+    if ('requestIdleCallback' in window) {
+        catalogPreloadTimer = window.requestIdleCallback(preload, { timeout: 1500 });
+    } else {
+        catalogPreloadTimer = window.setTimeout(preload, 200);
     }
 }
 
@@ -915,6 +1020,11 @@ function renderPublicCatalog() {
         ? [mainProduct, ...highlightedProducts.filter((product) => product !== mainProduct).slice(0, 2)]
         : [];
     const menuProducts = products;
+    const menuGroups = groupCatalogProducts(menuProducts);
+    const catalogImageSources = menuGroups
+        .flatMap((group) => group.products)
+        .map((product) => getCatalogThumbnailSource(product))
+        .filter(Boolean);
     if (featuredSection) featuredSection.hidden = filtersActive || products.length === 0;
     if (catalogResults) {
         catalogResults.textContent = publicCatalogLoadFailed
@@ -925,27 +1035,47 @@ function renderPublicCatalog() {
         pizzaGrid.innerHTML = featuredProducts.map(renderFeaturedProductCard).join('');
     }
     if (menuList) {
-        menuList.innerHTML = menuProducts.length ? menuProducts.map((product) => {
-            const menuImage = catalogProductImages.get(normalizeCatalogSearch(product.name));
-            if (!menuImage && product.type !== 'BEBIDA') {
-                reportMissingProductImage(
-                    'cardápio',
-                    product,
-                    `assets/cardapio/${getNormalizedProductImageName(product.name)}-cardapio.png`
-                );
-            }
-            return `
-            <div class="menu-item has-image" data-category="${escapeHtml(product.categoryId)}" data-product-type="${escapeHtml(product.type)}">
-                ${menuImage ? `<img class="menu-item-image" data-menu-product-image src="${escapeHtml(menuImage)}" alt="${escapeHtml(product.name)}" loading="lazy" width="96" height="96">` : `<span class="menu-item-image menu-item-fallback" aria-hidden="true">${renderCategoryFallbackIcon(product)}</span>`}
-                <div class="menu-text"><h3>${escapeHtml(product.name)}</h3><p>${escapeHtml(product.description)}</p></div>
-                <div class="menu-actions"><strong>${money.format(product.price)}</strong><button class="btn-menu-add" type="button" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">ADICIONAR</button></div>
-            </div>`;
-        }).join('')
+        menuList.innerHTML = menuGroups.length ? menuGroups.map((group) => `
+            <section class="menu-category-group" data-category-group="${escapeHtml(group.categoryId)}" aria-labelledby="menu-category-${escapeHtml(group.categoryId || 'uncategorized')}">
+                <h3 class="menu-category-heading" id="menu-category-${escapeHtml(group.categoryId || 'uncategorized')}">
+                    <span>${escapeHtml(group.categoryName)}</span>
+                    <span class="menu-category-count">${escapeHtml(getCatalogItemCountLabel(group.products.length))}</span>
+                </h3>
+                <div class="menu-category-items">${group.products.map((product) => {
+                    const originalMenuImage = product.image || catalogProductImages.get(normalizeCatalogSearch(product.name));
+                    const menuImage = getCatalogThumbnailSource(product);
+                    if (!menuImage && product.type !== 'BEBIDA') {
+                        reportMissingProductImage(
+                            'cardápio',
+                            product,
+                            `assets/cardapio/${getNormalizedProductImageName(product.name)}-cardapio.png`
+                        );
+                    }
+                    const imageIndex = catalogImageSources.indexOf(menuImage);
+                    const imageLoading = imageIndex > -1 && imageIndex < CATALOG_EAGER_IMAGE_COUNT ? 'eager' : 'lazy';
+                    const imagePriority = imageIndex > -1 && imageIndex < CATALOG_EAGER_IMAGE_COUNT ? ' fetchpriority="high"' : '';
+                    const imageFallback = originalMenuImage && menuImage !== originalMenuImage ? ` data-original-src="${escapeHtml(originalMenuImage)}"` : '';
+                    return `
+                    <div class="menu-item has-image" data-category="${escapeHtml(product.categoryId)}" data-product-type="${escapeHtml(product.type)}">
+                        ${menuImage ? `<img class="menu-item-image" data-menu-product-image src="${escapeHtml(menuImage)}"${imageFallback} alt="${escapeHtml(product.name)}" loading="${imageLoading}"${imagePriority} width="96" height="96">` : `<span class="menu-item-image menu-item-fallback" aria-hidden="true">${renderCategoryFallbackIcon(product)}</span>`}
+                        <div class="menu-text"><h4>${escapeHtml(product.name)}</h4><p>${escapeHtml(product.description)}</p></div>
+                        <div class="menu-actions"><strong>${money.format(product.price)}</strong><button class="btn-menu-add" type="button" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">ADICIONAR</button></div>
+                    </div>`;
+                }).join('')}</div>
+            </section>`).join('')
             : `<p class="catalog-empty" role="status">${filtersActive
                 ? 'Nenhum produto encontrado para os filtros selecionados.'
                 : catalogFeedback?.textContent || 'Nenhum produto disponível no cardápio no momento.'}</p>`;
         menuList.querySelectorAll('img[data-menu-product-image]').forEach((image) => {
+            image.addEventListener('load', () => image.classList.add('is-loaded'), { once: true });
+            if (image.complete && image.naturalWidth > 0) image.classList.add('is-loaded');
             image.addEventListener('error', () => {
+                const originalSrc = image.dataset.originalSrc;
+                if (originalSrc && image.dataset.originalTried !== 'true') {
+                    image.dataset.originalTried = 'true';
+                    image.src = originalSrc;
+                    return;
+                }
                 console.error('Falha ao carregar imagem do cardápio.', { product: image.alt, src: image.src });
                 const fallback = document.createElement('span');
                 fallback.className = 'menu-item-image menu-item-fallback';
@@ -955,6 +1085,7 @@ function renderPublicCatalog() {
                 image.replaceWith(fallback);
             }, { once: true });
         });
+        scheduleCatalogImagePreload(catalogImageSources.slice(CATALOG_EAGER_IMAGE_COUNT));
     }
 }
 
@@ -979,35 +1110,59 @@ function renderFeaturedProductCard(product) {
 }
 
 function getCustomizerProductImage(product) {
-    return product.image || '';
+    return product.image || catalogProductImages.get(normalizeCatalogSearch(product.name)) || '';
+}
+
+function getCustomizerImageSource(product) {
+    const image = getCustomizerProductImage(product);
+    return image && !product.image ? getDerivedImagePath(image, 'medium') : image;
 }
 
 function getHalfPizzaImage(product) {
-    return halfPizzaImages.get(normalizeCatalogSearch(product.name)) || '';
+    const image = halfPizzaImages.get(normalizeCatalogSearch(product.name)) || '';
+    return image ? getDerivedImagePath(image, 'thumbs') : '';
+}
+
+function getHalfPizzaFallbackImage(product) {
+    if (normalizeCatalogSearch(product.name) !== 'atum') return '';
+    const image = catalogProductImages.get('atum') || '';
+    return getDerivedImagePath(image, 'thumbs') || image;
 }
 
 function renderProductVisual(product, presentation) {
     const visualClass = presentation === 'featured' ? 'pizza-image-placeholder' : 'customizer-product-placeholder';
     const image = presentation === 'featured'
         ? product.image
-        : getCustomizerProductImage(product);
+        : getCustomizerImageSource(product);
     if (image) {
         const imageClass = presentation === 'featured' ? ''
             : 'customizer-product-image';
+        const originalImage = getCustomizerProductImage(product);
+        const originalAttribute = imageClass && originalImage !== image
+            ? ` data-original-src="${escapeHtml(originalImage)}"`
+            : '';
+        const productTypeAttribute = imageClass ? ` data-product-type="${escapeHtml(product.type || 'SALGADA')}"` : '';
+        const productNameAttribute = imageClass ? ` data-product-name="${escapeHtml(product.name)}"` : '';
         const dimension = presentation === 'featured' ? '800' : '520';
-        return `<img${imageClass ? ` class="${imageClass}"` : ''} src="${escapeHtml(image)}" alt="${escapeHtml(product.name)}" loading="lazy" width="${dimension}" height="${dimension}">`;
+        return `<img${imageClass ? ` class="${imageClass}"` : ''} src="${escapeHtml(image)}"${originalAttribute}${productTypeAttribute}${productNameAttribute} alt="${escapeHtml(product.name)}" loading="lazy" width="${dimension}" height="${dimension}">`;
     }
     return `<span class="${visualClass}"><strong>${escapeHtml(product.name)}</strong>${product.categoryName ? `<small>${escapeHtml(product.categoryName)}</small>` : ''}</span>`;
 }
 
 function renderHalfAndHalfPizzaVisual(firstProduct, secondProduct, visualClass) {
     const renderHalf = (product, side) => {
-        const normalizedName = normalizeCatalogSearch(product.name);
-        const image = halfPizzaImages.has(normalizedName) ? halfPizzaImages.get(normalizedName) : '';
+        const originalImage = getHalfPizzaImage(product)
+            ? halfPizzaImages.get(normalizeCatalogSearch(product.name))
+            : catalogProductImages.get(normalizeCatalogSearch(product.name)) || '';
+        const image = getHalfPizzaImage(product) || getHalfPizzaFallbackImage(product);
         if (!image) {
             return `<span class="pizza-split-fallback pizza-split-fallback-${side}" aria-hidden="true"><strong>${escapeHtml(product.name)}</strong></span>`;
         }
-        return `<img class="pizza-split-image pizza-split-image-${side}" data-split-name="${escapeHtml(product.name)}" src="${escapeHtml(image)}" alt="" loading="lazy">`;
+        const fallbackClass = getHalfPizzaImage(product) ? '' : ' is-cardapio-fallback';
+        const originalAttribute = originalImage && image !== originalImage
+            ? ` data-original-src="${escapeHtml(originalImage)}"`
+            : '';
+        return `<img class="pizza-split-image pizza-split-image-${side}${fallbackClass}" data-split-name="${escapeHtml(product.name)}" src="${escapeHtml(image)}"${originalAttribute} alt="" loading="lazy">`;
     };
     return `
         <span class="${visualClass}" role="img" aria-label="Pizza meio a meio: ${escapeHtml(firstProduct.name)} e ${escapeHtml(secondProduct.name)}">
@@ -1021,6 +1176,12 @@ document.addEventListener('error', (event) => {
     if (!(image instanceof HTMLImageElement) || !image.matches('.pizza-split-image')) return;
     const side = image.classList.contains('pizza-split-image-first') ? 'first' : 'second';
     const productName = image.dataset.splitName || image.alt;
+    const originalSrc = image.dataset.originalSrc;
+    if (originalSrc && image.dataset.originalTried !== 'true') {
+        image.dataset.originalTried = 'true';
+        image.src = originalSrc;
+        return;
+    }
     console.error('Falha ao carregar imagem meia a meia.', { product: productName, src: image.src });
     const fallback = document.createElement('span');
     fallback.className = `pizza-split-fallback pizza-split-fallback-${side}`;
@@ -1028,6 +1189,23 @@ document.addEventListener('error', (event) => {
     const label = document.createElement('strong');
     label.textContent = productName;
     fallback.append(label);
+    image.replaceWith(fallback);
+}, true);
+
+document.addEventListener('error', (event) => {
+    const image = event.target;
+    if (!(image instanceof HTMLImageElement) || !image.matches('.customizer-product-image')) return;
+    const originalSrc = image.dataset.originalSrc;
+    if (originalSrc && image.dataset.originalTried !== 'true') {
+        image.dataset.originalTried = 'true';
+        image.src = originalSrc;
+        return;
+    }
+    console.error('Falha ao carregar imagem inteira do customizador.', { product: image.alt, src: image.src });
+    const fallback = document.createElement('span');
+    fallback.className = 'customizer-product-placeholder';
+    fallback.setAttribute('aria-hidden', 'true');
+    fallback.innerHTML = renderCategoryFallbackIcon({ type: image.dataset.productType });
     image.replaceWith(fallback);
 }, true);
 
@@ -2975,16 +3153,6 @@ document.addEventListener('visibilitychange', () => {
         );
     }
 });
-
-document.addEventListener('error', (event) => {
-    const image = event.target;
-    if (!(image instanceof HTMLImageElement) || !image.matches('.pizza-split-image')) return;
-    const fallback = document.createElement('span');
-    fallback.className = `pizza-split-fallback ${image.classList.contains('pizza-split-image-first') ? 'pizza-split-fallback-first' : 'pizza-split-fallback-second'}`;
-    fallback.setAttribute('aria-hidden', 'true');
-    fallback.innerHTML = `<strong>${escapeHtml(image.dataset.splitName)}</strong>`;
-    image.replaceWith(fallback);
-}, true);
 
 adminSoundToggle?.addEventListener('click', () => {
     if (!window.AudioContext) {
