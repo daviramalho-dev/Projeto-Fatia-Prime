@@ -1,3 +1,4 @@
+const ASSET_VERSION = '2026-10-24'; // alterar a versão a cada deploy que muda estes arquivos
 const WHATSAPP_NUMBER = '5561993637373';
 const CART_STORAGE_KEY = 'fatia-prime-cart';
 const THEME_STORAGE_KEY = 'fatia-prime-theme';
@@ -827,7 +828,7 @@ function getCatalogThumbnailSource(product) {
 
 async function loadProductImageAssociations() {
     try {
-        const manifest = await fetchApiJson('/assets/image-associations.json');
+        const manifest = await fetchApiJson(`/assets/image-associations.json?v=${ASSET_VERSION}`);
         const cardapio = manifest?.cardapio;
         const meia = manifest?.meia;
         if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)
