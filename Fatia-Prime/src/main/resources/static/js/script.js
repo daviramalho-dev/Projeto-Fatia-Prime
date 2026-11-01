@@ -1,4 +1,4 @@
-const ASSET_VERSION = '2026-10-24'; // alterar a versão a cada deploy que muda estes arquivos
+const ASSET_VERSION = '2026-10-31'; // alterar a versão a cada deploy que muda estes arquivos
 const WHATSAPP_NUMBER = '5561993637373';
 const CART_STORAGE_KEY = 'fatia-prime-cart';
 const THEME_STORAGE_KEY = 'fatia-prime-theme';
@@ -80,8 +80,10 @@ const adminProductForm = document.querySelector('#admin-product-form');
 const adminCatalogList = document.querySelector('.admin-catalog-list');
 const adminCatalogEmpty = document.querySelector('.admin-catalog-empty');
 const adminCatalogSearch = document.querySelector('#admin-product-search');
-const adminCatalogStatus = document.querySelector('#admin-product-status');
+const adminCatalogStatusFilters = document.querySelector('.admin-product-status-filters');
+const adminCatalogCategoryFilters = document.querySelector('.admin-catalog-category-filters');
 const adminCatalogResults = document.querySelector('.admin-catalog-results');
+const adminCatalogClearFilters = document.querySelector('.admin-catalog-clear-filters');
 const adminCatalogMessage = document.querySelector('.admin-catalog-message');
 const adminCategoryForm = document.querySelector('#admin-category-form');
 const adminCategoryFormTitle = document.querySelector('#admin-category-form-title');
@@ -94,6 +96,8 @@ const adminProductFormTitle = document.querySelector('#admin-product-form-title'
 const adminProductFormLabel = document.querySelector('#admin-product-form-label');
 const adminProductCancel = document.querySelector('.admin-product-cancel');
 const adminPizzaOptionList = document.querySelector('.admin-pizza-option-list');
+const adminPizzaOptionFilters = document.querySelector('.admin-pizza-option-filters');
+const adminPizzaProductFilters = document.querySelector('.admin-pizza-product-filters');
 const adminPizzaOptionsEmpty = document.querySelector('.admin-pizza-options-empty');
 const adminPizzaOptionForm = document.querySelector('#admin-pizza-option-form');
 const adminPizzaOptionFormTitle = document.querySelector('#admin-pizza-option-form-title');
@@ -104,6 +108,8 @@ const adminHeader = document.querySelector('.admin-header');
 const adminLogout = document.querySelector('.admin-logout');
 const adminOrdersSection = document.querySelector('.admin-orders');
 const adminCatalogSection = document.querySelector('.admin-catalog');
+const adminSalesSection = document.querySelector('.admin-sales');
+const adminSalesLink = document.querySelector('[data-admin-sales-link]');
 const publicHeader = document.querySelector('.public-header');
 const publicFooter = document.querySelector('footer');
 const publicOrderTracking = document.querySelector('.order-tracking');
@@ -207,6 +213,10 @@ let adminProducts = [];
 let adminCategories = [];
 let adminPizzaOptions = [];
 let adminCatalogRequestId = 0;
+let selectedAdminProductStatus = 'all';
+let selectedAdminProductCategory = 'all';
+let selectedAdminPizzaKind = 'all';
+let selectedAdminPizzaProductType = 'all';
 let publicCatalogLoadInProgress = false;
 let publicCatalogLoadFailed = false;
 let catalogLoadMessageTimer = null;
@@ -289,6 +299,7 @@ function setInterfaceMode(mode) {
     if (adminAccess) adminAccess.hidden = !isLogin;
     if (adminOrdersSection) adminOrdersSection.hidden = !isWorkspace;
     if (adminCatalogSection) adminCatalogSection.hidden = !isWorkspace;
+    if (adminSalesSection) adminSalesSection.hidden = !isWorkspace;
     if (publicFooter) publicFooter.hidden = !isPublic;
     if (publicOrderTracking) publicOrderTracking.hidden = !isPublic;
     if (publicWhatsapp) {
@@ -298,9 +309,15 @@ function setInterfaceMode(mode) {
     document.querySelectorAll('main > section').forEach((section) => {
         const isAdminSection = section.classList.contains('admin-access')
             || section.classList.contains('admin-orders')
-            || section.classList.contains('admin-catalog');
+            || section.classList.contains('admin-catalog')
+            || section.classList.contains('admin-sales');
         section.hidden = isAdminSection ? !((isLogin && section.classList.contains('admin-access')) || (isWorkspace && !section.classList.contains('admin-access'))) : !isPublic;
     });
+    if (isWorkspace) {
+        updateAdminActiveNav(window.location.hash || '#painel-pedidos');
+    } else {
+        document.querySelectorAll('.admin-nav a').forEach((link) => link.removeAttribute('aria-current'));
+    }
     if (isPublic) {
         window.history.replaceState({}, '', '#inicio');
         window.scrollTo({ top: 0, behavior: getScrollBehavior() });
@@ -321,11 +338,23 @@ function openAdminLogin() {
 function openAdminWorkspace() {
     setInterfaceMode('admin-workspace');
     window.location.hash = 'painel-pedidos';
+    updateAdminActiveNav('#painel-pedidos');
     adminOrdersSection?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
     loadAdminDashboard();
     loadAdminOrders();
     loadAdminProducts();
     startAdminAutoRefresh();
+}
+
+function updateAdminActiveNav(targetHash) {
+    const hash = targetHash || window.location.hash || '#painel-pedidos';
+    document.querySelectorAll('.admin-nav a').forEach((link) => {
+        if (link.getAttribute('href') === hash) {
+            link.setAttribute('aria-current', 'page');
+        } else {
+            link.removeAttribute('aria-current');
+        }
+    });
 }
 
 function readCookie(name) {
@@ -1566,30 +1595,93 @@ async function deleteAdminCategory(categoryId) {
     }
 }
 
+function renderAdminPizzaOptionFilters() {
+    const kindLabels = { all: 'Todos', BORDA: 'Bordas', ADICIONAL: 'Adicionais', MOLHO: 'Molhos' };
+    const kindCounts = adminPizzaOptions.reduce((counts, option) => {
+        if (selectedAdminPizzaProductType === 'all' || option.productType === selectedAdminPizzaProductType) {
+            counts[option.kind] = (counts[option.kind] || 0) + 1;
+        }
+        return counts;
+    }, {});
+    const productTypeCounts = adminPizzaOptions.reduce((counts, option) => {
+        if (selectedAdminPizzaKind === 'all' || option.kind === selectedAdminPizzaKind) {
+            counts[option.productType] = (counts[option.productType] || 0) + 1;
+        }
+        return counts;
+    }, {});
+    const totalKindCount = adminPizzaOptions.filter(o => selectedAdminPizzaProductType === 'all' || o.productType === selectedAdminPizzaProductType).length;
+    const totalProductCount = adminPizzaOptions.filter(o => selectedAdminPizzaKind === 'all' || o.kind === selectedAdminPizzaKind).length;
+
+    const render = (value, label, count, selected, attribute) => {
+        const disabled = count === 0 && value !== 'all';
+        return `<button class="admin-filter-chip${selected ? ' is-active' : ''}${disabled ? ' is-disabled' : ''}" type="button" data-${attribute}="${value}" aria-pressed="${selected}"${disabled ? ' aria-disabled="true"' : ''}>${label} · ${count}</button>`;
+    };
+    if (adminPizzaOptionFilters) {
+        adminPizzaOptionFilters.innerHTML = Object.entries(kindLabels).map(([value, label]) => {
+            const count = value === 'all' ? totalKindCount : (kindCounts[value] || 0);
+            return render(value, label, count, selectedAdminPizzaKind === value, 'admin-pizza-kind');
+        }).join('');
+    }
+    if (adminPizzaProductFilters) {
+        adminPizzaProductFilters.innerHTML = `<span class="admin-filter-label">Para pizzas</span>${render('all', 'Todas', totalProductCount, selectedAdminPizzaProductType === 'all', 'admin-pizza-product-type')}${render('SALGADA', 'Salgadas', productTypeCounts.SALGADA || 0, selectedAdminPizzaProductType === 'SALGADA', 'admin-pizza-product-type')}${render('DOCE', 'Doces', productTypeCounts.DOCE || 0, selectedAdminPizzaProductType === 'DOCE', 'admin-pizza-product-type')}`;
+    }
+}
+
 function renderAdminPizzaOptions() {
     if (!adminPizzaOptionList || !adminPizzaOptionsEmpty) return;
-    adminPizzaOptionList.innerHTML = adminPizzaOptions.map((option) => `
+    renderAdminPizzaOptionFilters();
+    const options = adminPizzaOptions.filter((option) => (
+        (selectedAdminPizzaKind === 'all' || option.kind === selectedAdminPizzaKind)
+        && (selectedAdminPizzaProductType === 'all' || option.productType === selectedAdminPizzaProductType)
+    ));
+    adminPizzaOptionList.innerHTML = options.map((option) => `
         <article class="admin-pizza-option ${option.active ? '' : 'is-inactive'}">
-            <div>
-                <strong>${escapeHtml(option.name)}</strong>
-                <small>${option.kind === 'BORDA' ? 'Borda' : option.kind === 'MOLHO' ? 'Molho' : 'Adicional'} · ${option.productType === 'DOCE' ? 'Doces' : 'Salgadas'} · ${money.format(option.price)}</small>
-                <small>${option.active ? 'Disponível' : 'Desativada'}</small>
-            </div>
-            <div class="admin-pizza-option-actions">
-                <button class="btn-secondary" type="button" data-edit-pizza-option="${option.id}">EDITAR</button>
-                <button class="btn-secondary" type="button" data-toggle-pizza-option="${option.id}">${option.active ? 'DESATIVAR' : 'REATIVAR'}</button>
-            </div>
+            <div><strong>${escapeHtml(option.name)}</strong><small>${option.kind === 'BORDA' ? 'Borda' : option.kind === 'MOLHO' ? 'Molho' : 'Adicional'} · ${option.productType === 'DOCE' ? 'Doces' : 'Salgadas'} · ${money.format(option.price)}</small><small>${option.active ? 'Disponível' : 'Desativada'}</small></div>
+            <div class="admin-pizza-option-actions"><button class="btn-secondary" type="button" data-edit-pizza-option="${option.id}">EDITAR</button><button class="btn-secondary" type="button" data-toggle-pizza-option="${option.id}">${option.active ? 'DESATIVAR' : 'REATIVAR'}</button></div>
         </article>`).join('');
-    adminPizzaOptionsEmpty.hidden = adminPizzaOptions.length > 0;
+    if (adminPizzaOptions.length === 0) {
+        adminPizzaOptionsEmpty.textContent = 'Nenhuma opção cadastrada.';
+        adminPizzaOptionsEmpty.hidden = false;
+    } else if (options.length === 0) {
+        adminPizzaOptionsEmpty.innerHTML = 'Nenhuma opção com esses filtros. <button class="btn-secondary admin-pizza-clear-filters" type="button">Limpar filtros</button>';
+        adminPizzaOptionsEmpty.hidden = false;
+        adminPizzaOptionsEmpty.querySelector('.admin-pizza-clear-filters')?.addEventListener('click', () => {
+            selectedAdminPizzaKind = 'all';
+            selectedAdminPizzaProductType = 'all';
+            renderAdminPizzaOptions();
+        });
+    } else {
+        adminPizzaOptionsEmpty.hidden = true;
+    }
+}
+
+function renderAdminProductFilters() {
+    const counts = adminProducts.reduce((result, product) => {
+        const key = String(product.categoryId ?? 'all');
+        result[key] = (result[key] || 0) + 1;
+        return result;
+    }, {});
+    if (adminCatalogStatusFilters) {
+        adminCatalogStatusFilters.querySelectorAll('[data-admin-product-status]').forEach((button) => {
+            const selected = button.dataset.adminProductStatus === selectedAdminProductStatus;
+            button.classList.toggle('is-active', selected);
+            button.setAttribute('aria-pressed', String(selected));
+        });
+    }
+    if (adminCatalogCategoryFilters) {
+        adminCatalogCategoryFilters.innerHTML = `<span class="admin-filter-label">Categoria</span><button class="admin-filter-chip${selectedAdminProductCategory === 'all' ? ' is-active' : ''}" type="button" data-admin-product-category="all" aria-pressed="${selectedAdminProductCategory === 'all'}">Todas · ${adminProducts.length}</button>${adminCategories.map((category) => `<button class="admin-filter-chip${String(category.id) === selectedAdminProductCategory ? ' is-active' : ''}" type="button" data-admin-product-category="${escapeHtml(category.id)}" aria-pressed="${String(category.id) === selectedAdminProductCategory}">${escapeHtml(category.name)} · ${counts[String(category.id)] || 0}</button>`).join('')}`;
+    }
 }
 
 function renderAdminProducts() {
     if (!adminCatalogList || !adminCatalogEmpty) return;
+    renderAdminProductFilters();
     const search = normalizeCatalogSearch(adminCatalogSearch?.value || '');
-    const status = adminCatalogStatus?.value || 'all';
+    const status = selectedAdminProductStatus;
     const products = adminProducts.filter((product) => (
         (!search || normalizeCatalogSearch(product.name).includes(search))
         && (status === 'all' || (status === 'active' ? product.active : !product.active))
+        && (selectedAdminProductCategory === 'all' || String(product.categoryId) === selectedAdminProductCategory)
     ));
     adminCatalogList.innerHTML = products.map((product) => `
         <article class="admin-product-card ${product.active ? '' : 'is-inactive'}">
@@ -1619,6 +1711,9 @@ function renderAdminProducts() {
     if (adminCatalogResults) {
         adminCatalogResults.textContent = `${products.length} de ${adminProducts.length} ${adminProducts.length === 1 ? 'produto' : 'produtos'}.`;
     }
+    if (adminCatalogClearFilters) {
+        adminCatalogClearFilters.disabled = !(search || status !== 'all' || selectedAdminProductCategory !== 'all');
+    }
 }
 
 async function loadAdminProducts() {
@@ -1646,6 +1741,8 @@ async function loadAdminProducts() {
         adminProducts = products.map((product) => normalizeAdminProduct(product, adminCategories)).filter(Boolean);
         adminPizzaOptions = options.map(normalizeAdminPizzaOption).filter(Boolean);
         if (requestId !== adminCatalogRequestId) return;
+        selectedAdminPizzaKind = selectedAdminPizzaKind === 'all' || adminPizzaOptions.some((option) => option.kind === selectedAdminPizzaKind) ? selectedAdminPizzaKind : 'all';
+        selectedAdminPizzaProductType = selectedAdminPizzaProductType === 'all' || adminPizzaOptions.some((option) => option.productType === selectedAdminPizzaProductType) ? selectedAdminPizzaProductType : 'all';
         const categoryField = adminProductForm?.elements.namedItem('productCategory');
         if (categoryField) {
             categoryField.innerHTML = '<option value="">Selecione uma categoria</option>'
@@ -1680,6 +1777,8 @@ async function loadAdminProducts() {
     }
 }
 
+let userModifiedPizzaOptionForm = false;
+
 function showAdminPizzaOptionMessage(message, type = 'error') {
     if (!adminPizzaOptionMessage) return;
     adminPizzaOptionMessage.textContent = message;
@@ -1689,6 +1788,11 @@ function showAdminPizzaOptionMessage(message, type = 'error') {
 function resetAdminPizzaOptionForm() {
     if (!adminPizzaOptionForm) return;
     adminPizzaOptionForm.reset();
+    userModifiedPizzaOptionForm = false;
+    const kind = selectedAdminPizzaKind === 'all' ? 'BORDA' : selectedAdminPizzaKind;
+    const productType = selectedAdminPizzaProductType === 'all' ? 'SALGADA' : selectedAdminPizzaProductType;
+    adminPizzaOptionForm.querySelector(`input[name="optionKind"][value="${kind}"]`).checked = true;
+    adminPizzaOptionForm.querySelector(`input[name="optionProductType"][value="${productType}"]`).checked = true;
     editingOptionId = null;
     adminPizzaOptionFormTitle.textContent = 'Adicionar opção';
     adminPizzaOptionCancel.hidden = true;
@@ -1699,9 +1803,9 @@ function editAdminPizzaOption(option) {
     if (!adminPizzaOptionForm || !option) return;
     editingOptionId = option.id;
     adminPizzaOptionForm.elements.namedItem('optionName').value = option.name;
-    adminPizzaOptionForm.elements.namedItem('optionKind').value = option.kind;
-    adminPizzaOptionForm.elements.namedItem('optionProductType').value = option.productType;
-    adminPizzaOptionForm.elements.namedItem('optionPrice').value = option.price;
+    adminPizzaOptionForm.querySelector(`input[name="optionKind"][value="${option.kind}"]`).checked = true;
+    adminPizzaOptionForm.querySelector(`input[name="optionProductType"][value="${option.productType}"]`).checked = true;
+    adminPizzaOptionForm.elements.namedItem('optionPrice').value = option.price.toFixed(2).replace('.', ',');
     adminPizzaOptionFormTitle.textContent = 'Editar opção';
     adminPizzaOptionCancel.hidden = false;
     showAdminPizzaOptionMessage('');
@@ -1733,7 +1837,9 @@ async function submitAdminPizzaOption(event) {
     if (!adminPizzaOptionForm) return;
     const formData = new FormData(adminPizzaOptionForm);
     const name = String(formData.get('optionName') || '').trim();
-    const price = Number(formData.get('optionPrice'));
+    const priceRaw = String(formData.get('optionPrice') || '').trim();
+    const priceNormalized = priceRaw.includes(',') ? priceRaw.replace(/\./g, '').replace(',', '.') : priceRaw;
+    const price = priceRaw ? Number(priceNormalized) : NaN;
     if (!name || !Number.isFinite(price) || price < 0) {
         showAdminPizzaOptionMessage('Informe o nome e um acréscimo igual ou maior que zero.');
         return;
@@ -1761,6 +1867,8 @@ async function submitAdminPizzaOption(event) {
         adminPizzaOptions = editingOptionId
             ? adminPizzaOptions.map((option) => option.id === normalized.id ? normalized : option)
             : [...adminPizzaOptions, normalized];
+        if (!editingOptionId) selectedAdminPizzaKind = normalized.kind;
+        if (!editingOptionId) selectedAdminPizzaProductType = normalized.productType;
         renderAdminPizzaOptions();
         resetAdminPizzaOptionForm();
         showAdminPizzaOptionMessage('Opção salva com sucesso.', 'success');
@@ -1919,6 +2027,7 @@ function renderAdminOrderDetails(order) {
         detailsStatus.innerHTML = `<span class="admin-order-status ${getOrderStatusClass(order.status)}">${escapeHtml(order.status)}</span><span>${escapeHtml(formatOrderDate(order.createdAt))}</span>`;
     }
     if (adminOrderStatusEditor) adminOrderStatusEditor.value = ORDER_STATUSES.includes(order.status) ? order.status : ORDER_STATUSES[0];
+    syncAdminStatusSelect();
     showAdminStatusMessage('');
     if (customerElement) {
         customerElement.innerHTML = customerFields.length
@@ -2105,8 +2214,8 @@ function renderConfirmation(orderData) {
     const customerInfo = [
         data.customer ? `Nome: ${data.customer}` : null,
         data.phone ? `Telefone: ${data.phone}` : null,
-        data.cep ? `CEP: ${formatCep(data.cep)}` : null,
         data.address ? `Endereço: ${data.address}` : null,
+        data.cep && !/\bCEP\b/i.test(data.address || '') ? `CEP: ${formatCep(data.cep)}` : null,
     ].filter(Boolean).join(' • ');
 
     confirmationCustomerElement.innerHTML = customerInfo
@@ -2973,19 +3082,60 @@ function renderPizzaCustomizerSummary() {
     customizerAddToCart.disabled = !firstProduct || (isHalfAndHalf && !secondProduct);
 }
 
+function closeCustomSelects(except = null) {
+    document.querySelectorAll('.custom-select-enhanced').forEach((control) => {
+        if (control === except) return;
+        const list = control.querySelector('.custom-select-options');
+        const trigger = control.querySelector('.custom-select-trigger');
+        if (!list || !trigger) return;
+        list.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+    });
+}
+
+function openCustomSelect(control, focusEdge = 'first') {
+    const list = control?.querySelector('.custom-select-options');
+    const trigger = control?.querySelector('.custom-select-trigger');
+    if (!list || !trigger) return;
+    closeCustomSelects(control);
+    list.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    const options = [...list.querySelectorAll('[role="option"]:not(:disabled)')];
+    const selected = options.find((option) => option.getAttribute('aria-selected') === 'true');
+    (focusEdge === 'last' ? options.at(-1) : focusEdge === 'first' ? options[0] : selected || options[0])?.focus();
+}
+
+function chooseCustomSelectOption(select, control, optionButton) {
+    if (!optionButton || optionButton.disabled) return;
+    select.value = optionButton.dataset.customSelectValue;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    syncCustomSelect(select);
+    const list = control.querySelector('.custom-select-options');
+    const trigger = control.querySelector('.custom-select-trigger');
+    if (list && trigger) {
+        list.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.focus();
+    }
+}
+
 function ensureCustomSelect(select) {
     let control = select.nextElementSibling;
     if (control?.classList.contains('custom-select-enhanced')) return control;
 
     control = document.createElement('div');
     control.className = 'custom-select-enhanced';
+    if (select.closest('.admin-status-editor')) control.classList.add('admin-status-select');
     const trigger = document.createElement('button');
     trigger.type = 'button';
     trigger.className = 'custom-select-trigger';
+    trigger.setAttribute('role', 'combobox');
     trigger.setAttribute('aria-haspopup', 'listbox');
     trigger.setAttribute('aria-expanded', 'false');
     if (select.hasAttribute('aria-labelledby')) {
         trigger.setAttribute('aria-labelledby', select.getAttribute('aria-labelledby'));
+    } else {
+        trigger.setAttribute('aria-label', select.closest('label')?.firstChild?.textContent?.trim() || 'Selecionar opção');
     }
     const list = document.createElement('div');
     list.className = 'custom-select-options';
@@ -2998,71 +3148,100 @@ function ensureCustomSelect(select) {
     select.setAttribute('aria-hidden', 'true');
 
     trigger.addEventListener('click', () => {
-        const opening = list.hidden;
-        document.querySelectorAll('.custom-select-options').forEach((otherList) => {
-            otherList.hidden = true;
-            otherList.previousElementSibling?.setAttribute('aria-expanded', 'false');
-        });
-        list.hidden = !opening;
-        trigger.setAttribute('aria-expanded', String(opening));
-    });
-    list.addEventListener('click', (event) => {
-        const optionButton = event.target.closest('[data-custom-select-value]');
-        if (!optionButton || optionButton.disabled) return;
-        select.value = optionButton.dataset.customSelectValue;
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-        list.hidden = true;
-        trigger.setAttribute('aria-expanded', 'false');
-        trigger.focus();
+        if (list.hidden) openCustomSelect(control);
+        else closeCustomSelects();
     });
     trigger.addEventListener('keydown', (event) => {
-        if (event.key === 'ArrowDown') {
+        if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
             event.preventDefault();
-            list.hidden = false;
-            trigger.setAttribute('aria-expanded', 'true');
-            list.querySelector('button:not(:disabled)')?.focus();
+            openCustomSelect(control, event.key === 'ArrowUp' || event.key === 'End' ? 'last' : 'first');
+        } else if (event.key === 'Escape') {
+            closeCustomSelects();
         }
     });
+    list.addEventListener('mousedown', (event) => {
+        if (event.target.closest('[data-custom-select-value]')) event.preventDefault();
+    });
+    list.addEventListener('click', (event) => {
+        chooseCustomSelectOption(select, control, event.target.closest('[data-custom-select-value]'));
+    });
     list.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            list.hidden = true;
-            trigger.setAttribute('aria-expanded', 'false');
+        const current = event.target.closest('[role="option"]');
+        const options = [...list.querySelectorAll('[role="option"]:not(:disabled)')];
+        const index = options.indexOf(current);
+        if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+            event.preventDefault();
+            const nextIndex = event.key === 'Home'
+                ? 0
+                : event.key === 'End'
+                    ? options.length - 1
+                    : (index + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+            options[nextIndex]?.focus();
+        } else if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            chooseCustomSelectOption(select, control, current);
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            closeCustomSelects();
             trigger.focus();
+        } else if (event.key === 'Tab') {
+            closeCustomSelects();
         }
     });
     return control;
 }
 
+document.addEventListener('click', (event) => {
+    if (!event.target.closest('.custom-select-enhanced')) closeCustomSelects();
+});
+
+function syncCustomSelect(select, optionDisabled = () => false) {
+    if (!select) return;
+    const control = ensureCustomSelect(select);
+    const trigger = control.querySelector('.custom-select-trigger');
+    const list = control.querySelector('.custom-select-options');
+    const options = [...select.options];
+    options.forEach((option) => { option.disabled = optionDisabled(option); });
+    trigger.textContent = select.selectedOptions[0]?.textContent || 'Selecione uma opção';
+    list.replaceChildren(...options.map((option) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.setAttribute('role', 'option');
+        button.setAttribute('aria-selected', String(option.value === select.value));
+        button.dataset.customSelectValue = option.value;
+        button.textContent = option.textContent;
+        button.disabled = option.disabled;
+        return button;
+    }));
+}
+
 function syncCustomizerSelects() {
     [customizerFirstFlavor, customizerSecondFlavor, customizerBorder].forEach((select) => {
         if (!select) return;
-        const control = ensureCustomSelect(select);
-        const trigger = control.querySelector('.custom-select-trigger');
-        const list = control.querySelector('.custom-select-options');
-        const options = [...select.options];
-        options.forEach((option) => {
-            const repeatedFlavor = select === customizerSecondFlavor
-                ? option.value && option.value === customizerFirstFlavor.value
-                : select === customizerFirstFlavor
-                    ? option.value && option.value === customizerSecondFlavor.value
-                    : false;
-            option.disabled = Boolean(repeatedFlavor);
-        });
-        if (customizerFirstFlavor.value && customizerFirstFlavor.value === customizerSecondFlavor.value) {
-            customizerSecondFlavor.value = '';
-        }
-        trigger.textContent = select.selectedOptions[0]?.textContent || 'Selecione uma opção';
-        list.replaceChildren(...options.map((option) => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.setAttribute('role', 'option');
-            button.setAttribute('aria-selected', String(option.value === select.value));
-            button.dataset.customSelectValue = option.value;
-            button.textContent = option.textContent;
-            button.disabled = option.disabled;
-            return button;
-        }));
+        syncCustomSelect(select, (option) => select === customizerSecondFlavor
+            ? option.value && option.value === customizerFirstFlavor.value
+            : select === customizerFirstFlavor
+                ? option.value && option.value === customizerSecondFlavor.value
+                : false);
     });
+    if (customizerFirstFlavor?.value && customizerFirstFlavor.value === customizerSecondFlavor?.value) {
+        customizerSecondFlavor.value = '';
+        syncCustomSelect(customizerSecondFlavor);
+    }
+}
+
+function syncAdminStatusSelect() {
+    syncCustomSelect(adminOrderStatusEditor);
+}
+
+function syncAdminFilterSelects() {
+    [adminOrderStatus,
+        adminProductForm?.elements.namedItem('productCategory'),
+        adminProductForm?.elements.namedItem('productType'),
+        adminPizzaOptionForm?.elements.namedItem('optionKind'),
+        adminPizzaOptionForm?.elements.namedItem('optionProductType')]
+        .filter((select) => select?.tagName === 'SELECT')
+        .forEach((select) => syncCustomSelect(select));
 }
 
 function addCustomizedPizza() {
@@ -3133,6 +3312,8 @@ if ('IntersectionObserver' in window) {
 
 loadPublicCatalog();
 syncCustomizerSelects();
+syncAdminStatusSelect();
+syncAdminFilterSelects();
 
 catalogFeedback?.addEventListener('click', (event) => {
     if (event.target === catalogRetryButton) void loadPublicCatalog();
@@ -3187,6 +3368,7 @@ pizzaCustomizer?.addEventListener('change', (event) => {
         if (event.target === customizerFirstFlavor && customizerFirstFlavor.value === customizerSecondFlavor.value) {
             customizerSecondFlavor.value = '';
         }
+        syncCustomizerSelects();
         renderPizzaCustomizerSummary();
     }
 });
@@ -3383,7 +3565,46 @@ if (adminOrderList) {
 }
 
 adminCatalogSearch?.addEventListener('input', renderAdminProducts);
-adminCatalogStatus?.addEventListener('change', renderAdminProducts);
+adminCatalogClearFilters?.addEventListener('click', () => {
+    if (adminCatalogSearch) adminCatalogSearch.value = '';
+    selectedAdminProductStatus = 'all';
+    selectedAdminProductCategory = 'all';
+    renderAdminProducts();
+});
+adminCatalogStatusFilters?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-admin-product-status]');
+    if (!button) return;
+    selectedAdminProductStatus = button.dataset.adminProductStatus;
+    renderAdminProducts();
+});
+adminCatalogCategoryFilters?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-admin-product-category]');
+    if (!button) return;
+    selectedAdminProductCategory = button.dataset.adminProductCategory;
+    renderAdminProducts();
+});
+adminPizzaOptionForm?.addEventListener('input', () => { userModifiedPizzaOptionForm = true; });
+adminPizzaOptionForm?.addEventListener('change', () => { userModifiedPizzaOptionForm = true; });
+adminPizzaOptionFilters?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-admin-pizza-kind]');
+    if (!button || button.getAttribute('aria-disabled') === 'true') return;
+    selectedAdminPizzaKind = button.dataset.adminPizzaKind;
+    if (selectedAdminPizzaKind !== 'all' && !userModifiedPizzaOptionForm && adminPizzaOptionForm) {
+        const radio = adminPizzaOptionForm.querySelector(`input[name="optionKind"][value="${selectedAdminPizzaKind}"]`);
+        if (radio) radio.checked = true;
+    }
+    renderAdminPizzaOptions();
+});
+adminPizzaProductFilters?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-admin-pizza-product-type]');
+    if (!button || button.getAttribute('aria-disabled') === 'true') return;
+    selectedAdminPizzaProductType = button.dataset.adminPizzaProductType;
+    if (selectedAdminPizzaProductType !== 'all' && !userModifiedPizzaOptionForm && adminPizzaOptionForm) {
+        const radio = adminPizzaOptionForm.querySelector(`input[name="optionProductType"][value="${selectedAdminPizzaProductType}"]`);
+        if (radio) radio.checked = true;
+    }
+    renderAdminPizzaOptions();
+});
 
 adminStatusSave?.addEventListener('click', async () => {
     const status = adminOrderStatusEditor?.value;
@@ -3643,6 +3864,8 @@ if (checkoutForm) {
             startClientOrderAutoRefresh(createdOrder.code, createdOrder.phone, createdOrder.status);
             showCheckoutMessage('Pedido criado com sucesso.', true);
             openConfirmation(createdOrder);
+            window.cart = [];
+            updateCart();
             const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
             if (confirmationWhatsappLink) {
                 confirmationWhatsappLink.href = whatsappUrl;
@@ -3698,6 +3921,372 @@ document.querySelector('.js-scroll-to-about').addEventListener('click', () => {
 });
 document.querySelector('.js-about-whatsapp').addEventListener('click', () => {
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Olá! Gostaria de mais informações sobre o cardápio da Fatia Prime.')}`, '_blank', 'noopener,noreferrer');
+});
+
+const salesMonthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const salesMoney = money;
+const salesElements = {
+    section: document.querySelector('.admin-sales'),
+    presets: document.querySelectorAll('.sales-preset-btn'),
+    considerar: document.querySelectorAll('input[name="sales-considerar"]'),
+    calendar: document.querySelector('.sales-calendar-wrapper'),
+    days: document.querySelector('.sales-calendar-days'),
+    month: document.querySelector('.sales-cal-title'),
+    previous: document.querySelector('.sales-cal-prev'),
+    next: document.querySelector('.sales-cal-next'),
+    period: document.querySelector('.sales-period-value'),
+    message: document.querySelector('.sales-message'),
+    retry: document.querySelector('.sales-retry-btn'),
+    summary: {
+        faturamento: document.querySelector('#sales-summary-faturamento'),
+        pedidos: document.querySelector('#sales-summary-pedidos'),
+        ticket: document.querySelector('#sales-summary-ticket'),
+        cancelados: document.querySelector('#sales-summary-cancelados'),
+    },
+};
+let salesState = { meta: null, start: null, end: null, preset: '7', month: null, data: null, requestId: 0 };
+
+function salesDate(value) {
+    if (value instanceof Date) return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    const [year, month, day] = String(value).split('-').map(Number);
+    return Number.isInteger(year) && Number.isInteger(month) && Number.isInteger(day) ? new Date(year, month - 1, day) : null;
+}
+
+function salesIso(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function salesDayLabel(value) {
+    return salesDate(value)?.toLocaleDateString('pt-BR') || value;
+}
+
+function salesToday() {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function salesRange(preset) {
+    const today = salesState.meta?.hoje || salesToday();
+    let start = new Date(today);
+    let end = new Date(today);
+    if (preset === '7') start.setDate(start.getDate() - 6);
+    if (preset === '30') start.setDate(start.getDate() - 29);
+    if (preset === 'current-month') start = new Date(today.getFullYear(), today.getMonth(), 1);
+    if (preset === 'prev-month') {
+        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        end = new Date(today.getFullYear(), today.getMonth(), 0);
+    }
+    if (salesState.meta?.primeiroPedido && start < salesState.meta.primeiroPedido) start = new Date(salesState.meta.primeiroPedido);
+    if (start > end) start = new Date(end);
+    return { start, end };
+}
+
+function setSalesMessage(message, type = '') {
+    if (!salesElements.message) return;
+    salesElements.message.textContent = message;
+    salesElements.message.className = `sales-message${type ? ` ${type}` : ''}`;
+}
+
+function salesErrorMessage(error) {
+    if (error?.status === 401 || error?.status === 403) {
+        setInterfaceMode('admin-login');
+        showAdminLoginMessage('Sua sessão expirou. Entre novamente.');
+        return 'Sua sessão expirou. Entre novamente.';
+    }
+    if (error?.status) return 'Não foi possível carregar o relatório. Tente novamente.';
+    return 'Não foi possível carregar o relatório. Verifique a conexão e tente novamente.';
+}
+
+function isSalesEnabledDate(date) {
+    const minimum = salesState.meta?.primeiroPedido;
+    const maximum = salesState.meta?.hoje || salesToday();
+    return Boolean(date) && (!minimum || date >= minimum) && date <= maximum;
+}
+
+function focusSalesCalendarDate(date) {
+    if (!isSalesEnabledDate(date)) return;
+    if (!salesState.month
+        || date.getFullYear() !== salesState.month.getFullYear()
+        || date.getMonth() !== salesState.month.getMonth()) {
+        salesState.month = new Date(date.getFullYear(), date.getMonth(), 1);
+        renderSalesCalendar();
+    }
+    salesElements.days?.querySelector(`[data-date="${salesIso(date)}"]`)?.focus();
+}
+
+function closeSalesCalendar() {
+    if (!salesElements.calendar) return;
+    salesElements.calendar.hidden = true;
+    salesElements.presets.forEach((preset) => {
+        if (preset.dataset.preset === 'custom') preset.focus();
+    });
+}
+
+function closeSalesCalendarAfterEnter() {
+    salesElements.calendar.hidden = true;
+    salesElements.presets.forEach((preset) => {
+        if (preset.dataset.preset === 'custom') preset.focus();
+    });
+}
+
+function selectSalesCalendarDate(button) {
+    const chosen = salesDate(button.dataset.date);
+    if (!salesState.start || salesState.end) {
+        salesState.start = chosen;
+        salesState.end = null;
+        salesState.preset = 'custom';
+        salesElements.presets.forEach((preset) => preset.classList.toggle('is-active', preset.dataset.preset === 'custom'));
+        salesElements.calendar.querySelector('.sales-calendar-hint').textContent = 'Agora selecione a data final.';
+    } else if (chosen < salesState.start) {
+        salesState.start = chosen;
+    } else {
+        const days = Math.round((chosen - salesState.start) / 86400000) + 1;
+        if (days > 366) {
+            setSalesMessage('O intervalo máximo permitido é de 366 dias.', 'error');
+            return false;
+        }
+        salesState.end = chosen;
+        salesElements.calendar.querySelector('.sales-calendar-hint').textContent = 'Intervalo selecionado.';
+        fetchSalesReport();
+    }
+    renderSalesCalendar();
+    return true;
+}
+
+function renderSalesCalendar() {
+    if (!salesElements.days || !salesState.month) return;
+    const year = salesState.month.getFullYear();
+    const month = salesState.month.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const minimum = salesState.meta?.primeiroPedido;
+    const maximum = salesState.meta?.hoje || salesToday();
+    salesElements.month.textContent = `${salesMonthNames[month]} ${year}`;
+    salesElements.days.replaceChildren();
+    for (let i = 0; i < firstDay; i += 1) salesElements.days.append(document.createElement('span'));
+    for (let day = 1; day <= lastDay; day += 1) {
+        const date = new Date(year, month, day);
+        const button = document.createElement('button');
+        const iso = salesIso(date);
+        const disabled = (minimum && date < minimum) || date > maximum;
+        button.type = 'button';
+        button.className = 'sales-cal-day';
+        button.textContent = day;
+        button.dataset.date = iso;
+        button.setAttribute('aria-label', salesDayLabel(iso));
+        button.disabled = disabled;
+        if (disabled) button.classList.add('is-disabled');
+        if (salesState.start && iso === salesIso(salesState.start)) button.classList.add('is-selected', 'is-range-start');
+        if (salesState.end && iso === salesIso(salesState.end)) button.classList.add('is-selected', 'is-range-end');
+        if (salesState.start && salesState.end && date > salesState.start && date < salesState.end) button.classList.add('is-in-range');
+        salesElements.days.append(button);
+    }
+    const minMonth = minimum ? new Date(minimum.getFullYear(), minimum.getMonth(), 1) : salesState.month;
+    const maxMonth = new Date(maximum.getFullYear(), maximum.getMonth(), 1);
+    const currentMonth = new Date(year, month, 1);
+    salesElements.previous.disabled = currentMonth <= minMonth;
+    salesElements.next.disabled = currentMonth >= maxMonth;
+}
+
+function renderSalesRows(data) {
+    const empty = (columns) => `<tr><td colspan="${columns}">Nenhum dado no período.</td></tr>`;
+    const rows = {
+        dia: data.porDia.map((row) => `<tr><td>${escapeHtml(salesDayLabel(row.data))}</td><td class="num">${row.pedidos}</td><td class="num">${salesMoney.format(row.faturamento)}</td></tr>`),
+        categoria: data.porCategoria.map((row) => `<tr><td>${escapeHtml(row.categoria)}</td><td class="num">${row.quantidade}</td><td class="num">${salesMoney.format(row.faturamento)}</td><td class="num">${Number(row.percentual).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}%</td></tr>`),
+        produtos: data.maisVendidos.map((row) => `<tr><td>${escapeHtml(row.produto)}</td><td>${escapeHtml(row.categoria)}</td><td class="num">${row.quantidade}</td><td class="num">${salesMoney.format(row.faturamento)}</td></tr>`),
+        horario: data.porHorario.map((row) => `<tr><td>${String(row.hora).padStart(2, '0')}:00 – ${String(row.hora).padStart(2, '0')}:59</td><td class="num">${row.pedidos}</td><td class="num">${salesMoney.format(row.faturamento)}</td></tr>`),
+    };
+    const columns = { dia: 3, categoria: 4, produtos: 4, horario: 3 };
+    Object.entries(rows).forEach(([name, values]) => {
+        const body = document.querySelector(`#sales-table-${name} tbody`);
+        if (body) body.innerHTML = values.length ? values.join('') : empty(columns[name]);
+    });
+}
+
+async function fetchSalesReport() {
+    if (!salesState.start || !salesState.end) return;
+    const requestId = ++salesState.requestId;
+    const considerar = [...salesElements.considerar].find((input) => input.checked)?.value || 'todos';
+    const periodoStr = `${salesDayLabel(salesIso(salesState.start))} a ${salesDayLabel(salesIso(salesState.end))}`;
+    salesElements.period.textContent = periodoStr;
+    setSalesMessage('Carregando...');
+    salesElements.retry.hidden = true;
+    try {
+        const data = await fetchApiJson(`/api/admin/relatorios/vendas?inicio=${salesIso(salesState.start)}&fim=${salesIso(salesState.end)}&considerar=${considerar}`);
+        if (requestId !== salesState.requestId) return;
+        salesState.data = data;
+        salesElements.summary.faturamento.textContent = salesMoney.format(data.resumo.faturamento);
+        salesElements.summary.pedidos.textContent = data.resumo.totalPedidos.toLocaleString('pt-BR');
+        salesElements.summary.ticket.textContent = salesMoney.format(data.resumo.ticketMedio);
+        salesElements.summary.cancelados.textContent = data.resumo.cancelados.toLocaleString('pt-BR');
+        renderSalesRows(data);
+        if (data.resumo.totalPedidos === 0) {
+            setSalesMessage(`Nenhum pedido neste período (${periodoStr}).`, 'info');
+        } else {
+            setSalesMessage('');
+        }
+    } catch (error) {
+        if (requestId !== salesState.requestId) return;
+        setSalesMessage(salesErrorMessage(error), 'error');
+        salesElements.retry.hidden = error?.status === 401 || error?.status === 403;
+    }
+}
+
+async function loadSalesReport() {
+    if (!salesElements.section || salesState.meta) return;
+    setSalesMessage('Carregando...');
+    try {
+        const meta = await fetchApiJson('/api/admin/relatorios/vendas/periodo');
+        salesState.meta = { primeiroPedido: salesDate(meta.primeiroPedido), hoje: salesDate(meta.hoje) || salesToday() };
+        if (!salesState.meta.primeiroPedido) {
+            setSalesMessage('Nenhum pedido registrado ainda. O relatório será ativado quando houver pedidos.', 'info');
+            salesElements.presets.forEach((button) => { button.disabled = true; });
+            return;
+        }
+        const previousMonth = salesRange('prev-month');
+        salesElements.presets.forEach((button) => {
+            button.disabled = button.dataset.preset === 'prev-month' && previousMonth.end < salesState.meta.primeiroPedido;
+        });
+        const range = salesRange('7');
+        salesState.start = range.start;
+        salesState.end = range.end;
+        salesState.month = new Date(salesState.meta.primeiroPedido.getFullYear(), salesState.meta.primeiroPedido.getMonth(), 1);
+        renderSalesCalendar();
+        await fetchSalesReport();
+    } catch (error) {
+        setSalesMessage(salesErrorMessage(error), 'error');
+        salesElements.retry.hidden = error?.status === 401 || error?.status === 403;
+    }
+}
+
+let salesCalendarKeyboardSelection = false;
+let salesLoaded = false;
+async function triggerLoadSalesReport() {
+    if (salesLoaded) return;
+    salesLoaded = true;
+    await loadSalesReport();
+}
+
+if ('IntersectionObserver' in window && salesElements.section) {
+    const salesObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                void triggerLoadSalesReport();
+            }
+        });
+    }, { threshold: 0.1 });
+    salesObserver.observe(salesElements.section);
+}
+
+window.addEventListener('hashchange', () => {
+    if (window.location.hash === '#painel-vendas') {
+        void triggerLoadSalesReport();
+    }
+});
+adminSalesLink?.addEventListener('click', () => {
+    void triggerLoadSalesReport();
+});
+if (window.location.hash === '#painel-vendas') {
+    void triggerLoadSalesReport();
+}
+
+function applySalesPreset(preset) {
+    if (!salesState.meta?.primeiroPedido) return;
+    salesState.preset = preset;
+    salesElements.presets.forEach((button) => button.classList.toggle('is-active', button.dataset.preset === preset));
+    if (preset === 'custom') {
+        salesElements.calendar.hidden = false;
+        salesState.month = new Date(salesState.start?.getFullYear() || salesState.meta.primeiroPedido.getFullYear(), salesState.start?.getMonth() ?? salesState.meta.primeiroPedido.getMonth(), 1);
+        renderSalesCalendar();
+        const selected = salesState.start && isSalesEnabledDate(salesState.start) ? salesState.start : salesState.meta.primeiroPedido;
+        window.setTimeout(() => focusSalesCalendarDate(selected), 0);
+        return;
+    }
+    salesElements.calendar.hidden = true;
+    const range = salesRange(preset);
+    salesState.start = range.start;
+    salesState.end = range.end;
+    fetchSalesReport();
+}
+
+function exportSalesCsv(tableName) {
+    if (!salesState.data) return;
+    const data = salesState.data;
+    const tables = {
+        dia: { name: 'vendas-por-dia', headers: ['Data', 'Pedidos', 'Faturamento (R$)'], rows: data.porDia.map((row) => [salesDayLabel(row.data), row.pedidos, Number(row.faturamento).toFixed(2).replace('.', ',')]) },
+        categoria: { name: 'vendas-por-categoria', headers: ['Categoria', 'Quantidade', 'Faturamento (R$)', '% do total'], rows: data.porCategoria.map((row) => [row.categoria, row.quantidade, Number(row.faturamento).toFixed(2).replace('.', ','), `${Number(row.percentual).toFixed(2).replace('.', ',')}%`]) },
+        produtos: { name: 'mais-vendidos', headers: ['Produto', 'Categoria', 'Quantidade', 'Faturamento (R$)'], rows: data.maisVendidos.map((row) => [row.produto, row.categoria, row.quantidade, Number(row.faturamento).toFixed(2).replace('.', ',')]) },
+        horario: { name: 'horario-de-pico', headers: ['Hora', 'Pedidos', 'Faturamento (R$)'], rows: data.porHorario.map((row) => [`${String(row.hora).padStart(2, '0')}:00 – ${String(row.hora).padStart(2, '0')}:59`, row.pedidos, Number(row.faturamento).toFixed(2).replace('.', ',')]) },
+    }[tableName];
+    if (!tables) return;
+    const cell = (value) => {
+        let text = String(value ?? '');
+        if (/^[=+\-@]/.test(text)) text = `'${text}`;
+        return /[;"\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    const csv = '\uFEFF' + [tables.headers, ...tables.rows].map((row) => row.map(cell).join(';')).join('\r\n') + '\r\n';
+    const link = document.createElement('a');
+    const downloadUrl = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    link.href = downloadUrl;
+    link.download = `${tables.name}_${salesIso(salesState.start)}_a_${salesIso(salesState.end)}.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+}
+
+salesElements.presets.forEach((button) => button.addEventListener('click', () => applySalesPreset(button.dataset.preset)));
+salesElements.considerar.forEach((input) => input.addEventListener('change', fetchSalesReport));
+salesElements.retry?.addEventListener('click', () => {
+    salesState.meta = null;
+    salesLoaded = false;
+    void triggerLoadSalesReport();
+});
+salesElements.previous?.addEventListener('click', () => { salesState.month.setMonth(salesState.month.getMonth() - 1); renderSalesCalendar(); });
+salesElements.next?.addEventListener('click', () => { salesState.month.setMonth(salesState.month.getMonth() + 1); renderSalesCalendar(); });
+salesElements.calendar?.addEventListener('keydown', (event) => {
+    const current = event.target.closest('[data-date]');
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        closeSalesCalendar();
+        return;
+    }
+    if (!current || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    const delta = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : event.key === 'ArrowUp' ? -7 : 7;
+    const candidate = salesDate(current.dataset.date);
+    candidate.setDate(candidate.getDate() + delta);
+    if (!isSalesEnabledDate(candidate)) return;
+    focusSalesCalendarDate(candidate);
+});
+salesElements.days?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    const button = event.target.closest('[data-date]');
+    if (!button || button.disabled) return;
+    event.preventDefault();
+    salesCalendarKeyboardSelection = true;
+    selectSalesCalendarDate(button);
+    closeSalesCalendar();
+});
+salesElements.days?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-date]');
+    if (!button || button.disabled) return;
+    if (salesCalendarKeyboardSelection) {
+        salesCalendarKeyboardSelection = false;
+        return;
+    }
+    selectSalesCalendarDate(button);
+});
+document.querySelectorAll('.sales-export-btn').forEach((button) => button.addEventListener('click', () => exportSalesCsv(button.dataset.table)));
+document.querySelectorAll('.admin-nav a, .admin-back-link').forEach((link) => {
+    link.addEventListener('click', () => {
+        updateAdminActiveNav(link.getAttribute('href'));
+    });
+});
+window.addEventListener('hashchange', () => {
+    if (document.body.classList.contains('admin-mode')) {
+        updateAdminActiveNav(window.location.hash);
+    }
 });
 
 renderAdminProducts();

@@ -373,7 +373,7 @@ button:disabled {
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    min-height: 82px;
+    min-height: 72px;
     padding: 0 7%;
     background: var(--color-bg-darker);
     border-bottom: 1px solid var(--color-bg-lighter);
@@ -423,6 +423,12 @@ button:disabled {
     }
 }
 
+.admin-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .theme-toggle {
     position: relative;
     display: grid;
@@ -431,8 +437,8 @@ button:disabled {
     flex: 0 0 66px;
     width: 66px;
     min-width: 66px;
-    height: 36px;
-    min-height: 36px;
+    height: 44px;
+    min-height: 44px;
     padding: 0;
     overflow: hidden;
     border: 1px solid var(--color-border-strong);
@@ -1994,6 +2000,18 @@ button:disabled {
     font: inherit;
 }
 
+.admin-status-editor select.custom-select-native-enhanced,
+.admin-orders-toolbar select.custom-select-native-enhanced,
+#admin-product-form select.custom-select-native-enhanced,
+#admin-pizza-option-form select.custom-select-native-enhanced {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
 .admin-status-editor select:focus {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 1px var(--color-border-focus);
@@ -2135,6 +2153,14 @@ button:disabled {
     border-top: 1px solid var(--color-bg-lighter);
 }
 
+.admin-access,
+.admin-orders,
+.admin-catalog,
+.admin-sales,
+#admin-resumo {
+    scroll-margin-top: 82px;
+}
+
 .admin-catalog-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr);
@@ -2153,9 +2179,21 @@ button:disabled {
 }
 
 .admin-catalog-panel-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
     margin-bottom: 20px;
     padding-bottom: 16px;
     border-bottom: 1px solid var(--color-border);
+}
+
+.admin-catalog-panel-heading-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-left: auto;
 }
 
 .admin-catalog-panel-heading span {
@@ -2214,7 +2252,7 @@ button:disabled {
 .admin-category-card > div {
     display: flex;
     flex: 0 0 auto;
-    gap: 0;
+    gap: 8px;
 }
 
 .admin-category-card button {
@@ -3087,6 +3125,10 @@ footer p {
     font-weight: 800;
     letter-spacing: 1.8px;
     color: var(--color-primary);
+    background: var(--color-primary-soft);
+    border: 1px solid var(--color-primary-border);
+    border-radius: 999px;
+    padding: 7px 11px;
 }
 
 .confirmation-close {
@@ -3120,18 +3162,27 @@ footer p {
     color: var(--color-text-primary);
     background: var(--color-primary-soft);
     border: 1px solid var(--color-primary-soft-border);
-    border-radius: 10px;
+    border-radius: var(--radius-md);
     padding: 10px 12px;
+}
+
+.confirmation-help,
+.order-query-help {
+    margin-top: 8px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    line-height: 1.55;
 }
 
 .confirmation-status {
     align-self: flex-start;
+    border-radius: 999px;
 }
 
 .confirmation-section {
     background: var(--color-bg-medium);
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     padding: 16px;
 }
 
@@ -3194,7 +3245,7 @@ footer p {
     gap: 8px;
     background: var(--color-bg-medium);
     border: 1px solid var(--color-border);
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     padding: 16px;
     color: var(--color-text-secondary);
 }
@@ -3234,7 +3285,7 @@ footer p {
     margin: 28px auto 0;
     background: var(--color-bg-medium);
     border: 1px solid var(--color-border);
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
     padding: 24px;
 }
 
@@ -3811,6 +3862,42 @@ footer p {
 
     .admin-summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch;
+    }
+
+    .admin-summary-card {
+        height: 100%;
+    }
+
+    .admin-summary-card:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .admin-orders-live-controls {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-sound-toggle {
+        width: 100%;
+        min-height: 44px;
+    }
+
+    .admin-orders-toolbar {
+        gap: 12px;
+    }
+
+    .admin-orders-toolbar label,
+    .admin-orders-toolbar input,
+    .admin-orders-toolbar .custom-select-enhanced,
+    .admin-orders-toolbar .custom-select-trigger {
+        width: 100%;
+    }
+
+    .admin-orders-toolbar input,
+    .admin-orders-toolbar .custom-select-trigger {
+        min-height: 44px;
+        border-radius: var(--radius-sm);
     }
 
     .admin-product-toolbar {
@@ -3865,6 +3952,20 @@ footer p {
 
     .admin-catalog-panel {
         padding: 18px;
+    }
+
+    .admin-catalog-panel-heading {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .admin-catalog-panel-heading-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .sales-export-btn {
+        margin-left: 0;
     }
 
 }
@@ -4056,6 +4157,10 @@ footer p {
 .custom-select-enhanced {
     position: relative;
     min-width: 0;
+}
+
+.admin-status-select .custom-select-trigger {
+    min-height: 40px;
 }
 
 .custom-select-trigger {
@@ -4328,6 +4433,11 @@ footer p {
 .cart-item-description {
     flex: 1 1 60%;
     min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.cart-item-description strong,
+.cart-item-description small {
     overflow-wrap: anywhere;
 }
 
@@ -4863,6 +4973,10 @@ body[data-theme="light"] .customizer-product-placeholder small {
         padding: 9px 5% 6px;
     }
 
+    .admin-header-actions {
+        gap: 8px;
+    }
+
     .admin-header-brand {
         order: 0;
     }
@@ -4889,7 +5003,8 @@ body[data-theme="light"] .customizer-product-placeholder small {
 
     .admin-access,
     .admin-orders,
-    .admin-catalog {
+    .admin-catalog,
+    .admin-sales {
         padding-top: 132px;
     }
 
@@ -5013,7 +5128,8 @@ body[data-theme="light"] .customizer-product-placeholder small {
 
     .admin-access,
     .admin-orders,
-    .admin-catalog {
+    .admin-catalog,
+    .admin-sales {
         padding-top: 126px;
     }
 
@@ -5131,5 +5247,408 @@ body[data-theme="light"] .customizer-product-placeholder small {
 
     .pizza-type-choices label {
         flex: 1 1 100%;
+    }
+}
+
+/* =========================
+   ADMIN SALES, FILTERS & SEGMENTED CONTROLS
+========================= */
+
+.admin-product-status-filters,
+.admin-catalog-category-filters,
+.admin-pizza-option-filters,
+.admin-pizza-product-filters {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.admin-product-status-filters {
+    align-content: flex-end;
+}
+
+.admin-filter-label {
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-filter-chip,
+.sales-preset-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-bg-darker);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-filter-chip.is-active,
+.sales-preset-btn.is-active {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-bg-darker);
+}
+
+.admin-filter-chip:focus-visible,
+.sales-preset-btn:focus-visible,
+.sales-cal-day:focus-visible,
+.sales-cal-prev:focus-visible,
+.sales-cal-next:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.admin-catalog-category-filters,
+.admin-pizza-option-filters,
+.admin-pizza-product-filters {
+    margin: 12px 0;
+}
+
+.admin-segmented-field {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.admin-segmented-field legend,
+.sales-considerar-label,
+.sales-considerar-filter legend {
+    margin-bottom: 7px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-segmented-control,
+.sales-segmented-control {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.admin-segmented-control label,
+.sales-segmented-control label {
+    position: relative;
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    cursor: pointer;
+}
+
+.admin-segmented-control input,
+.sales-segmented-control input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.admin-segmented-control span,
+.sales-segmented-control span {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    padding: 9px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-segmented-control input:checked + span,
+.sales-segmented-control input:checked + span {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-bg-darker);
+}
+
+.admin-segmented-control input:focus-visible + span,
+.sales-segmented-control input:focus-visible + span {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.admin-currency-input {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-darker);
+}
+
+.admin-currency-input > span {
+    padding: 0 0 0 12px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-currency-input input {
+    min-width: 0;
+    border: 0 !important;
+    background: transparent !important;
+}
+
+.admin-currency-input:focus-within {
+    border-color: var(--color-primary);
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.admin-sales {
+    padding: 100px 7% 90px;
+    background: var(--color-bg-medium);
+}
+
+.admin-sales-panel {
+    display: grid;
+    min-width: 0;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    max-width: 1180px;
+    margin: 30px auto 0;
+}
+
+.sales-toolbar {
+    display: grid;
+    min-width: 0;
+    width: 100%;
+    gap: 18px;
+    padding: 20px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.sales-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sales-calendar-wrapper {
+    width: min(100%, 390px);
+    padding: 16px;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.sales-calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.sales-cal-prev,
+.sales-cal-next {
+    width: 44px;
+    min-height: 44px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-darker);
+    color: var(--color-text);
+    cursor: pointer;
+    font-size: 20px;
+}
+
+.sales-cal-prev:disabled,
+.sales-cal-next:disabled {
+    cursor: not-allowed;
+    opacity: .45;
+}
+
+.sales-cal-title {
+    color: var(--color-text);
+    font-size: 14px;
+}
+
+.sales-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+    text-align: center;
+}
+
+.sales-calendar-grid > span {
+    padding-bottom: 6px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.sales-calendar-days {
+    display: contents;
+}
+
+.sales-cal-day {
+    min-width: 0;
+    min-height: 44px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.sales-cal-day.is-selected {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-bg-darker);
+    font-weight: 800;
+}
+
+.sales-cal-day.is-in-range {
+    background: var(--color-surface-elevated);
+    color: var(--color-primary);
+}
+
+.sales-cal-day.is-disabled {
+    cursor: not-allowed;
+    color: var(--color-text-muted);
+    opacity: .4;
+}
+
+.sales-calendar-hint,
+.sales-period-display,
+.sales-message {
+    min-height: 20px;
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+}
+
+.sales-message.error {
+    color: var(--color-error);
+}
+
+.sales-summary-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.sales-summary-strip > div {
+    min-width: 0;
+    padding: 16px;
+    border-right: 1px solid var(--color-border);
+}
+
+.sales-summary-strip > div:last-child {
+    border-right: 0;
+}
+
+.sales-summary-strip span {
+    display: block;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.sales-summary-strip strong {
+    display: block;
+    margin-top: 7px;
+    color: var(--color-primary);
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.sales-tables-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sales-table-panel {
+    min-width: 0;
+}
+
+.sales-table-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.sales-table-note {
+    margin-top: 8px;
+    color: var(--color-text-muted);
+    font-size: 11px;
+}
+
+.sales-table {
+    width: 100%;
+    min-width: 520px;
+    border-collapse: collapse;
+    color: var(--color-text);
+    font-size: 12px;
+}
+
+.sales-table th,
+.sales-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--color-border);
+    font-variant-numeric: tabular-nums;
+    text-align: left;
+}
+
+.sales-table th {
+    color: var(--color-text-secondary);
+    font-size: 12px;
+}
+
+.sales-table th.num,
+.sales-table td.num {
+    text-align: right;
+}
+
+.sales-export-btn {
+    min-height: 44px;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+    .sales-tables-stack {
+        gap: 16px;
+    }
+}
+
+@media (max-width: 600px) {
+    .admin-sales {
+        padding: 72px 16px 64px;
+    }
+
+    .sales-summary-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sales-summary-strip > div:nth-child(2) {
+        border-right: 0;
+    }
+
+    .sales-summary-strip > div:nth-child(-n + 2) {
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .sales-summary-strip strong {
+        font-size: 17px;
+    }
+
+    .admin-product-status-filters,
+.admin-catalog-category-filters,
+.admin-pizza-option-filters,
+.admin-pizza-product-filters {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }

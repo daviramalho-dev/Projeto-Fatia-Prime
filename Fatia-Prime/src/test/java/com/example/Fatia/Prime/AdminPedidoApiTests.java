@@ -212,6 +212,31 @@ class AdminPedidoApiTests {
     }
 
     @Test
+    void buscaAdministrativaNormalizaCodigoTelefoneENome() throws Exception {
+        pedido.setCodigo("FP-986D60DE1F96");
+        pedido.setClienteNome("José da Silva");
+        pedido.setClienteTelefone("(61) 99999-9999");
+        pedidoRepository.saveAndFlush(pedido);
+
+        for (String consulta : List.of("98", "FP-98", "fp 98", "986D")) {
+            mockMvc.perform(get("/api/admin/pedidos").param("codigo", consulta).session(adminSession()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].codigo").value("FP-986D60DE1F96"));
+        }
+        mockMvc.perform(get("/api/admin/pedidos").param("codigo", "86D").session(adminSession()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/api/admin/pedidos").param("telefone", "9999").session(adminSession()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+        mockMvc.perform(get("/api/admin/pedidos").param("nome", "jose").session(adminSession()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+        mockMvc.perform(get("/api/admin/pedidos").param("nome", "zzzz").session(adminSession()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/api/admin/pedidos").session(adminSession()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
     void statusInvalidoRetorna400SemAlterarPedido() throws Exception {
         mockMvc.perform(patch("/api/admin/pedidos/{id}/status", pedido.getId())
                 .session(adminSession()).with(csrf())

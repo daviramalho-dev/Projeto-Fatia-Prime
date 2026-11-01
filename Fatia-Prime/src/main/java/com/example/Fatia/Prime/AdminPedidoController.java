@@ -2,6 +2,7 @@ package com.example.Fatia.Prime;
 
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -57,9 +58,16 @@ public class AdminPedidoController {
         String status
     ) {
         validarStatus(status);
-        String codigoBusca = normalizar(codigo);
-        String telefoneBusca = normalizarTelefone(telefone);
-        String nomeBusca = normalizar(nome);
+        String busca = codigo != null && !codigo.isBlank() ? codigo : telefone != null && !telefone.isBlank() ? telefone : nome;
+        boolean consultaNumericaCurta = busca != null && busca.matches("\\s*\\d{1,3}\\s*");
+        boolean nomeTemFormatoDeCodigo = codigo == null || codigo.isBlank()
+            ? nome != null && nome.matches(".*\\d.*")
+            : false;
+        String codigoNormalizado = normalizarCodigo(codigo);
+        String codigoBusca = codigoNormalizado.isBlank() && nomeTemFormatoDeCodigo
+            ? normalizarCodigo(nome) : codigoNormalizado;
+        String telefoneBusca = consultaNumericaCurta ? "" : normalizarTelefone(telefone);
+        String nomeBusca = consultaNumericaCurta || nomeTemFormatoDeCodigo ? "" : normalizarNome(nome);
         return repository.findAllForAdmin().stream()
             .peek(this::garantirMetadados)
             .filter(pedido -> corresponde(pedido, codigoBusca, telefoneBusca, nomeBusca, status))
@@ -97,12 +105,13 @@ public class AdminPedidoController {
 
     private boolean corresponde(Pedido pedido, String codigo, String telefone, String nome, String status) {
         Usuario usuario = pedido.getUsuario();
-        String pedidoCodigo = normalizar(pedido.getCodigo());
+        String pedidoCodigo = normalizarCodigo(pedido.getCodigo());
         String pedidoTelefone = normalizarTelefone(pedido.getClienteTelefone() != null
             ? pedido.getClienteTelefone() : usuario != null ? usuario.getTelefone() : null);
-        String pedidoNome = normalizar(pedido.getClienteNome() != null
+        String pedidoNome = normalizarNome(pedido.getClienteNome() != null
             ? pedido.getClienteNome() : usuario != null ? usuario.getNome() : null);
-        return (codigo.isBlank() || pedidoCodigo.contains(codigo))
+        return (codigo.isBlank() || pedidoCodigo.startsWith(codigo)
+                || pedidoCodigo.startsWith("FP") && pedidoCodigo.substring(2).startsWith(codigo))
             && (telefone.isBlank() || pedidoTelefone.contains(telefone))
             && (nome.isBlank() || pedidoNome.contains(nome))
             && (status == null || status.isBlank() || status.equals(pedido.getStatus()));
@@ -137,8 +146,14 @@ public class AdminPedidoController {
         return atualIndice >= 0 && proximoIndice == atualIndice + 1;
     }
 
-    private String normalizar(String valor) {
-        return valor == null ? "" : valor.trim().toLowerCase(Locale.ROOT);
+    private String normalizarCodigo(String valor) {
+        return valor == null ? "" : valor.trim().toUpperCase(Locale.ROOT).replaceAll("[\\s-]", "");
+    }
+
+    private String normalizarNome(String valor) {
+        if (valor == null) return "";
+        return Normalizer.normalize(valor.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+            .replaceAll("\\p{M}", "");
     }
 
     private String normalizarTelefone(String valor) {
