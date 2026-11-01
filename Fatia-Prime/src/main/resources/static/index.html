@@ -29,7 +29,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="css/style.css?v=2026-10-24"> <!-- alterar a versão a cada deploy que muda estes arquivos -->
+    <link rel="stylesheet" href="css/style.css?v=2026-10-31"> <!-- alterar a versão a cada deploy que muda estes arquivos -->
 </head>
 
 <body>
@@ -74,6 +74,7 @@
         <nav class="admin-nav">
             <a href="#admin-resumo">Resumo</a>
             <a href="#painel-pedidos">Pedidos</a>
+            <a href="#painel-vendas" data-admin-sales-link>Vendas</a>
             <a href="#gestao-cardapio">Cardápio</a>
         </nav>
         <div class="admin-header-actions">
@@ -87,7 +88,7 @@
                 </svg>
                 <span class="theme-toggle-label visually-hidden">Ativar modo claro</span>
             </button>
-            <button class="admin-logout" type="button">SAIR</button>
+            <button class="admin-logout" type="button" aria-label="Sair do painel">SAIR</button>
         </div>
     </header>
 
@@ -351,7 +352,7 @@
                 <div class="admin-orders-toolbar">
                     <label>
                         Pesquisar pedidos
-                        <input id="admin-order-search" type="search" placeholder="Buscar por código, telefone ou nome..." autocomplete="off">
+                        <input id="admin-order-search" type="search" placeholder="Código, telefone ou nome" autocomplete="off">
                     </label>
                     <label>
                         Status
@@ -404,6 +405,81 @@
             </div>
         </section>
 
+        <!-- RELATÓRIO DE VENDAS -->
+        <section class="admin-sales" id="painel-vendas" hidden>
+            <div class="admin-orders-heading">
+                <div>
+                    <h2>RELATÓRIO DE <strong>VENDAS.</strong></h2>
+                    <p>Consulte os resultados do período selecionado.</p>
+                </div>
+                <a class="admin-back-link" href="#painel-pedidos">← Voltar aos pedidos</a>
+            </div>
+
+            <div class="admin-sales-panel">
+                <div class="sales-toolbar">
+                    <div class="sales-presets" role="group" aria-label="Período do relatório">
+                        <button class="sales-preset-btn" type="button" data-preset="today">Hoje</button>
+                        <button class="sales-preset-btn is-active" type="button" data-preset="7">7 dias</button>
+                        <button class="sales-preset-btn" type="button" data-preset="30">30 dias</button>
+                        <button class="sales-preset-btn" type="button" data-preset="current-month">Mês atual</button>
+                        <button class="sales-preset-btn" type="button" data-preset="prev-month">Mês anterior</button>
+                        <button class="sales-preset-btn" type="button" data-preset="custom">Personalizado</button>
+                    </div>
+                    <div class="sales-considerar-filter">
+                        <span class="sales-considerar-label">Considerar</span>
+                        <div class="sales-segmented-control">
+                            <label><input type="radio" name="sales-considerar" value="todos" checked><span>Todos (exceto cancelados)</span></label>
+                            <label><input type="radio" name="sales-considerar" value="entregues"><span>Somente entregues</span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sales-calendar-wrapper" hidden>
+                    <div class="sales-calendar-header">
+                        <button class="sales-cal-prev" type="button" aria-label="Mês anterior">‹</button>
+                        <strong class="sales-cal-title" aria-live="polite"></strong>
+                        <button class="sales-cal-next" type="button" aria-label="Próximo mês">›</button>
+                    </div>
+                    <div class="sales-calendar-grid" role="grid" aria-label="Calendário de seleção de intervalo">
+                        <span aria-hidden="true">Dom</span><span aria-hidden="true">Seg</span><span aria-hidden="true">Ter</span>
+                        <span aria-hidden="true">Qua</span><span aria-hidden="true">Qui</span><span aria-hidden="true">Sex</span><span aria-hidden="true">Sáb</span>
+                        <div class="sales-calendar-days"></div>
+                    </div>
+                    <p class="sales-calendar-hint" aria-live="polite">Selecione a data inicial e a data final.</p>
+                </div>
+                <p class="sales-period-display">Período: <strong class="sales-period-value">—</strong></p>
+                <p class="sales-message" role="status" aria-live="polite"></p>
+                <button class="btn-secondary sales-retry-btn" type="button" hidden>Tentar novamente</button>
+
+                <div class="sales-summary-strip" aria-label="Resumo de vendas">
+                    <div><span>Faturamento</span><strong id="sales-summary-faturamento">R$ 0,00</strong></div>
+                    <div><span>Pedidos</span><strong id="sales-summary-pedidos">0</strong></div>
+                    <div><span>Ticket médio</span><strong id="sales-summary-ticket">R$ 0,00</strong></div>
+                    <div><span>Cancelados</span><strong id="sales-summary-cancelados">0</strong></div>
+                </div>
+
+                <div class="sales-tables-stack">
+                    <section class="admin-catalog-panel sales-table-panel" aria-labelledby="sales-title-dia">
+                        <div class="admin-catalog-panel-heading"><div><h3 id="sales-title-dia">Vendas por dia</h3></div><div class="admin-catalog-panel-heading-actions"><button class="btn-secondary sales-export-btn" type="button" data-table="dia">Exportar CSV</button></div></div>
+                        <div class="sales-table-container"><table class="sales-table" id="sales-table-dia"><thead><tr><th>Data</th><th class="num">Pedidos</th><th class="num">Faturamento</th></tr></thead><tbody></tbody></table></div>
+                    </section>
+                    <section class="admin-catalog-panel sales-table-panel" aria-labelledby="sales-title-categoria">
+                        <div class="admin-catalog-panel-heading"><div><h3 id="sales-title-categoria">Vendas por categoria</h3></div><div class="admin-catalog-panel-heading-actions"><button class="btn-secondary sales-export-btn" type="button" data-table="categoria">Exportar CSV</button></div></div>
+                        <div class="sales-table-container"><table class="sales-table" id="sales-table-categoria"><thead><tr><th>Categoria</th><th class="num">Quantidade</th><th class="num">Faturamento</th><th class="num">% do total</th></tr></thead><tbody></tbody></table></div>
+                        <p class="sales-table-note">Personalização e entrega já estão somadas dentro do valor dos pedidos.</p>
+                    </section>
+                    <section class="admin-catalog-panel sales-table-panel" aria-labelledby="sales-title-produtos">
+                        <div class="admin-catalog-panel-heading"><div><h3 id="sales-title-produtos">Mais vendidos</h3></div><div class="admin-catalog-panel-heading-actions"><button class="btn-secondary sales-export-btn" type="button" data-table="produtos">Exportar CSV</button></div></div>
+                        <div class="sales-table-container"><table class="sales-table" id="sales-table-produtos"><thead><tr><th>Produto</th><th>Categoria</th><th class="num">Quantidade</th><th class="num">Faturamento</th></tr></thead><tbody></tbody></table></div>
+                    </section>
+                    <section class="admin-catalog-panel sales-table-panel" aria-labelledby="sales-title-horario">
+                        <div class="admin-catalog-panel-heading"><div><h3 id="sales-title-horario">Horário de pico</h3></div><div class="admin-catalog-panel-heading-actions"><button class="btn-secondary sales-export-btn" type="button" data-table="horario">Exportar CSV</button></div></div>
+                        <div class="sales-table-container"><table class="sales-table" id="sales-table-horario"><thead><tr><th>Hora</th><th class="num">Pedidos</th><th class="num">Faturamento</th></tr></thead><tbody></tbody></table></div>
+                    </section>
+                </div>
+            </div>
+        </section>
+
         <!-- GESTÃO DO CARDÁPIO -->
         <section class="admin-catalog" id="gestao-cardapio" hidden>
             <div class="admin-orders-heading">
@@ -417,24 +493,25 @@
             <div class="admin-catalog-layout">
                 <div class="admin-catalog-panel">
                     <div class="admin-catalog-panel-heading">
-                        <span>CATÁLOGO</span>
-                        <h3>Produtos cadastrados</h3>
+                        <div><span>CATÁLOGO</span><h3>Produtos cadastrados</h3></div>
                     </div>
                     <div class="admin-product-toolbar">
                         <label>
                             Buscar produto
                             <input id="admin-product-search" type="search" placeholder="Buscar produto por nome..." autocomplete="off">
                         </label>
-                        <label>
-                            Disponibilidade
-                            <select id="admin-product-status">
-                                <option value="all">Todos</option>
-                                <option value="active">Ativos</option>
-                                <option value="inactive">Inativos</option>
-                            </select>
-                        </label>
+                        <div class="admin-product-status-filters" role="group" aria-label="Situação dos produtos">
+                            <span class="admin-filter-label">Situação</span>
+                            <button class="admin-filter-chip is-active" type="button" data-admin-product-status="all" aria-pressed="true">Todos</button>
+                            <button class="admin-filter-chip" type="button" data-admin-product-status="active" aria-pressed="false">Ativos</button>
+                            <button class="admin-filter-chip" type="button" data-admin-product-status="inactive" aria-pressed="false">Inativos</button>
+                        </div>
                     </div>
-                    <p class="admin-catalog-results" aria-live="polite"></p>
+                    <div class="admin-catalog-category-filters" role="group" aria-label="Categorias dos produtos"></div>
+                    <div class="admin-catalog-filter-actions">
+                        <p class="admin-catalog-results" aria-live="polite"></p>
+                        <button class="btn-secondary admin-catalog-clear-filters" type="button">Limpar filtros</button>
+                    </div>
                     <p class="admin-catalog-message" aria-live="polite"></p>
                     <div class="admin-catalog-list" aria-live="polite"></div>
                     <div class="admin-catalog-empty" hidden>
@@ -445,8 +522,7 @@
 
                 <div class="admin-catalog-panel admin-categories-panel">
                     <div class="admin-catalog-panel-heading">
-                        <span>ORGANIZAÇÃO</span>
-                        <h3>Gerenciar categorias</h3>
+                        <div><span>ORGANIZAÇÃO</span><h3>Gerenciar categorias</h3></div>
                     </div>
                     <p class="admin-category-message" aria-live="polite"></p>
                     <div class="admin-category-list" aria-live="polite"></div>
@@ -465,8 +541,7 @@
 
                 <div class="admin-catalog-panel">
                     <div class="admin-catalog-panel-heading">
-                        <span id="admin-product-form-label">NOVO PRODUTO</span>
-                        <h3 id="admin-product-form-title">Adicionar ao cardápio</h3>
+                        <div><span id="admin-product-form-label">NOVO PRODUTO</span><h3 id="admin-product-form-title">Adicionar ao cardápio</h3></div>
                     </div>
                     <form id="admin-product-form" novalidate>
                         <label>
@@ -517,9 +592,10 @@
 
                 <div class="admin-catalog-panel admin-options-panel">
                     <div class="admin-catalog-panel-heading">
-                        <span>PERSONALIZAÇÃO</span>
-                        <h3>Bordas, adicionais e molhos</h3>
+                        <div><span>PERSONALIZAÇÃO</span><h3>Bordas, adicionais e molhos</h3></div>
                     </div>
+                    <div class="admin-pizza-option-filters" role="group" aria-label="Tipo das opções"></div>
+                    <div class="admin-pizza-product-filters" role="group" aria-label="Tipo de pizza"></div>
                     <div class="admin-pizza-option-list" aria-live="polite"></div>
                     <div class="admin-pizza-options-empty" hidden>Nenhuma opção cadastrada.</div>
                     <form id="admin-pizza-option-form" novalidate>
@@ -528,27 +604,25 @@
                             Nome
                             <input name="optionName" type="text" maxlength="100" placeholder="Ex.: Catupiry" required>
                         </label>
-                        <div class="admin-pizza-option-fields">
-                            <label>
-                                Opção
-                                <select name="optionKind" required>
-                                    <option value="BORDA">Borda recheada</option>
-                                    <option value="ADICIONAL">Adicional</option>
-                                    <option value="MOLHO">Molho</option>
-                                </select>
-                            </label>
-                            <label>
-                                Para pizzas
-                                <select name="optionProductType" required>
-                                    <option value="SALGADA">Salgadas</option>
-                                    <option value="DOCE">Doces</option>
-                                </select>
-                            </label>
-                            <label>
-                                Acréscimo (R$)
-                                <input name="optionPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="7,00" required>
-                            </label>
-                        </div>
+                        <fieldset class="admin-segmented-field">
+                            <legend>Opção</legend>
+                            <div class="admin-segmented-control" data-segmented-name="optionKind">
+                                <label><input type="radio" name="optionKind" value="BORDA" checked><span>Borda recheada</span></label>
+                                <label><input type="radio" name="optionKind" value="ADICIONAL"><span>Adicional</span></label>
+                                <label><input type="radio" name="optionKind" value="MOLHO"><span>Molho</span></label>
+                            </div>
+                        </fieldset>
+                        <fieldset class="admin-segmented-field">
+                            <legend>Para pizzas</legend>
+                            <div class="admin-segmented-control" data-segmented-name="optionProductType">
+                                <label><input type="radio" name="optionProductType" value="SALGADA" checked><span>Salgadas</span></label>
+                                <label><input type="radio" name="optionProductType" value="DOCE"><span>Doces</span></label>
+                            </div>
+                        </fieldset>
+                        <label class="admin-option-price-field">
+                            Acréscimo (R$)
+                            <span class="admin-currency-input"><span aria-hidden="true">R$</span><input name="optionPrice" type="text" min="0" inputmode="decimal" autocomplete="off" placeholder="7,00" required></span>
+                        </label>
                         <div class="admin-pizza-option-message" aria-live="polite"></div>
                         <div class="admin-product-form-actions">
                             <button class="btn-primary" type="submit">SALVAR OPÇÃO</button>
@@ -559,7 +633,6 @@
             </div>
         </section>
 
-
     </main>
 
 
@@ -568,6 +641,7 @@
         <div class="section-title">
             <h2>CONSULTAR PEDIDO</h2>
             <p>Informe o código do pedido e o telefone cadastrado para consultar o status em tempo real.</p>
+            <p class="order-query-help">Você encontra o código na tela de confirmação e na mensagem do pedido enviada pelo WhatsApp. Digite-o aqui para acompanhar o status a qualquer momento.</p>
         </div>
 
         <div class="order-query-panel">
@@ -575,7 +649,7 @@
                 <div class="order-query-grid">
                     <label>
                         Código de acompanhamento
-                        <input id="order-query-code" type="text" placeholder="FP-20260918-ABC123" autocomplete="off" required>
+                        <input id="order-query-code" type="text" placeholder="FP-3A9F2C41B7D0" autocomplete="off" required>
                     </label>
                     <label>
                         Telefone
@@ -835,6 +909,7 @@
         <div class="confirmation-content">
             <h2>Pedido realizado com sucesso!</h2>
             <p class="confirmation-code">Pedido FP-000000-ABC123</p>
+            <p class="confirmation-help">Seu pedido já foi registrado. Guarde este código para acompanhá-lo depois. Envie a mensagem pelo WhatsApp para avisar a pizzaria.</p>
             <p class="confirmation-status status-received">Pedido recebido</p>
 
             <div class="confirmation-section">
@@ -863,7 +938,7 @@
     <div class="cart-backdrop" aria-hidden="true"></div>
 
 
-    <script src="js/script.js?v=2026-10-24"></script>
+    <script src="js/script.js?v=2026-10-31"></script> <!-- alterar a versão a cada deploy que muda estes arquivos -->
 
 </body>
 </html>
