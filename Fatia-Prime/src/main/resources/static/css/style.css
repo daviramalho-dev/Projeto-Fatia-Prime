@@ -4732,6 +4732,7 @@ body.site-modal-open { overflow: hidden; }
 }
 
 .catalog-retry-button {
+    min-height: 44px;
     margin-left: 10px;
     padding: 8px 12px;
     border: 1px solid var(--color-primary);
