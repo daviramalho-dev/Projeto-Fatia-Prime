@@ -25,6 +25,10 @@ const checkoutFreightElement = document.querySelector('.checkout-freight');
 const cartSubtotalElement = document.querySelector('.cart-subtotal');
 const cartFreightElement = document.querySelector('.cart-freight');
 const cartDeliveryCep = document.querySelector('.cart-delivery-cep');
+const cartQuoteButton = document.querySelector('.cart-quote-button');
+const cartCheckoutButton = document.querySelector('.checkout-button');
+const cartCheckoutHelp = document.querySelector('.cart-checkout-help');
+const cartAddMoreButton = document.querySelector('.cart-add-more');
 const cartTotalLabel = document.querySelector('.cart-total span');
 const checkoutTotalLabel = document.querySelector('.checkout-total span');
 const pizzaCustomizer = document.querySelector('.pizza-customizer');
@@ -1273,6 +1277,17 @@ function openCart() {
     panel.setAttribute('aria-hidden', 'false');
 }
 
+function closeActiveOverlayOnEscape(event) {
+    if (event.key !== 'Escape') return;
+    if (checkoutPanel?.classList.contains('is-open')) {
+        closeCheckout();
+    } else if (panel?.classList.contains('is-open')) {
+        closeCart();
+    }
+}
+
+document.addEventListener('keydown', closeActiveOverlayOnEscape);
+
 function closeCart() {
     if (!panel || !backdrop) return;
     panel.classList.remove('is-open');
@@ -2459,12 +2474,12 @@ function setDeliveryQuoteMessage(form, message, type = '') {
 }
 
 function setDeliveryQuoteButtonLoading(isLoading) {
-    const button = document.querySelector('.cart-quote-button');
+    const button = cartQuoteButton;
     if (!button) return;
     if (!button.dataset.defaultLabel) button.dataset.defaultLabel = button.textContent.trim();
     button.disabled = isLoading;
     button.setAttribute('aria-busy', String(isLoading));
-    button.textContent = isLoading ? 'AGUARDE...' : button.dataset.defaultLabel;
+    button.textContent = isLoading ? 'CALCULANDO...' : button.dataset.defaultLabel;
 }
 
 function invalidateDeliveryQuoteForCepChange(cep, form) {
@@ -2499,6 +2514,14 @@ function renderDeliveryBreakdown() {
     const hasItems = Array.isArray(window.cart) && window.cart.length > 0;
     const awaitingQuote = hasItems && !hasFreight;
     const total = subtotal + (hasFreight ? freight : 0);
+    const canContinue = hasItems && hasFreight;
+    if (cartCheckoutButton) {
+        cartCheckoutButton.disabled = !canContinue;
+        cartCheckoutButton.setAttribute('aria-disabled', String(!canContinue));
+    }
+    if (cartCheckoutHelp) {
+        cartCheckoutHelp.textContent = canContinue ? 'Frete calculado. Você pode continuar.' : 'Informe e calcule o frete para continuar.';
+    }
 
     if (cartSubtotalElement) cartSubtotalElement.textContent = money.format(subtotal);
     if (cartFreightElement) cartFreightElement.textContent = hasFreight
@@ -2524,7 +2547,7 @@ async function refreshDeliveryQuote(cep, form, force = false) {
         deliveryQuoteRequestId += 1;
         setDeliveryQuoteButtonLoading(false);
         renderDeliveryBreakdown();
-        setDeliveryQuoteMessage(form, normalizedCep ? 'Informe um CEP válido.' : '');
+        setDeliveryQuoteMessage(form, normalizedCep ? 'Informe um CEP válido.' : 'Informe o CEP para calcular.');
         return false;
     }
 
@@ -2889,7 +2912,6 @@ function openCheckout() {
     const cep = checkoutAddressField('customerCep')?.value;
     if (String(cep || '').replace(/\D/g, '').length === 8) {
         void refreshAddressFromCep(cep);
-        void refreshDeliveryQuote(cep, checkoutForm);
     }
     checkoutPanel.classList.add('is-open');
     if (backdrop) {
@@ -3417,10 +3439,7 @@ itemsElement.addEventListener('click', (event) => {
     updateCart(true);
 });
 
-document.querySelector('.checkout-button').addEventListener('click', () => {
-    openCheckout();
-});
-document.querySelector('.cart-continue')?.addEventListener('click', closeCart);
+// O avanço do carrinho é ligado acima, após a validação de frete.
 
 if (orderQueryForm) {
     orderQueryForm.addEventListener('submit', async (event) => {
@@ -3711,11 +3730,9 @@ if (checkoutForm) {
             handleCheckoutCepChange(cepField.value);
             syncDeliveryCepFields(cepField.value);
             saveCheckoutAddress();
-            void refreshDeliveryQuote(cepField.value, checkoutForm);
             void refreshAddressFromCep(cepField.value);
         });
         cepField.addEventListener('blur', () => {
-            void refreshDeliveryQuote(cepField.value, checkoutForm);
             void refreshAddressFromCep(cepField.value);
         });
     }
@@ -3734,8 +3751,17 @@ if (cartDeliveryCep) {
         void refreshAddressFromCep(cartDeliveryCep.value);
     });
 }
-document.querySelector('.cart-quote-button')?.addEventListener('click', () => {
+
+cartCheckoutButton?.addEventListener('click', () => {
+    if (cartCheckoutButton.disabled || cartCheckoutButton.getAttribute('aria-disabled') === 'true') return;
+    openCheckout();
+});
+cartQuoteButton?.addEventListener('click', () => {
     void refreshDeliveryQuote(cartDeliveryCep?.value, panel, true);
+});
+cartAddMoreButton?.addEventListener('click', () => {
+    closeCart();
+    document.querySelector('#cardapio')?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
 });
 
 document.querySelector('.admin-order-details-close')?.addEventListener('click', () => {

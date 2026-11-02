@@ -807,19 +807,19 @@
     <aside class="cart-panel" aria-label="Seu pedido" aria-hidden="true">
         <div class="cart-header"><h2>SEU CARRINHO</h2><button class="cart-close" type="button" aria-label="Fechar carrinho">×</button></div>
         <div class="cart-items"><p class="cart-empty">Seu carrinho está vazio.</p></div>
+        <button class="cart-add-more" type="button">+ Adicionar mais itens</button>
         <div class="cart-footer">
+            <label class="cart-cep-field" for="cart-delivery-cep">CEP para calcular a entrega
+                <span class="cart-cep-control"><input id="cart-delivery-cep" class="cart-delivery-cep" type="text" autocomplete="postal-code" inputmode="numeric" maxlength="9" placeholder="00000-000"><button class="btn-secondary cart-quote-button" type="button">CALCULAR FRETE</button></span>
+            </label>
+            <p class="delivery-quote-message cart-delivery-quote-message" aria-live="polite"></p>
             <div class="delivery-breakdown cart-delivery-breakdown">
                 <div><span>Subtotal</span><strong class="cart-subtotal">R$ 0,00</strong></div>
                 <div><span>Entrega</span><strong class="cart-freight">Informe o CEP para calcular</strong></div>
             </div>
-            <div class="cart-total"><span>Total</span><strong>R$ 0,00</strong></div>
-            <label class="cart-cep-field">CEP para calcular a entrega<input class="cart-delivery-cep" type="text" autocomplete="postal-code" inputmode="numeric" maxlength="9" placeholder="00000-000"></label>
-            <button class="btn-secondary cart-quote-button" type="button">CALCULAR FRETE</button>
-            <p class="delivery-quote-message cart-delivery-quote-message" aria-live="polite"></p>
-            <label>Seu nome<input id="customer-name" type="text" autocomplete="name" placeholder="Digite seu nome"></label>
-            <label>Observações<textarea id="order-notes" rows="3" placeholder="Ex.: tirar a cebola, trocar ingrediente..."></textarea></label>
-            <button class="btn-secondary cart-continue" type="button">CONTINUAR COMPRANDO</button>
-            <button class="btn-primary checkout-button" type="button">CONTINUAR PARA ENTREGA</button>
+            <div class="cart-total"><span>Total com entrega</span><strong>Informe o CEP</strong></div>
+            <p class="cart-checkout-help" id="cart-checkout-help">Informe e calcule o frete para continuar.</p>
+            <button class="btn-primary checkout-button" type="button" aria-disabled="true" aria-describedby="cart-checkout-help" disabled>CONTINUAR PARA ENTREGA</button>
         </div>
     </aside>
 
