@@ -3210,6 +3210,20 @@ body.site-modal-open { overflow: hidden; }
     color: var(--color-primary);
 }
 
+.order-code-copy-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.order-code-copy-row .confirmation-code {
+    flex: 1;
+    margin: 0;
+}
+.order-code-copy {
+    min-height: 40px;
+    white-space: nowrap;
+}
+
 .confirmation-code {
     font-size: 15px;
     font-weight: 700;
@@ -3523,6 +3537,10 @@ body.site-modal-open { overflow: hidden; }
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 16px;
+}
+
+.order-query-code-value {
+    overflow-wrap: anywhere;
 }
 
 .order-query-meta {
@@ -5246,7 +5264,65 @@ body[data-theme="light"] .customizer-product-placeholder small {
     }
 
     .customizer-addon-list {
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pizza-customizer-field {
+        grid-template-columns: minmax(88px, .55fr) minmax(0, 1fr);
+        align-items: center;
+    }
+
+    .admin-product-toolbar {
+        grid-template-columns: minmax(0, 1fr) minmax(150px, .75fr);
+    }
+
+    #admin-product-form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: end;
+    }
+
+    #admin-product-form label:nth-of-type(2),
+    #admin-product-form .admin-product-form-message,
+    #admin-product-form .admin-product-form-actions {
+        grid-column: 1 / -1;
+    }
+
+    #admin-category-form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(120px, auto);
+        align-items: end;
+    }
+
+    #admin-category-form .admin-product-form-actions {
+        padding-top: 0;
+        border-top: 0;
+    }
+
+    .admin-pizza-option-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-pizza-option-fields > :last-child {
+        grid-column: 1 / -1;
+    }
+
+    #admin-pizza-option-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #admin-pizza-option-form > strong,
+    #admin-pizza-option-form > .admin-pizza-option-message,
+    #admin-pizza-option-form > .admin-product-form-actions {
+        grid-column: 1 / -1;
+    }
+
+    .admin-product-status-filters,
+    .admin-catalog-category-filters,
+    .admin-pizza-option-filters,
+    .admin-pizza-product-filters {
+        align-items: center;
+        flex-direction: row;
     }
 
     .footer-links {
@@ -5713,10 +5789,11 @@ body[data-theme="light"] .customizer-product-placeholder small {
     }
 
     .admin-product-status-filters,
-.admin-catalog-category-filters,
-.admin-pizza-option-filters,
-.admin-pizza-product-filters {
-        align-items: flex-start;
-        flex-direction: column;
+    .admin-catalog-category-filters,
+    .admin-pizza-option-filters,
+    .admin-pizza-product-filters {
+        min-width: 0;
+        align-items: center;
+        flex-direction: row;
     }
 }

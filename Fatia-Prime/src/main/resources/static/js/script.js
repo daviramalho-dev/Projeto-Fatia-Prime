@@ -1167,7 +1167,7 @@ function renderPublicCatalog() {
                     const imageFallback = originalMenuImage && menuImage !== originalMenuImage ? ` data-original-src="${escapeHtml(originalMenuImage)}"` : '';
                     return `
                     <div class="menu-item has-image" data-category="${escapeHtml(product.categoryId)}" data-product-type="${escapeHtml(product.type)}">
-                        ${menuImage ? `<img class="menu-item-image" data-menu-product-image src="${escapeHtml(menuImage)}"${imageFallback} alt="${escapeHtml(product.name)}" loading="${imageLoading}"${imagePriority} width="96" height="96">` : `<span class="menu-item-image menu-item-fallback" aria-hidden="true">${renderCategoryFallbackIcon(product)}</span>`}
+                        ${menuImage ? `<img class="menu-item-image" data-menu-product-image src="${escapeHtml(menuImage)}"${imageFallback} alt="${escapeHtml(product.name)}" loading="${imageLoading}" decoding="async"${imagePriority} width="96" height="96">` : `<span class="menu-item-image menu-item-fallback" aria-hidden="true">${renderCategoryFallbackIcon(product)}</span>`}
                         <div class="menu-text"><h4>${escapeHtml(product.name)}</h4><p>${escapeHtml(product.description)}</p></div>
                         <div class="menu-actions"><strong>${money.format(product.price)}</strong><button class="btn-menu-add" type="button" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">ADICIONAR</button></div>
                     </div>`;
@@ -1233,6 +1233,11 @@ function getHalfPizzaImage(product) {
     return image ? getDerivedImagePath(image, 'thumbs') : '';
 }
 
+function getPizzaFallbackImage(product) {
+    const image = catalogProductImages.get(normalizeCatalogSearch(product?.name)) || catalogProductImages.get('atum') || '';
+    return getDerivedImagePath(image, 'thumbs') || image;
+}
+
 function getHalfPizzaFallbackImage(product) {
     if (normalizeCatalogSearch(product.name) !== 'atum') return '';
     const image = catalogProductImages.get('atum') || '';
@@ -1254,7 +1259,7 @@ function renderProductVisual(product, presentation) {
         const productTypeAttribute = imageClass ? ` data-product-type="${escapeHtml(product.type || 'SALGADA')}"` : '';
         const productNameAttribute = imageClass ? ` data-product-name="${escapeHtml(product.name)}"` : '';
         const dimension = presentation === 'featured' ? '800' : '520';
-        return `<img${imageClass ? ` class="${imageClass}"` : ''} src="${escapeHtml(image)}"${originalAttribute}${productTypeAttribute}${productNameAttribute} alt="${escapeHtml(product.name)}" loading="lazy" width="${dimension}" height="${dimension}">`;
+        return `<img${imageClass ? ` class="${imageClass}"` : ''} src="${escapeHtml(image)}"${originalAttribute}${productTypeAttribute}${productNameAttribute} alt="${escapeHtml(product.name)}" loading="lazy" decoding="async" width="${dimension}" height="${dimension}">`;
     }
     return `<span class="${visualClass}"><strong>${escapeHtml(product.name)}</strong>${product.categoryName ? `<small>${escapeHtml(product.categoryName)}</small>` : ''}</span>`;
 }
@@ -1272,7 +1277,7 @@ function renderHalfAndHalfPizzaVisual(firstProduct, secondProduct, visualClass) 
         const originalAttribute = originalImage && image !== originalImage
             ? ` data-original-src="${escapeHtml(originalImage)}"`
             : '';
-        return `<img class="pizza-split-image pizza-split-image-${side}${fallbackClass}" data-split-name="${escapeHtml(product.name)}" src="${escapeHtml(image)}"${originalAttribute} alt="" loading="lazy">`;
+        return `<img class="pizza-split-image pizza-split-image-${side}${fallbackClass}" data-split-name="${escapeHtml(product.name)}" src="${escapeHtml(image)}"${originalAttribute} alt="" loading="lazy" decoding="async" width="31" height="62">`;
     };
     return `
         <span class="${visualClass}" role="img" aria-label="Pizza meio a meio: ${escapeHtml(firstProduct.name)} e ${escapeHtml(secondProduct.name)}">
@@ -1325,15 +1330,23 @@ function renderCustomizerProductVisual(firstProduct, secondProduct, isHalfAndHal
 }
 
 function renderPizzaItemVisual(item) {
-    if (item?.itemType === 'BEBIDA' || item?.pizzaType !== 'MEIO_A_MEIO' || !item.secondFlavor) return '';
-    const getFlavorProduct = (flavor) => publicProducts.find((product) => String(product.id) === String(flavor.id))
-        || publicProducts.find((product) => product.name === flavor.name)
-        || { name: flavor.name, image: '' };
-    return renderHalfAndHalfPizzaVisual(
-        getFlavorProduct(item.firstFlavor),
-        getFlavorProduct(item.secondFlavor),
-        'pizza-split-visual pizza-item-split-visual'
-    );
+    if (item?.itemType === 'BEBIDA') return '';
+    const getFlavorProduct = (flavor) => publicProducts.find((product) => String(product.id) === String(flavor?.id))
+        || publicProducts.find((product) => product.name === flavor?.name)
+        || { name: flavor?.name || 'Pizza', image: '' };
+    const firstProduct = getFlavorProduct(item?.firstFlavor);
+    if (item?.pizzaType === 'MEIO_A_MEIO' && item.secondFlavor) {
+        return renderHalfAndHalfPizzaVisual(
+            firstProduct,
+            getFlavorProduct(item.secondFlavor),
+            'pizza-split-visual pizza-item-split-visual'
+        );
+    }
+    const image = getCustomizerImageSource(firstProduct) || getPizzaFallbackImage(firstProduct);
+    if (!image) return '';
+    const originalImage = getCustomizerProductImage(firstProduct);
+    const originalAttribute = originalImage && image !== originalImage ? ` data-original-src="${escapeHtml(originalImage)}"` : '';
+    return `<img class="pizza-item-image" src="${escapeHtml(image)}"${originalAttribute} alt="${escapeHtml(firstProduct.name)}" loading="lazy" decoding="async" width="62" height="62" onerror="this.onerror=null;this.src='assets/cardapio/atum-cardapio.jpg';">`;
 }
 
 function normalizeCatalogSearch(value) {
@@ -2301,6 +2314,7 @@ function renderConfirmation(orderData) {
     if (!data) return;
 
     confirmationCodeElement.textContent = `Pedido ${data.code}`;
+    confirmationCodeElement.closest('.order-code-copy-row')?.querySelector('[data-copy-code]')?.setAttribute('data-copy-code', data.code || '');
     confirmationStatusElement.textContent = data.status;
     confirmationStatusElement.className = `confirmation-status ${getOrderQueryStatusLabel(data.status)}`;
     confirmationSummaryElement.innerHTML = data.items.map((item) => `
@@ -2835,6 +2849,36 @@ function showOrderQueryMessage(message) {
     orderQueryMessage.classList.add('error');
 }
 
+async function copyOrderCode(button) {
+    const code = String(button?.dataset.copyCode || '').trim();
+    if (!code) return;
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(code);
+        } else {
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.append(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            textarea.remove();
+        }
+        const label = button.querySelector('span');
+        if (label) label.textContent = 'Copiado!';
+        window.setTimeout(() => { if (label) label.textContent = 'Copiar'; }, 2000);
+    } catch (error) {
+        console.warn('Não foi possível copiar o código do pedido.', error);
+    }
+}
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-copy-code]');
+    if (button) void copyOrderCode(button);
+});
+
 function renderOrderQueryResult(orderData) {
     if (!orderQueryResult || !orderQueryCode || !orderQueryPhone) return;
 
@@ -2847,6 +2891,7 @@ function renderOrderQueryResult(orderData) {
     const phoneValue = document.querySelector('.order-query-phone-value');
     if (codeValue) {
         codeValue.textContent = `Pedido ${orderData.code || 'Não informado'}`;
+        codeValue.closest('.order-code-copy-row')?.querySelector('[data-copy-code]')?.setAttribute('data-copy-code', orderData.code || '');
     }
     if (phoneValue) phoneValue.textContent = formatPhone(orderData.phone || '');
     const statusBadge = document.querySelector('.order-query-status');
