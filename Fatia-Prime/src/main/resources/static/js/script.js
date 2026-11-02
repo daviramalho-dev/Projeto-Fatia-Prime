@@ -1,4 +1,4 @@
-const ASSET_VERSION = '2026-11-02'; // alterar a versão a cada deploy que muda estes arquivos
+const ASSET_VERSION = '2026-11-02-animacoes-scroll'; // alterar a versão a cada deploy que muda estes arquivos
 const STARTUP_WAKE_TEST_CONFIG = window.__FATIA_STARTUP_WAKE_CONFIG__ || {};
 const STARTUP_WAKE_TIMEOUT_MS = Number(STARTUP_WAKE_TEST_CONFIG.timeoutMs) || 8000;
 const STARTUP_WAKE_NOTICE_DELAY_MS = Number(STARTUP_WAKE_TEST_CONFIG.noticeDelayMs) || 3000;
@@ -1343,6 +1343,7 @@ function renderPublicCatalog() {
         });
         scheduleCatalogImagePreload(catalogImageSources.slice(CATALOG_EAGER_IMAGE_COUNT));
     }
+    initializePublicReveals(true);
 }
 
 function renderFeaturedProductCard(product) {
@@ -3602,19 +3603,88 @@ function applyCategoryFilter(category) {
     renderPublicCatalog();
 }
 
-const revealSections = [...document.querySelectorAll('.section-reveal')];
-if ('IntersectionObserver' in window) {
-    const sectionRevealObserver = new IntersectionObserver((entries, observer) => {
-        entries.forEach((entry) => {
-            if (!entry.isIntersecting) return;
-            entry.target.classList.add('is-visible');
-            observer.unobserve(entry.target);
+document.documentElement.classList.add('js');
+
+const revealObservers = new Set();
+const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+function markRevealTargets(root = document) {
+    const targetGroups = [
+        ['.hero-content h1, .hero-content p, .section-title, .banner-content h2, .banner-content p, .sobre-content h2, .sobre-content p', 'reveal-fade'],
+        ['.hero-buttons, .center-button, .banner-content .btn-primary, .sobre-content .btn-primary', 'reveal-scale'],
+        ['.pizza-card, .menu-item', 'reveal-fade'],
+    ];
+    targetGroups.forEach(([selector, className]) => {
+        [...root.querySelectorAll(selector)].forEach((element) => {
+            if (element.closest('.admin-header, .admin-access, .admin-orders, .admin-catalog, .admin-sales')) return;
+            element.classList.add(className);
         });
-    }, { threshold: 0.12 });
-    revealSections.forEach((section) => sectionRevealObserver.observe(section));
-} else {
-    revealSections.forEach((section) => section.classList.add('is-visible'));
+    });
 }
+
+function initializePublicReveals(showDynamicCatalog = false) {
+    markRevealTargets();
+    const targets = [...document.querySelectorAll('.section-reveal, .reveal-fade, .reveal-scale')];
+    targets.forEach((target) => {
+        if (showDynamicCatalog && target.matches('.pizza-card, .menu-item')) {
+            target.classList.add('is-visible');
+            target.dataset.revealInitialized = 'true';
+            target.style.transitionDelay = '0ms';
+            return;
+        }
+        if (target.dataset.revealInitialized === 'true') return;
+        target.dataset.revealInitialized = 'true';
+        const siblings = [...target.parentElement?.children || []].filter((element) => (
+            element.matches('.pizza-card, .menu-category-group, .menu-item')
+        ));
+        if (siblings.length) {
+            target.style.transitionDelay = `${Math.min(siblings.indexOf(target), 5) * 60}ms`;
+        }
+        if (reducedMotionQuery.matches || !('IntersectionObserver' in window)) {
+            target.classList.add('is-visible');
+        } else {
+            const observer = new IntersectionObserver((entries, entryObserver) => {
+                entries.forEach((entry) => {
+                    if (!entry.isIntersecting) return;
+                    entry.target.classList.add('is-visible');
+                    entryObserver.unobserve(entry.target);
+                    revealObservers.delete(entryObserver);
+                });
+            }, { rootMargin: '0px 0px -10% 0px', threshold: 0.12 });
+            observer.observe(target);
+            revealObservers.add(observer);
+        }
+    });
+}
+
+const publicNavigation = document.querySelector('#public-navigation');
+const publicNavigationSections = [...document.querySelectorAll('#inicio, #cardapio, #sobre')];
+function updatePublicActiveNav(sectionId) {
+    publicNavigation?.querySelectorAll('a[href^="#"]').forEach((link) => {
+        if (link.getAttribute('href') === `#${sectionId}`) {
+            link.setAttribute('aria-current', 'page');
+        } else {
+            link.removeAttribute('aria-current');
+        }
+    });
+}
+
+if ('IntersectionObserver' in window && publicNavigationSections.length) {
+    const visibleSections = new Map();
+    const publicNavigationObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) visibleSections.set(entry.target.id, entry.intersectionRatio);
+            else visibleSections.delete(entry.target.id);
+        });
+        const activeSection = [...visibleSections.entries()].sort((first, second) => second[1] - first[1])[0];
+        if (activeSection) updatePublicActiveNav(activeSection[0]);
+    }, { rootMargin: '-82px 0px -45% 0px', threshold: [0, 0.12, 0.35, 0.6] });
+    publicNavigationSections.forEach((section) => publicNavigationObserver.observe(section));
+} else {
+    updatePublicActiveNav('inicio');
+}
+
+initializePublicReveals();
 
 loadPublicCatalog();
 syncCustomizerSelects();
@@ -4231,7 +4301,7 @@ document.querySelector('.confirmation-continue').addEventListener('click', () =>
 });
 
 document.querySelector('.js-scroll-to-about').addEventListener('click', () => {
-    document.querySelector('#sobre').scrollIntoView({ behavior: getScrollBehavior() });
+    document.querySelector('#sobre')?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
 });
 document.querySelector('.js-about-whatsapp').addEventListener('click', () => {
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Olá! Gostaria de mais informações sobre o cardápio da Fatia Prime.')}`, '_blank', 'noopener,noreferrer');
