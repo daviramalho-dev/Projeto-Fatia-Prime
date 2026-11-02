@@ -1,4 +1,11 @@
-const ASSET_VERSION = '2026-10-31'; // alterar a versão a cada deploy que muda estes arquivos
+const ASSET_VERSION = '2026-11-02'; // alterar a versão a cada deploy que muda estes arquivos
+const STARTUP_WAKE_TEST_CONFIG = window.__FATIA_STARTUP_WAKE_CONFIG__ || {};
+const STARTUP_WAKE_TIMEOUT_MS = Number(STARTUP_WAKE_TEST_CONFIG.timeoutMs) || 8000;
+const STARTUP_WAKE_NOTICE_DELAY_MS = Number(STARTUP_WAKE_TEST_CONFIG.noticeDelayMs) || 3000;
+const STARTUP_WAKE_RETRY_LIMIT_MS = Number(STARTUP_WAKE_TEST_CONFIG.retryLimitMs) || 120000;
+const STARTUP_WAKE_RETRY_INITIAL_MS = Number(STARTUP_WAKE_TEST_CONFIG.retryInitialMs) || 3000;
+const STARTUP_WAKE_RETRY_MAX_MS = Number(STARTUP_WAKE_TEST_CONFIG.retryMaxMs) || 8000;
+const RETRYABLE_WAKE_STATUSES = new Set([502, 503, 504]);
 const WHATSAPP_NUMBER = '5561993637373';
 const CART_STORAGE_KEY = 'fatia-prime-cart';
 const THEME_STORAGE_KEY = 'fatia-prime-theme';
@@ -300,6 +307,11 @@ let selectedAdminPizzaProductType = 'all';
 let publicCatalogLoadInProgress = false;
 let publicCatalogLoadFailed = false;
 let catalogLoadMessageTimer = null;
+let startupWakeDotTimer = null;
+let startupWakeRetryTimer = null;
+let startupWakeStartedAt = 0;
+let startupWakeRetryDelay = STARTUP_WAKE_RETRY_INITIAL_MS;
+let startupWakeRetryButtonVisible = false;
 let adminRefreshTimer = null;
 let adminRefreshInProgress = false;
 let adminOrdersLoading = false;
@@ -784,6 +796,12 @@ function getCartFeedbackName(item, fallback = 'Item') {
     return `Pizza inteira: ${firstFlavor}`;
 }
 
+function showQuickApiError(error, fallback) {
+    if (!isRetryableWakeError(error)) return false;
+    void mostrarAviso(fallback || 'O servidor está acordando. Aguarde um instante e tente novamente.', 'Conexão temporariamente indisponível');
+    return true;
+}
+
 function showAddedFeedback(button, addedItem = null) {
     if (!button) return;
     const currentTimer = buttonFeedbackTimers.get(button);
@@ -856,15 +874,131 @@ function normalizeApiProduct(product, categories) {
     };
 }
 
+function isRetryableWakeError(error) {
+    return error?.isNetworkError === true
+        || error?.isTimeout === true
+        || RETRYABLE_WAKE_STATUSES.has(error?.status);
+}
+
+function createApiError(response, data) {
+    const error = new Error(data?.message || 'Não foi possível comunicar com a API.');
+    error.status = response.status;
+    error.isWakeRetryable = RETRYABLE_WAKE_STATUSES.has(response.status);
+    return error;
+}
+
 async function fetchApiJson(url, options = {}) {
-    const response = await fetch(url, { credentials: 'same-origin', ...options });
-    const data = await response.json().catch(() => null);
-    if (!response.ok) {
-        const error = new Error(data?.message || 'Não foi possível comunicar com a API.');
-        error.status = response.status;
-        throw error;
+    try {
+        const response = await fetch(url, { credentials: 'same-origin', ...options });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw createApiError(response, data);
+        return data;
+    } catch (error) {
+        if (error?.status || error?.isNetworkError) throw error;
+        const networkError = new Error('Não foi possível conectar ao servidor.');
+        networkError.isNetworkError = true;
+        networkError.isWakeRetryable = true;
+        throw networkError;
     }
-    return data;
+}
+
+function setCatalogWaitingMessage(message, showRetry = false) {
+    const menuList = document.querySelector('.menu-list');
+    if (menuList) menuList.innerHTML = `<p class="catalog-empty" role="status">${escapeHtml(message)}</p>`;
+    if (!catalogFeedback) return;
+    catalogFeedback.replaceChildren(document.createTextNode(message));
+    if (showRetry) {
+        catalogRetryButton.type = 'button';
+        catalogRetryButton.className = 'catalog-retry-button';
+        catalogRetryButton.textContent = 'Tentar de novo';
+        catalogFeedback.append(document.createTextNode(' '), catalogRetryButton);
+    }
+    catalogFeedback.hidden = false;
+}
+
+function stopStartupWakeFeedback() {
+    window.clearTimeout(startupWakeDotTimer);
+    window.clearTimeout(startupWakeRetryTimer);
+    startupWakeDotTimer = null;
+    startupWakeRetryTimer = null;
+    startupWakeStartedAt = 0;
+    startupWakeRetryDelay = STARTUP_WAKE_RETRY_INITIAL_MS;
+    startupWakeRetryButtonVisible = false;
+}
+
+function updateStartupWakeFeedback() {
+    if (!publicCatalogLoadInProgress || !catalogFeedback) return;
+    const elapsed = Date.now() - startupWakeStartedAt;
+    if (elapsed >= STARTUP_WAKE_RETRY_LIMIT_MS) {
+        startupWakeRetryButtonVisible = true;
+        publicCatalogLoadInProgress = false;
+        setCatalogWaitingMessage('Está demorando mais que o normal.', true);
+        window.clearTimeout(startupWakeDotTimer);
+        startupWakeDotTimer = null;
+        return;
+    }
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const dots = reducedMotion ? '' : '.'.repeat(Math.floor(elapsed / 1000) % 4);
+    setCatalogWaitingMessage(`Acendendo o forno, o cardápio já vem${dots}`);
+    startupWakeDotTimer = window.setTimeout(updateStartupWakeFeedback, 1000);
+}
+
+function beginStartupWakeFeedback() {
+    if (startupWakeStartedAt || !catalogFeedback) return;
+    startupWakeStartedAt = Date.now();
+    window.clearTimeout(catalogLoadMessageTimer);
+    catalogLoadMessageTimer = window.setTimeout(() => {
+        if (publicCatalogLoadInProgress) updateStartupWakeFeedback();
+    }, STARTUP_WAKE_NOTICE_DELAY_MS);
+}
+
+function waitForStartupWakeRetry() {
+    const elapsed = Date.now() - startupWakeStartedAt;
+    const remaining = Math.max(0, STARTUP_WAKE_RETRY_LIMIT_MS - elapsed);
+    if (remaining === 0) {
+        updateStartupWakeFeedback();
+        return Promise.resolve(false);
+    }
+    const delay = Math.min(startupWakeRetryDelay, remaining);
+    startupWakeRetryDelay = Math.min(STARTUP_WAKE_RETRY_MAX_MS, startupWakeRetryDelay + 1000);
+    return new Promise((resolve) => {
+        startupWakeRetryTimer = window.setTimeout(() => {
+            startupWakeRetryTimer = null;
+            resolve(true);
+        }, delay);
+    });
+}
+
+async function fetchStartupWakeJson(url, options = {}) {
+    const controller = new AbortController();
+    const requestOptions = { ...options, signal: controller.signal };
+    const timeout = window.setTimeout(() => controller.abort(), STARTUP_WAKE_TIMEOUT_MS);
+    try {
+        const response = await fetch(url, { credentials: 'same-origin', ...requestOptions });
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+            const error = createApiError(response, data);
+            if (!RETRYABLE_WAKE_STATUSES.has(response.status)) throw error;
+            error.isWakeRetryable = true;
+            throw error;
+        }
+        return data;
+    } catch (error) {
+        if (error?.status && !RETRYABLE_WAKE_STATUSES.has(error.status)) throw error;
+        if (error?.name === 'AbortError') {
+            const timeoutError = new Error('A conexão demorou mais que o esperado.');
+            timeoutError.isTimeout = true;
+            timeoutError.isWakeRetryable = true;
+            throw timeoutError;
+        }
+        if (error?.isWakeRetryable) throw error;
+        const networkError = new Error('Não foi possível conectar ao servidor.');
+        networkError.isNetworkError = true;
+        networkError.isWakeRetryable = true;
+        throw networkError;
+    } finally {
+        window.clearTimeout(timeout);
+    }
 }
 
 async function loadPublicCatalog() {
@@ -885,18 +1019,25 @@ async function loadPublicCatalog() {
         catalogFeedback.textContent = '';
         catalogFeedback.hidden = true;
     }
-    catalogLoadMessageTimer = window.setTimeout(() => {
-        if (publicCatalogLoadInProgress && catalogFeedback) {
-            catalogFeedback.textContent = 'Conectando ao servidor... O carregamento inicial pode levar alguns instantes.';
-            catalogFeedback.hidden = false;
+    stopStartupWakeFeedback();
+    startupWakeRetryButtonVisible = false;
+    beginStartupWakeFeedback();
+    const loadAttempt = async () => {
+        try {
+            return await Promise.all([
+                fetchStartupWakeJson('/api/produtos'),
+                fetchStartupWakeJson('/api/categorias'),
+                loadProductImageAssociations({ startup: true }),
+            ]);
+        } catch (error) {
+            if (!isRetryableWakeError(error)) throw error;
+            beginStartupWakeFeedback();
+            if (await waitForStartupWakeRetry()) return loadAttempt();
+            throw error;
         }
-    }, 5000);
+    };
     try {
-        const [products, categories] = await Promise.all([
-            fetchApiJson('/api/produtos'),
-            fetchApiJson('/api/categorias'),
-            loadProductImageAssociations(),
-        ]);
+        const [products, categories] = await loadAttempt();
         if (!Array.isArray(products) || !Array.isArray(categories)) throw new Error('Resposta inválida do catálogo.');
         publicCategories = categories
             .filter((category) => category && category.id != null && category.nome)
@@ -904,6 +1045,7 @@ async function loadPublicCatalog() {
             .sort((first, second) => getPublicCategoryOrder(first) - getPublicCategoryOrder(second));
         publicProducts = products.map((product) => normalizeApiProduct(product, publicCategories)).filter(Boolean);
         renderCategoryFilters(publicCategories, 'public');
+        stopStartupWakeFeedback();
         if (catalogFeedback) {
             catalogFeedback.textContent = '';
             catalogFeedback.hidden = true;
@@ -911,6 +1053,7 @@ async function loadPublicCatalog() {
         renderPublicCatalog();
         if (window.cart?.length) updateCart();
     } catch (error) {
+        if (isRetryableWakeError(error)) return;
         publicCatalogLoadFailed = true;
         publicProducts = [];
         publicCategories = [];
@@ -920,6 +1063,7 @@ async function loadPublicCatalog() {
     } finally {
         window.clearTimeout(catalogLoadMessageTimer);
         catalogLoadMessageTimer = null;
+        if (!startupWakeRetryButtonVisible) stopStartupWakeFeedback();
         publicCatalogLoadInProgress = false;
         if (menuList) menuList.setAttribute('aria-busy', 'false');
     }
@@ -935,9 +1079,10 @@ function getCatalogThumbnailSource(product) {
     return product.image ? image : getDerivedImagePath(image, 'thumbs') || image;
 }
 
-async function loadProductImageAssociations() {
+async function loadProductImageAssociations({ startup = false } = {}) {
     try {
-        const manifest = await fetchApiJson(`/assets/image-associations.json?v=${ASSET_VERSION}`);
+        const fetchManifest = startup ? fetchStartupWakeJson : fetchApiJson;
+        const manifest = await fetchManifest(`/assets/image-associations.json?v=${ASSET_VERSION}`);
         const cardapio = manifest?.cardapio;
         const meia = manifest?.meia;
         if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)
@@ -965,6 +1110,7 @@ async function loadProductImageAssociations() {
     } catch (error) {
         catalogProductImages = new Map();
         halfPizzaImages = new Map();
+        if (startup && isRetryableWakeError(error)) throw error;
         console.error('Não foi possível carregar as associações de imagens do catálogo.', error);
     }
 }
@@ -2691,6 +2837,7 @@ async function refreshDeliveryQuote(cep, form, force = false) {
         return true;
     } catch (error) {
         if (!isCurrentDeliveryQuoteRequest(requestId, normalizedCep, form)) return false;
+        showQuickApiError(error, 'Não foi possível calcular a entrega. Tente novamente.');
         currentDeliveryQuote = null;
         renderDeliveryBreakdown();
         const mensagemForaDaArea = 'Ainda não entregamos nessa região. Em breve abriremos novas unidades mais perto de você!';
@@ -3163,6 +3310,7 @@ async function addProduct(element) {
         nativeDialogShowModal?.();
     } catch (error) {
         customizerTrigger = null;
+        showQuickApiError(error, 'Não foi possível carregar as opções da pizza. Tente novamente.');
         if (catalogFeedback) {
             catalogFeedback.textContent = 'Não foi possível carregar as opções da pizza. Tente novamente.';
             catalogFeedback.hidden = false;
@@ -3474,7 +3622,9 @@ syncAdminStatusSelect();
 syncAdminFilterSelects();
 
 catalogFeedback?.addEventListener('click', (event) => {
-    if (event.target === catalogRetryButton) void loadPublicCatalog();
+    if (event.target !== catalogRetryButton) return;
+    stopStartupWakeFeedback();
+    void loadPublicCatalog();
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -3601,6 +3751,7 @@ if (orderQueryForm) {
             renderOrderQueryResult(results[0]);
             startClientOrderAutoRefresh(results[0].code, results[0].phone, results[0].status);
         } catch (error) {
+            showQuickApiError(error, 'Pedido não encontrado. Verifique o código ou telefone informado.');
             showOrderQueryMessage(error.message || 'Pedido não encontrado. Verifique o código ou telefone informado.');
             if (orderQueryResult) orderQueryResult.hidden = true;
             return;
@@ -4038,6 +4189,7 @@ if (checkoutForm) {
             }
         } catch (error) {
             whatsappWindow?.close();
+            showQuickApiError(error, 'Não foi possível criar o pedido. Tente novamente.');
             showCheckoutMessage(error.message || 'Não foi possível criar o pedido. Tente novamente.', false);
         } finally {
             if (submitButton) {
