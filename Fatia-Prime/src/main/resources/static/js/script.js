@@ -14,6 +14,14 @@ const CATALOG_PRELOAD_IMAGE_COUNT = 6;
 const catalogPreloadedImages = new Set();
 let catalogPreloadTimer = null;
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const siteModal = document.querySelector('.site-modal');
+const siteModalTitle = document.querySelector('#site-modal-title');
+const siteModalMessage = document.querySelector('#site-modal-message');
+const siteModalCancel = document.querySelector('.site-modal-cancel');
+const siteModalConfirm = document.querySelector('.site-modal-confirm');
+let siteModalResolve = null;
+let siteModalPreviousFocus = null;
+
 const panel = document.querySelector('.cart-panel');
 const checkoutPanel = document.querySelector('.checkout-panel');
 const checkoutForm = document.querySelector('#checkout-form');
@@ -212,6 +220,74 @@ let publicCategories = [];
 let catalogProductImages = new Map();
 let halfPizzaImages = new Map();
 const missingProductImageWarnings = new Set();
+
+function closeSiteModal(result = false) {
+    if (!siteModal || !siteModalResolve) return;
+    const resolve = siteModalResolve;
+    siteModalResolve = null;
+    siteModal.hidden = true;
+    document.body.classList.remove('site-modal-open');
+    siteModalPreviousFocus?.focus();
+    siteModalPreviousFocus = null;
+    resolve(result);
+}
+
+function mostrarConfirmacao({ titulo = 'Confirme a ação', mensagem, textoConfirmar = 'Confirmar', perigo = false } = {}) {
+    if (!siteModal) return Promise.resolve(false);
+    if (siteModalResolve) closeSiteModal(false);
+    siteModalPreviousFocus = document.activeElement;
+    siteModalTitle.textContent = titulo;
+    siteModalMessage.textContent = mensagem || '';
+    siteModalConfirm.textContent = textoConfirmar;
+    siteModalConfirm.classList.toggle('site-modal-danger', perigo);
+    siteModalCancel.hidden = false;
+    siteModal.hidden = false;
+    document.body.classList.add('site-modal-open');
+    window.setTimeout(() => siteModalConfirm.focus(), 0);
+    return new Promise((resolve) => { siteModalResolve = resolve; });
+}
+
+function mostrarAviso(mensagem, titulo = 'Atenção') {
+    if (!siteModal) return Promise.resolve(false);
+    siteModalPreviousFocus = document.activeElement;
+    siteModalTitle.textContent = titulo;
+    siteModalMessage.textContent = mensagem || '';
+    siteModalConfirm.textContent = 'OK';
+    siteModalConfirm.classList.remove('site-modal-danger');
+    siteModalCancel.hidden = true;
+    siteModal.hidden = false;
+    document.body.classList.add('site-modal-open');
+    window.setTimeout(() => siteModalConfirm.focus(), 0);
+    return new Promise((resolve) => { siteModalResolve = resolve; });
+}
+
+function trapSiteModalFocus(event) {
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        closeSiteModal(false);
+        return;
+    }
+    if (event.key !== 'Tab' || siteModal?.hidden) return;
+    const focusable = [...siteModal.querySelectorAll('button:not([hidden]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')];
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
+siteModalConfirm?.addEventListener('click', () => closeSiteModal(true));
+siteModalCancel?.addEventListener('click', () => closeSiteModal(false));
+siteModal?.addEventListener('click', (event) => {
+    if (event.target === siteModal) closeSiteModal(false);
+});
+document.addEventListener('keydown', trapSiteModalFocus);
+
 let selectedCatalogCategory = 'all';
 let adminProducts = [];
 let adminCategories = [];
@@ -1594,7 +1670,12 @@ async function submitAdminCategory(event) {
 
 async function deleteAdminCategory(categoryId) {
     const category = adminCategories.find((item) => String(item.id) === String(categoryId));
-    if (!category || !window.confirm(`Deseja excluir a categoria "${category.name}"?`)) return;
+    if (!category || !await mostrarConfirmacao({
+        titulo: 'Excluir categoria',
+        mensagem: `Deseja excluir a categoria "${category.name}"?`,
+        textoConfirmar: 'Excluir',
+        perigo: true,
+    })) return;
     showAdminCategoryMessage('Excluindo categoria...', 'info');
     try {
         const csrfToken = await getCsrfToken();
@@ -1830,7 +1911,12 @@ function editAdminPizzaOption(option) {
 async function toggleAdminPizzaOption(optionIdValue) {
     const option = adminPizzaOptions.find((item) => String(item.id) === String(optionIdValue));
     if (!option) return;
-    if (option.active && !window.confirm(`Deseja desativar "${option.name}"?`)) return;
+    if (option.active && !await mostrarConfirmacao({
+        titulo: 'Desativar opção',
+        mensagem: `Deseja desativar "${option.name}"?`,
+        textoConfirmar: 'Desativar',
+        perigo: true,
+    })) return;
     try {
         const csrfToken = await getCsrfToken();
         const updated = await fetchApiJson(`/api/admin/opcoes-pizza/${encodeURIComponent(option.id)}/status`, {
@@ -1928,7 +2014,12 @@ function editAdminProduct(product) {
 async function toggleAdminProduct(productIdValue) {
     const product = adminProducts.find((item) => String(item.id) === String(productIdValue));
     if (!product) return;
-    if (product.active && !window.confirm(`Deseja realmente desativar o produto "${product.name}"?`)) return;
+    if (product.active && !await mostrarConfirmacao({
+        titulo: 'Desativar produto',
+        mensagem: `Deseja realmente desativar o produto "${product.name}"?`,
+        textoConfirmar: 'Desativar',
+        perigo: true,
+    })) return;
     try {
         const csrfToken = await getCsrfToken();
         const updated = await fetchApiJson(`/api/admin/produtos/${encodeURIComponent(product.id)}/status`, {
@@ -2884,7 +2975,7 @@ function openCheckout() {
         if (checkoutMessage) {
             showCheckoutMessage(message, false);
         } else {
-            alert(message);
+            void mostrarAviso(message);
         }
         return;
     }
@@ -2895,7 +2986,7 @@ function openCheckout() {
         if (checkoutMessage) {
             showCheckoutMessage(message, false);
         } else {
-            alert(message);
+            void mostrarAviso(message);
         }
         return;
     }

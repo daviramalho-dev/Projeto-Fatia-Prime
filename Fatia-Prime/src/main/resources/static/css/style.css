@@ -2709,6 +2709,45 @@ footer p {
     100% { transform: scale(1); }
 }
 
+.site-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: var(--color-overlay);
+}
+
+.site-modal[hidden] { display: none; }
+.site-modal-card {
+    width: min(440px, 100%);
+    padding: 26px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-panel);
+}
+.site-modal-card h2 {
+    margin: 0;
+    font-family: "Bebas Neue", sans-serif;
+    font-size: 32px;
+    letter-spacing: 1px;
+}
+.site-modal-card p {
+    margin: 12px 0 22px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+}
+.site-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+.site-modal-actions button { min-height: 44px; }
+.site-modal-danger { background: var(--color-error); border-color: var(--color-error); }
+body.site-modal-open { overflow: hidden; }
+
 .cart-backdrop {
     position: fixed;
     inset: 0;
