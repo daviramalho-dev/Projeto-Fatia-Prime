@@ -196,15 +196,45 @@ body {
     transition: background-color .25s ease, color .25s ease;
 }
 
-.section-reveal {
+.js .section-reveal {
     opacity: 0;
-    transform: translateY(14px);
-    transition: opacity .26s ease-out, transform .26s ease-out;
+    transform: translateY(24px);
+    transition: opacity 650ms cubic-bezier(0.16, 1, 0.3, 1), transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.section-reveal.is-visible {
+.js .section-reveal.is-visible {
     opacity: 1;
     transform: translateY(0);
+}
+
+.js .reveal-fade {
+    opacity: 0;
+    transition: opacity 650ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.js .reveal-scale {
+    opacity: 0;
+    transform: scale(.97);
+    transition: opacity 650ms cubic-bezier(0.16, 1, 0.3, 1), transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.js .reveal-fade.is-visible,
+.js .reveal-scale.is-visible {
+    opacity: 1;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .js .section-reveal,
+    .js .section-reveal.is-visible,
+    .js .reveal-fade,
+    .js .reveal-fade.is-visible,
+    .js .reveal-scale,
+    .js .reveal-scale.is-visible {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
 }
 
 a {
@@ -297,6 +327,7 @@ button:disabled {
     background: var(--color-bg-darker);
 
     border-bottom: 1px solid var(--color-bg-lighter);
+    transition: background-color .25s ease, box-shadow .25s ease;
 
     position: fixed;
     top: 0;
@@ -362,6 +393,11 @@ button:disabled {
 
 .header nav a:focus-visible {
     color: var(--color-primary);
+}
+
+.public-header.is-scrolled {
+    background: color-mix(in srgb, var(--color-bg-darker) 94%, transparent);
+    box-shadow: var(--shadow-md);
 }
 
 .admin-header {
@@ -893,6 +929,18 @@ button:disabled {
         box-shadow: var(--shadow-md);
         transform: translateY(-2px);
     }
+
+    .pizza-card:hover .pizza-image img {
+        transform: scale(1.04);
+    }
+}
+
+.pizza-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform-origin: center;
+    transition: transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 
@@ -904,12 +952,6 @@ button:disabled {
     width: 100%;
     height: clamp(190px, 21vw, 270px);
     background: var(--color-surface-subtle);
-}
-
-.pizza-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
 }
 
 /* BADGE */
@@ -994,6 +1036,26 @@ button:disabled {
     border-color: var(--color-success);
     background: var(--color-success-soft);
     color: var(--color-success);
+    animation: add-feedback-pop 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes add-feedback-pop {
+    0% { transform: scale(.96); }
+    65% { transform: scale(1.04); }
+    100% { transform: scale(1); }
+}
+
+.btn-card.is-added::after,
+.btn-menu-add.is-added::after {
+    display: inline-block;
+    margin-left: .35em;
+    content: "✓";
+    animation: add-feedback-check 180ms ease-out both;
+}
+
+@keyframes add-feedback-check {
+    from { opacity: 0; transform: translateY(2px) scale(.7); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* CENTER BUTTON */
@@ -1277,7 +1339,7 @@ button:disabled {
     gap: 20px;
     padding: 22px 0;
     border-bottom: 1px solid var(--color-border);
-    transition: padding-left .2s ease;
+    transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .menu-item.has-image {
@@ -1300,17 +1362,20 @@ button:disabled {
     border: 1px solid var(--color-border);
 }
 
-.menu-item-image[data-menu-product-image] {
+.js .menu-item-image[data-menu-product-image],
+.js .pizza-card .pizza-image img {
     opacity: 0;
-    transition: opacity .18s ease;
+    transition: opacity .18s ease, transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.menu-item-image[data-menu-product-image].is-loaded {
+.menu-item-image[data-menu-product-image].is-loaded,
+.pizza-card .pizza-image img.is-loaded {
     opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .menu-item-image[data-menu-product-image] {
+    .js .menu-item-image[data-menu-product-image],
+    .js .pizza-card .pizza-image img {
         transition: none;
     }
 }
@@ -1328,7 +1393,7 @@ button:disabled {
 
 @media (hover: hover) and (pointer: fine) {
     .menu-item:hover {
-        padding-left: 8px;
+        transform: translateX(8px);
     }
 }
 
@@ -2157,7 +2222,11 @@ button:disabled {
 .admin-orders,
 .admin-catalog,
 .admin-sales,
-#admin-resumo {
+#admin-resumo,
+#inicio,
+#cardapio,
+#sobre,
+#consultar-pedido {
     scroll-margin-top: 82px;
 }
 
@@ -4825,11 +4894,22 @@ h4,
     .admin-order-card-side button:hover,
     .admin-product-card-actions button:hover,
     .admin-status-save:hover {
-        transition-property: color, background-color, border-color, box-shadow, transform, padding-left;
+        transition-property: color, background-color, border-color, box-shadow, transform;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .btn-card.is-added,
+    .btn-menu-add.is-added,
+    .btn-card.is-added::after,
+    .btn-menu-add.is-added::after,
+    .menu-item-image[data-menu-product-image],
+    .pizza-card .pizza-image img {
+        animation: none;
+        opacity: 1;
+        transition: none;
+    }
+
     html {
         scroll-behavior: auto;
     }
@@ -4859,8 +4939,14 @@ h4,
     }
 
     .section-reveal,
-    .section-reveal.is-visible {
+    .section-reveal.is-visible,
+    .reveal-fade,
+    .reveal-fade.is-visible,
+    .reveal-scale,
+    .reveal-scale.is-visible {
+        opacity: 1;
         transform: none;
+        transition: none;
     }
 }
 
