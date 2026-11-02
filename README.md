@@ -31,7 +31,10 @@ A interface apresenta a marca e carrega o catálogo pela API. O frontend está i
 - Carrinho de compras com armazenamento local no navegador (`localStorage`).
 - Checkout com validação dos dados e criação do pedido pela API.
 - Confirmação do pedido com código para consulta posterior.
-- Consulta pública do pedido por código ou telefone e acompanhamento do status.
+- Consulta pública do pedido informando código e telefone, com acompanhamento do status.
+- Tela de espera acessível, com aviso e nova tentativa automática quando o servidor demora a acordar.
+- Tema claro e escuro para a interface.
+- Avisos e confirmações em modais próprios.
 - Opção de compartilhar os dados do pedido pelo WhatsApp.
 
 ### Para administradores
@@ -41,6 +44,9 @@ A interface apresenta a marca e carrega o catálogo pela API. O frontend está i
 - Cadastro, edição, consulta, ativação e desativação de produtos (pizzas e bebidas).
 - Gerenciamento administrativo de categorias.
 - Configuração de bordas recheadas, adicionais e molhos, incluindo preço, tipo de pizza e disponibilidade.
+- Resumo de pedidos no dashboard, com totais por status, produtos e valor total.
+- Busca de pedidos por prefixo de código, telefone, nome e status.
+- Relatório de vendas por período, com faturamento, ticket médio, vendas por dia, categoria, produtos mais vendidos e horário de pico, com exportação em XLSX e CSV.
 - Consulta e cadastro administrativo de usuários.
 
 ## Acesso ao sistema
@@ -58,8 +64,12 @@ O workflow configurado do GitHub Pages publica somente os arquivos estáticos do
 - **Spring Data JPA** e **Hibernate** — persistência e mapeamento das entidades.
 - **Spring Security** e **Spring Security Crypto** — autenticação, autorização e BCrypt.
 - **Spring Validation** — validação de dados recebidos pela API.
+- **Flyway** — migrations versionadas do banco de dados.
+- **Caffeine** — cache e limite de requisições por cliente.
+- **Apache POI 5.4.1** — geração do relatório XLSX.
 - **PostgreSQL** — banco relacional principal; produção pode usar Neon.
 - **H2 Database** — dependência exclusiva do perfil de testes em memória; não faz parte do runtime da aplicação.
+- **Testcontainers 1.21.3** — testes de persistência com PostgreSQL em contêiner.
 - **HTML5, CSS3 e JavaScript** — interface do sistema, sem framework frontend.
 - **Gradle Wrapper** — compilação, execução e testes do projeto.
 - **Docker** — imagem de execução definida no `Dockerfile` para o deploy.
@@ -128,7 +138,7 @@ Esse comando compila o projeto e executa os testes. A maior parte da suíte usa 
 ## Como a aplicação funciona
 
 - **Spring Boot** inicializa o servidor, entrega os arquivos do frontend e integra os endpoints REST.
-- **Spring Data JPA**, com Hibernate, mapeia as entidades `Usuario`, `Categoria`, `Produto`, `Pedido` e `ItemPedido` para tabelas e simplifica o acesso aos dados por repositories.
+- **Spring Data JPA**, com Hibernate, mapeia as entidades `Usuario`, `Categoria`, `Produto`, `OpcaoPizza`, `FaixaFrete`, `Pedido`, `ItemPedido` e `ItemPedidoAdicional` para tabelas e simplifica o acesso aos dados por repositories.
 - **PostgreSQL** é o banco da aplicação no perfil local `dev` e no perfil de implantação `prod`. No Render, ele deve ser um banco externo persistente, como Neon; a aplicação não usa o disco local do Render para guardar registros.
 - **Flyway** aplica as migrações versionadas em `src/main/resources/db/migration`; Hibernate valida o esquema em vez de alterar tabelas automaticamente.
 - `data.sql` insere categorias, produtos e opções iniciais de forma idempotente. Não substitui dados já existentes nem apaga produtos, pedidos ou itens na inicialização.
@@ -172,7 +182,7 @@ Fatia-Prime/
 
 As classes Java ficam em um único pacote e são distinguidas pelo papel indicado nos nomes; a árvore acima descreve a organização existente, sem introduzir subpacotes ou uma camada Service.
 
-Os arquivos de publicação estática do GitHub Pages estão em `.github/workflows/pages.yml`. Os documentos e materiais de apoio ficam em `docs/` e `Fotos_Projeto_FatiaPrime/`.
+O workflow de publicação estática do GitHub Pages está em `.github/workflows/pages.yml`. Ele publica somente os arquivos estáticos e não executa testes. Os documentos e materiais de apoio ficam em `docs/` e `Fotos_Projeto_FatiaPrime/`.
 
 O projeto mantém a arquitetura simples de frontend estático servido pelo Spring Boot, com controllers, repositories e JPA no backend. Não há uma camada Service separada.
 
@@ -251,6 +261,8 @@ A autenticação administrativa utiliza os seguintes endpoints:
 
 - `GET /api/frete/consulta?cep=99990000`
   Normaliza o CEP e retorna a região atendida e o valor da faixa ativa; CEP inválido retorna erro de validação e CEP sem faixa ativa não pode ser usado para finalizar pedidos.
+- `GET /api/frete/endereco?cep=99990000`
+  Consulta o endereço associado ao CEP; CEP não encontrado retorna erro de validação e indisponibilidade do serviço externo retorna `503`.
 - As faixas de frete usadas pelo cálculo são configuração da aplicação (`app.frete.faixas`); a tabela `faixas_frete` mapeada pela entidade não é usada pelo fluxo atual de cotação.
 - O catálogo inicial inclui pizzas salgadas, doces, bordas, adicionais, molhos e bebidas padronizadas para atendimento da pizzaria.
 - Ao criar o pedido, o backend normaliza o CEP para consultar o frete, mas preserva no pedido o CEP informado pelo cliente. O frete cotado fica registrado como snapshot. O total é recalculado no servidor; valores financeiros enviados pelo navegador não são usados.
@@ -272,14 +284,37 @@ A autenticação administrativa utiliza os seguintes endpoints:
 - `POST /api/pedidos`  
   Cria um pedido público com os dados do cliente e dos itens. O preço e o total são calculados pelo backend.
 
-- `GET /api/pedidos/consulta?codigo=...` ou `?telefone=...`
-  Consulta publicamente o status e o resumo de um pedido.
+- `GET /api/pedidos/consulta?codigo=...&telefone=...`
+  Consulta publicamente o status e o resumo de um pedido; código e telefone são obrigatórios e precisam corresponder ao mesmo pedido.
+
+- `GET /api/admin/pedidos/dashboard`
+  Retorna o resumo administrativo de pedidos, com totais por status, produtos ativos e cadastrados e valor total.
 
 - `GET /api/admin/pedidos` e `GET /api/admin/pedidos/{id}`
-  Listam, filtram e detalham pedidos para administradores autenticados.
+  Listam, filtram e detalham pedidos para administradores autenticados. A listagem aceita busca por prefixo do código, além de telefone, nome e status.
 
 - `PATCH /api/admin/pedidos/{id}/status`
   Altera o status do pedido seguindo as transições permitidas.
+
+### Relatórios de vendas
+
+- `GET /api/admin/relatorios/vendas/periodo`
+  Retorna o primeiro dia com pedido e a data atual para orientar o seletor de período.
+
+- `GET /api/admin/relatorios/vendas?inicio=AAAA-MM-DD&fim=AAAA-MM-DD&considerar=todos`
+  Retorna faturamento, total de pedidos, ticket médio, cancelados, vendas por dia, vendas por categoria, até 10 produtos mais vendidos e vendas por hora. O período não pode exceder 366 dias, não pode conter datas futuras e a data inicial não pode ser posterior à final. Pedidos cancelados são contabilizados separadamente e excluídos do faturamento válido; com `considerar=entregues` ou `considerar=concluidos`, somente pedidos concluídos são considerados. As datas são interpretadas no fuso `America/Sao_Paulo`.
+
+- `GET /api/admin/relatorios/vendas/xlsx?inicio=AAAA-MM-DD&fim=AAAA-MM-DD&considerar=todos`
+  Exporta o mesmo relatório em XLSX, com as abas `Vendas por dia`, `Vendas por categoria`, `Mais vendidos` e `Horário de pico`. A exportação inclui a linha `Entrega` quando há frete positivo.
+
+### Limite de requisições
+
+- `GET /api/frete/consulta`: 20 requisições por minuto por IP.
+- `POST /api/pedidos`: 5 requisições por minuto por IP.
+- `POST /api/auth/login`: 5 requisições por minuto por IP.
+- `GET /api/pedidos/consulta`: 15 requisições por minuto por IP.
+
+Quando o limite é excedido, a API retorna `429 Too Many Requests` e o cabeçalho `Retry-After` com o tempo de espera em segundos.
 
 ## PostgreSQL, Neon e Render
 
@@ -309,6 +344,16 @@ O perfil `dev` é o padrão e usa PostgreSQL em `localhost:5432/fatiaprime`. É 
 5. O artefato da aplicação não inclui console H2. Não exponha consoles de banco no site: o console administrativo do Neon permanece no domínio e no painel do próprio Neon. Não configure armazenamento no filesystem do Render para persistência; pedidos e catálogo são gravados no PostgreSQL externo.
 
 O Render injeta `PORT`, usado pela aplicação. Não é necessário configurar um disco persistente pago para o banco, pois ele não fica no container do Render. Isso não significa disponibilidade contínua: serviços gratuitos podem suspender ou reiniciar, e cotas, suspensão, retenção de backup e armazenamento do Neon dependem do plano e das políticas vigentes. Consulte os limites atuais nos painéis antes de publicar.
+
+### Servidor gratuito e monitoramento
+
+Serviços gratuitos do Render podem pausar por inatividade e apresentar demora no primeiro atendimento após a pausa. O monitor externo utilizado é o UptimeRobot, configurado fora deste repositório, com monitor HTTP(s) na página inicial, intervalo de 5 minutos e alerta por e-mail.
+
+A página inicial (`/`) confirma somente que o servidor HTTP respondeu; ela não testa o banco. Para verificar também a conexão com o PostgreSQL, use `GET /api/categorias`, que consulta dados públicos no banco.
+
+A tela de espera do frontend trata somente erro de rede, timeout de aproximadamente 8 segundos e respostas HTTP `502`, `503` ou `504` como sinais de servidor acordando. O aviso aparece após aproximadamente 3 segundos; as novas tentativas começam em aproximadamente 3 segundos e aumentam gradualmente até aproximadamente 8 segundos. Depois de aproximadamente 2 minutos, a interface mostra `Está demorando mais que o normal.` e o botão `Tentar de novo`. Erros `4xx` e `500` JSON permanecem erros normais.
+
+A configuração do UptimeRobot, o intervalo e os alertas são externos ao repositório. A tela de espera não substitui o monitoramento e não testa o banco antes de fazer a requisição ao catálogo.
 
 ### Diagnóstico e verificação pós-deploy
 
@@ -401,6 +446,10 @@ A interface principal está em:
 
 Ela inclui apresentação da marca, catálogo de produtos vindo da API, categorias e filtros, carrinho com `localStorage`, checkout, validações, confirmação do pedido, consulta pública de pedidos e integração com WhatsApp para finalizar os pedidos. As operações administrativas de pedidos e produtos também são integradas ao backend.
 
+A interface oferece tema claro e escuro, tela de espera para respostas temporariamente indisponíveis do catálogo e modais próprios para avisos e confirmações.
+
+O versionamento de cache dos assets é manual: os parâmetros `?v=` de `style.css` e `script.js` ficam em `index.html`, e `ASSET_VERSION` fica em `script.js`. Os três valores devem ser atualizados a cada deploy que alterar esses arquivos ou o manifesto de imagens.
+
 ## Protótipo no Figma
 
 [Visualizar protótipo no Figma](https://www.figma.com/design/tyNXJswozPjT9W5TddLoRi/Fatia-Prime-%25E2%2580%2594-Prot%25C3%25B3tipo-M%25C3%25A9dia-Fidelidade?node-id=0-1&t=zAM0bcqzzKuyRwPT-0)
@@ -411,9 +460,10 @@ Ela inclui apresentação da marca, catálogo de produtos vindo da API, categori
 2. Navega pelo cardápio.
 3. Adiciona produtos ao carrinho.
 4. Ajusta quantidades e revisa o total.
-5. O checkout envia o pedido à API; o backend recalcula preços/frete e grava pedido e itens em uma transação no PostgreSQL.
-6. A confirmação apresenta o código retornado e oferece o envio dos dados pelo WhatsApp.
-7. O pedido pode ser consultado pelo código ou telefone.
+5. Informa o CEP e calcula o frete; o checkout só é liberado depois de uma cotação válida.
+6. O checkout envia o pedido à API; o backend recalcula preços/frete e grava pedido e itens em uma transação no PostgreSQL.
+7. A confirmação apresenta o código retornado e oferece o envio dos dados pelo WhatsApp.
+8. O pedido pode ser consultado pelo código e pelo telefone.
 
 O frontend é servido pelo próprio Spring Boot e se comunica com as APIs REST do backend para catálogo, checkout, pedidos e administração.
 
@@ -422,13 +472,14 @@ O frontend é servido pelo próprio Spring Boot e se comunica com as APIs REST d
 - A aplicação foi desenvolvida principalmente como projeto acadêmico.
 - A aplicação em execução depende do PostgreSQL configurado no perfil ativo. H2 é usado somente para testes.
 - O projeto continua com a arquitetura simples atual: HTML5, CSS3 e JavaScript no frontend; Spring Boot com controllers, repositories e JPA no backend; e PostgreSQL como banco principal.
-- O login administrativo protege as rotas administrativas, e as senhas são armazenadas como hash BCrypt.
+- O login administrativo protege as rotas administrativas, e as senhas são armazenadas como hash BCrypt. A sessão do administrador fica em memória; após reinício ou deploy, é necessário fazer login novamente.
 - O carrinho utiliza `localStorage`, enquanto o checkout e os pedidos são processados pelo backend.
+- O relatório interpreta a data de criação dos pedidos como UTC e converte para `America/Sao_Paulo`; por isso, o servidor deve rodar em UTC, padrão do Render. Em um ambiente local configurado em outro fuso, os horários podem divergir.
 - O deploy atual está preparado para o Render: https://fatia-prime.onrender.com
 - O workflow de GitHub Pages publica somente o frontend estático; a aplicação completa depende do backend Spring Boot, disponibilizado no Render.
-- Última atualização: outubro de 2026.
+- Última atualização: novembro de 2026.
 
-Os PDFs em `docs/` são registros acadêmicos e cronogramas da etapa em que foram produzidos; menções a H2 e status antigos descrevem etapas anteriores e não a configuração atual de execução. Atualmente, o desenvolvimento e a produção usam PostgreSQL; H2 permanece somente nos testes automatizados.
+Os PDFs em `docs/` são registros acadêmicos e cronogramas da etapa em que foram produzidos; as fotos e materiais visuais do projeto ficam em `Fotos_Projeto_FatiaPrime/`. Menções a H2 e status antigos descrevem etapas anteriores e não a configuração atual de execução. Atualmente, o desenvolvimento e a produção usam PostgreSQL; H2 permanece somente nos testes automatizados.
 
 ## Equipe
 
