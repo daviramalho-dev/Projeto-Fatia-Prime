@@ -3960,6 +3960,12 @@ function salesDayLabel(value) {
     return salesDate(value)?.toLocaleDateString('pt-BR') || value;
 }
 
+function salesDateTimeLabel(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 function salesToday() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -4209,11 +4215,32 @@ function applySalesPreset(preset) {
     fetchSalesReport();
 }
 
+async function exportSalesXlsx() {
+    if (!salesState.start || !salesState.end) return;
+    const considerar = [...salesElements.considerar].find((input) => input.checked)?.value || 'todos';
+    const url = `/api/admin/relatorios/vendas/xlsx?inicio=${salesIso(salesState.start)}&fim=${salesIso(salesState.end)}&considerar=${encodeURIComponent(considerar)}`;
+    try {
+        const response = await fetch(url, { credentials: 'same-origin' });
+        if (!response.ok) throw Object.assign(new Error('Falha ao exportar Excel'), { status: response.status });
+        const blob = await response.blob();
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `relatorio-vendas_${salesIso(salesState.start)}_a_${salesIso(salesState.end)}.xlsx`;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    } catch (error) {
+        setSalesMessage(error?.status === 401 || error?.status === 403 ? 'Sua sessão expirou. Entre novamente.' : 'Não foi possível exportar o relatório Excel.', 'error');
+    }
+}
+
 function exportSalesCsv(tableName) {
     if (!salesState.data) return;
     const data = salesState.data;
     const tables = {
-        dia: { name: 'vendas-por-dia', headers: ['Data', 'Pedidos', 'Faturamento (R$)'], rows: data.porDia.map((row) => [salesDayLabel(row.data), row.pedidos, Number(row.faturamento).toFixed(2).replace('.', ',')]) },
+        dia: { name: 'vendas-por-dia', headers: ['Data', 'Pedidos', 'Faturamento (R$)'], rows: data.porDia.map((row) => [salesDateTimeLabel(`${row.data}T00:00:00`), row.pedidos, Number(row.faturamento).toFixed(2).replace('.', ',')]) },
         categoria: { name: 'vendas-por-categoria', headers: ['Categoria', 'Quantidade', 'Faturamento (R$)', '% do total'], rows: data.porCategoria.map((row) => [row.categoria, row.quantidade, Number(row.faturamento).toFixed(2).replace('.', ','), `${Number(row.percentual).toFixed(2).replace('.', ',')}%`]) },
         produtos: { name: 'mais-vendidos', headers: ['Produto', 'Categoria', 'Quantidade', 'Faturamento (R$)'], rows: data.maisVendidos.map((row) => [row.produto, row.categoria, row.quantidade, Number(row.faturamento).toFixed(2).replace('.', ',')]) },
         horario: { name: 'horario-de-pico', headers: ['Hora', 'Pedidos', 'Faturamento (R$)'], rows: data.porHorario.map((row) => [`${String(row.hora).padStart(2, '0')}:00 – ${String(row.hora).padStart(2, '0')}:59`, row.pedidos, Number(row.faturamento).toFixed(2).replace('.', ',')]) },
@@ -4278,6 +4305,7 @@ salesElements.days?.addEventListener('click', (event) => {
     selectSalesCalendarDate(button);
 });
 document.querySelectorAll('.sales-export-btn').forEach((button) => button.addEventListener('click', () => exportSalesCsv(button.dataset.table)));
+document.querySelectorAll('.sales-export-xlsx-btn').forEach((button) => button.addEventListener('click', () => void exportSalesXlsx()));
 document.querySelectorAll('.admin-nav a, .admin-back-link').forEach((link) => {
     link.addEventListener('click', () => {
         updateAdminActiveNav(link.getAttribute('href'));

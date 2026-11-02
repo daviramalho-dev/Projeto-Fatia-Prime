@@ -25,6 +25,7 @@ dependencies {
 	implementation 'org.springframework.security:spring-security-crypto'
 	implementation 'com.github.ben-manes.caffeine:caffeine:3.2.2'
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
+	implementation 'org.apache.poi:poi-ooxml:5.4.1'
 	runtimeOnly 'org.flywaydb:flyway-database-postgresql'
 	runtimeOnly 'org.postgresql:postgresql'
 
