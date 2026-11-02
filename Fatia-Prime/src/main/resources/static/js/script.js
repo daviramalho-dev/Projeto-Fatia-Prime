@@ -14,6 +14,14 @@ const CATALOG_PRELOAD_IMAGE_COUNT = 6;
 const catalogPreloadedImages = new Set();
 let catalogPreloadTimer = null;
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const siteModal = document.querySelector('.site-modal');
+const siteModalTitle = document.querySelector('#site-modal-title');
+const siteModalMessage = document.querySelector('#site-modal-message');
+const siteModalCancel = document.querySelector('.site-modal-cancel');
+const siteModalConfirm = document.querySelector('.site-modal-confirm');
+let siteModalResolve = null;
+let siteModalPreviousFocus = null;
+
 const panel = document.querySelector('.cart-panel');
 const checkoutPanel = document.querySelector('.checkout-panel');
 const checkoutForm = document.querySelector('#checkout-form');
@@ -25,6 +33,10 @@ const checkoutFreightElement = document.querySelector('.checkout-freight');
 const cartSubtotalElement = document.querySelector('.cart-subtotal');
 const cartFreightElement = document.querySelector('.cart-freight');
 const cartDeliveryCep = document.querySelector('.cart-delivery-cep');
+const cartQuoteButton = document.querySelector('.cart-quote-button');
+const cartCheckoutButton = document.querySelector('.checkout-button');
+const cartCheckoutHelp = document.querySelector('.cart-checkout-help');
+const cartAddMoreButton = document.querySelector('.cart-add-more');
 const cartTotalLabel = document.querySelector('.cart-total span');
 const checkoutTotalLabel = document.querySelector('.checkout-total span');
 const pizzaCustomizer = document.querySelector('.pizza-customizer');
@@ -208,6 +220,74 @@ let publicCategories = [];
 let catalogProductImages = new Map();
 let halfPizzaImages = new Map();
 const missingProductImageWarnings = new Set();
+
+function closeSiteModal(result = false) {
+    if (!siteModal || !siteModalResolve) return;
+    const resolve = siteModalResolve;
+    siteModalResolve = null;
+    siteModal.hidden = true;
+    document.body.classList.remove('site-modal-open');
+    siteModalPreviousFocus?.focus();
+    siteModalPreviousFocus = null;
+    resolve(result);
+}
+
+function mostrarConfirmacao({ titulo = 'Confirme a ação', mensagem, textoConfirmar = 'Confirmar', perigo = false } = {}) {
+    if (!siteModal) return Promise.resolve(false);
+    if (siteModalResolve) closeSiteModal(false);
+    siteModalPreviousFocus = document.activeElement;
+    siteModalTitle.textContent = titulo;
+    siteModalMessage.textContent = mensagem || '';
+    siteModalConfirm.textContent = textoConfirmar;
+    siteModalConfirm.classList.toggle('site-modal-danger', perigo);
+    siteModalCancel.hidden = false;
+    siteModal.hidden = false;
+    document.body.classList.add('site-modal-open');
+    window.setTimeout(() => siteModalConfirm.focus(), 0);
+    return new Promise((resolve) => { siteModalResolve = resolve; });
+}
+
+function mostrarAviso(mensagem, titulo = 'Atenção') {
+    if (!siteModal) return Promise.resolve(false);
+    siteModalPreviousFocus = document.activeElement;
+    siteModalTitle.textContent = titulo;
+    siteModalMessage.textContent = mensagem || '';
+    siteModalConfirm.textContent = 'OK';
+    siteModalConfirm.classList.remove('site-modal-danger');
+    siteModalCancel.hidden = true;
+    siteModal.hidden = false;
+    document.body.classList.add('site-modal-open');
+    window.setTimeout(() => siteModalConfirm.focus(), 0);
+    return new Promise((resolve) => { siteModalResolve = resolve; });
+}
+
+function trapSiteModalFocus(event) {
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        closeSiteModal(false);
+        return;
+    }
+    if (event.key !== 'Tab' || siteModal?.hidden) return;
+    const focusable = [...siteModal.querySelectorAll('button:not([hidden]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')];
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
+siteModalConfirm?.addEventListener('click', () => closeSiteModal(true));
+siteModalCancel?.addEventListener('click', () => closeSiteModal(false));
+siteModal?.addEventListener('click', (event) => {
+    if (event.target === siteModal) closeSiteModal(false);
+});
+document.addEventListener('keydown', trapSiteModalFocus);
+
 let selectedCatalogCategory = 'all';
 let adminProducts = [];
 let adminCategories = [];
@@ -1087,7 +1167,7 @@ function renderPublicCatalog() {
                     const imageFallback = originalMenuImage && menuImage !== originalMenuImage ? ` data-original-src="${escapeHtml(originalMenuImage)}"` : '';
                     return `
                     <div class="menu-item has-image" data-category="${escapeHtml(product.categoryId)}" data-product-type="${escapeHtml(product.type)}">
-                        ${menuImage ? `<img class="menu-item-image" data-menu-product-image src="${escapeHtml(menuImage)}"${imageFallback} alt="${escapeHtml(product.name)}" loading="${imageLoading}"${imagePriority} width="96" height="96">` : `<span class="menu-item-image menu-item-fallback" aria-hidden="true">${renderCategoryFallbackIcon(product)}</span>`}
+                        ${menuImage ? `<img class="menu-item-image" data-menu-product-image src="${escapeHtml(menuImage)}"${imageFallback} alt="${escapeHtml(product.name)}" loading="${imageLoading}" decoding="async"${imagePriority} width="96" height="96">` : `<span class="menu-item-image menu-item-fallback" aria-hidden="true">${renderCategoryFallbackIcon(product)}</span>`}
                         <div class="menu-text"><h4>${escapeHtml(product.name)}</h4><p>${escapeHtml(product.description)}</p></div>
                         <div class="menu-actions"><strong>${money.format(product.price)}</strong><button class="btn-menu-add" type="button" data-product="${escapeHtml(product.name)}" data-product-id="${product.id}" data-price="${product.price}">ADICIONAR</button></div>
                     </div>`;
@@ -1153,6 +1233,11 @@ function getHalfPizzaImage(product) {
     return image ? getDerivedImagePath(image, 'thumbs') : '';
 }
 
+function getPizzaFallbackImage(product) {
+    const image = catalogProductImages.get(normalizeCatalogSearch(product?.name)) || catalogProductImages.get('atum') || '';
+    return getDerivedImagePath(image, 'thumbs') || image;
+}
+
 function getHalfPizzaFallbackImage(product) {
     if (normalizeCatalogSearch(product.name) !== 'atum') return '';
     const image = catalogProductImages.get('atum') || '';
@@ -1174,7 +1259,7 @@ function renderProductVisual(product, presentation) {
         const productTypeAttribute = imageClass ? ` data-product-type="${escapeHtml(product.type || 'SALGADA')}"` : '';
         const productNameAttribute = imageClass ? ` data-product-name="${escapeHtml(product.name)}"` : '';
         const dimension = presentation === 'featured' ? '800' : '520';
-        return `<img${imageClass ? ` class="${imageClass}"` : ''} src="${escapeHtml(image)}"${originalAttribute}${productTypeAttribute}${productNameAttribute} alt="${escapeHtml(product.name)}" loading="lazy" width="${dimension}" height="${dimension}">`;
+        return `<img${imageClass ? ` class="${imageClass}"` : ''} src="${escapeHtml(image)}"${originalAttribute}${productTypeAttribute}${productNameAttribute} alt="${escapeHtml(product.name)}" loading="lazy" decoding="async" width="${dimension}" height="${dimension}">`;
     }
     return `<span class="${visualClass}"><strong>${escapeHtml(product.name)}</strong>${product.categoryName ? `<small>${escapeHtml(product.categoryName)}</small>` : ''}</span>`;
 }
@@ -1192,7 +1277,7 @@ function renderHalfAndHalfPizzaVisual(firstProduct, secondProduct, visualClass) 
         const originalAttribute = originalImage && image !== originalImage
             ? ` data-original-src="${escapeHtml(originalImage)}"`
             : '';
-        return `<img class="pizza-split-image pizza-split-image-${side}${fallbackClass}" data-split-name="${escapeHtml(product.name)}" src="${escapeHtml(image)}"${originalAttribute} alt="" loading="lazy">`;
+        return `<img class="pizza-split-image pizza-split-image-${side}${fallbackClass}" data-split-name="${escapeHtml(product.name)}" src="${escapeHtml(image)}"${originalAttribute} alt="" loading="lazy" decoding="async" width="31" height="62">`;
     };
     return `
         <span class="${visualClass}" role="img" aria-label="Pizza meio a meio: ${escapeHtml(firstProduct.name)} e ${escapeHtml(secondProduct.name)}">
@@ -1245,15 +1330,23 @@ function renderCustomizerProductVisual(firstProduct, secondProduct, isHalfAndHal
 }
 
 function renderPizzaItemVisual(item) {
-    if (item?.itemType === 'BEBIDA' || item?.pizzaType !== 'MEIO_A_MEIO' || !item.secondFlavor) return '';
-    const getFlavorProduct = (flavor) => publicProducts.find((product) => String(product.id) === String(flavor.id))
-        || publicProducts.find((product) => product.name === flavor.name)
-        || { name: flavor.name, image: '' };
-    return renderHalfAndHalfPizzaVisual(
-        getFlavorProduct(item.firstFlavor),
-        getFlavorProduct(item.secondFlavor),
-        'pizza-split-visual pizza-item-split-visual'
-    );
+    if (item?.itemType === 'BEBIDA') return '';
+    const getFlavorProduct = (flavor) => publicProducts.find((product) => String(product.id) === String(flavor?.id))
+        || publicProducts.find((product) => product.name === flavor?.name)
+        || { name: flavor?.name || 'Pizza', image: '' };
+    const firstProduct = getFlavorProduct(item?.firstFlavor);
+    if (item?.pizzaType === 'MEIO_A_MEIO' && item.secondFlavor) {
+        return renderHalfAndHalfPizzaVisual(
+            firstProduct,
+            getFlavorProduct(item.secondFlavor),
+            'pizza-split-visual pizza-item-split-visual'
+        );
+    }
+    const image = getCustomizerImageSource(firstProduct) || getPizzaFallbackImage(firstProduct);
+    if (!image) return '';
+    const originalImage = getCustomizerProductImage(firstProduct);
+    const originalAttribute = originalImage && image !== originalImage ? ` data-original-src="${escapeHtml(originalImage)}"` : '';
+    return `<img class="pizza-item-image" src="${escapeHtml(image)}"${originalAttribute} alt="${escapeHtml(firstProduct.name)}" loading="lazy" decoding="async" width="62" height="62" onerror="this.onerror=null;this.src='assets/cardapio/atum-cardapio.jpg';">`;
 }
 
 function normalizeCatalogSearch(value) {
@@ -1272,6 +1365,17 @@ function openCart() {
     backdrop.classList.add('is-open');
     panel.setAttribute('aria-hidden', 'false');
 }
+
+function closeActiveOverlayOnEscape(event) {
+    if (event.key !== 'Escape') return;
+    if (checkoutPanel?.classList.contains('is-open')) {
+        closeCheckout();
+    } else if (panel?.classList.contains('is-open')) {
+        closeCart();
+    }
+}
+
+document.addEventListener('keydown', closeActiveOverlayOnEscape);
 
 function closeCart() {
     if (!panel || !backdrop) return;
@@ -1579,7 +1683,12 @@ async function submitAdminCategory(event) {
 
 async function deleteAdminCategory(categoryId) {
     const category = adminCategories.find((item) => String(item.id) === String(categoryId));
-    if (!category || !window.confirm(`Deseja excluir a categoria "${category.name}"?`)) return;
+    if (!category || !await mostrarConfirmacao({
+        titulo: 'Excluir categoria',
+        mensagem: `Deseja excluir a categoria "${category.name}"?`,
+        textoConfirmar: 'Excluir',
+        perigo: true,
+    })) return;
     showAdminCategoryMessage('Excluindo categoria...', 'info');
     try {
         const csrfToken = await getCsrfToken();
@@ -1815,7 +1924,12 @@ function editAdminPizzaOption(option) {
 async function toggleAdminPizzaOption(optionIdValue) {
     const option = adminPizzaOptions.find((item) => String(item.id) === String(optionIdValue));
     if (!option) return;
-    if (option.active && !window.confirm(`Deseja desativar "${option.name}"?`)) return;
+    if (option.active && !await mostrarConfirmacao({
+        titulo: 'Desativar opção',
+        mensagem: `Deseja desativar "${option.name}"?`,
+        textoConfirmar: 'Desativar',
+        perigo: true,
+    })) return;
     try {
         const csrfToken = await getCsrfToken();
         const updated = await fetchApiJson(`/api/admin/opcoes-pizza/${encodeURIComponent(option.id)}/status`, {
@@ -1913,7 +2027,12 @@ function editAdminProduct(product) {
 async function toggleAdminProduct(productIdValue) {
     const product = adminProducts.find((item) => String(item.id) === String(productIdValue));
     if (!product) return;
-    if (product.active && !window.confirm(`Deseja realmente desativar o produto "${product.name}"?`)) return;
+    if (product.active && !await mostrarConfirmacao({
+        titulo: 'Desativar produto',
+        mensagem: `Deseja realmente desativar o produto "${product.name}"?`,
+        textoConfirmar: 'Desativar',
+        perigo: true,
+    })) return;
     try {
         const csrfToken = await getCsrfToken();
         const updated = await fetchApiJson(`/api/admin/produtos/${encodeURIComponent(product.id)}/status`, {
@@ -2195,6 +2314,7 @@ function renderConfirmation(orderData) {
     if (!data) return;
 
     confirmationCodeElement.textContent = `Pedido ${data.code}`;
+    confirmationCodeElement.closest('.order-code-copy-row')?.querySelector('[data-copy-code]')?.setAttribute('data-copy-code', data.code || '');
     confirmationStatusElement.textContent = data.status;
     confirmationStatusElement.className = `confirmation-status ${getOrderQueryStatusLabel(data.status)}`;
     confirmationSummaryElement.innerHTML = data.items.map((item) => `
@@ -2459,12 +2579,12 @@ function setDeliveryQuoteMessage(form, message, type = '') {
 }
 
 function setDeliveryQuoteButtonLoading(isLoading) {
-    const button = document.querySelector('.cart-quote-button');
+    const button = cartQuoteButton;
     if (!button) return;
     if (!button.dataset.defaultLabel) button.dataset.defaultLabel = button.textContent.trim();
     button.disabled = isLoading;
     button.setAttribute('aria-busy', String(isLoading));
-    button.textContent = isLoading ? 'AGUARDE...' : button.dataset.defaultLabel;
+    button.textContent = isLoading ? 'CALCULANDO...' : button.dataset.defaultLabel;
 }
 
 function invalidateDeliveryQuoteForCepChange(cep, form) {
@@ -2499,6 +2619,14 @@ function renderDeliveryBreakdown() {
     const hasItems = Array.isArray(window.cart) && window.cart.length > 0;
     const awaitingQuote = hasItems && !hasFreight;
     const total = subtotal + (hasFreight ? freight : 0);
+    const canContinue = hasItems && hasFreight;
+    if (cartCheckoutButton) {
+        cartCheckoutButton.disabled = !canContinue;
+        cartCheckoutButton.setAttribute('aria-disabled', String(!canContinue));
+    }
+    if (cartCheckoutHelp) {
+        cartCheckoutHelp.textContent = canContinue ? 'Frete calculado. Você pode continuar.' : 'Informe e calcule o frete para continuar.';
+    }
 
     if (cartSubtotalElement) cartSubtotalElement.textContent = money.format(subtotal);
     if (cartFreightElement) cartFreightElement.textContent = hasFreight
@@ -2524,7 +2652,7 @@ async function refreshDeliveryQuote(cep, form, force = false) {
         deliveryQuoteRequestId += 1;
         setDeliveryQuoteButtonLoading(false);
         renderDeliveryBreakdown();
-        setDeliveryQuoteMessage(form, normalizedCep ? 'Informe um CEP válido.' : '');
+        setDeliveryQuoteMessage(form, normalizedCep ? 'Informe um CEP válido.' : 'Informe o CEP para calcular.');
         return false;
     }
 
@@ -2721,6 +2849,36 @@ function showOrderQueryMessage(message) {
     orderQueryMessage.classList.add('error');
 }
 
+async function copyOrderCode(button) {
+    const code = String(button?.dataset.copyCode || '').trim();
+    if (!code) return;
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(code);
+        } else {
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.append(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            textarea.remove();
+        }
+        const label = button.querySelector('span');
+        if (label) label.textContent = 'Copiado!';
+        window.setTimeout(() => { if (label) label.textContent = 'Copiar'; }, 2000);
+    } catch (error) {
+        console.warn('Não foi possível copiar o código do pedido.', error);
+    }
+}
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-copy-code]');
+    if (button) void copyOrderCode(button);
+});
+
 function renderOrderQueryResult(orderData) {
     if (!orderQueryResult || !orderQueryCode || !orderQueryPhone) return;
 
@@ -2733,6 +2891,7 @@ function renderOrderQueryResult(orderData) {
     const phoneValue = document.querySelector('.order-query-phone-value');
     if (codeValue) {
         codeValue.textContent = `Pedido ${orderData.code || 'Não informado'}`;
+        codeValue.closest('.order-code-copy-row')?.querySelector('[data-copy-code]')?.setAttribute('data-copy-code', orderData.code || '');
     }
     if (phoneValue) phoneValue.textContent = formatPhone(orderData.phone || '');
     const statusBadge = document.querySelector('.order-query-status');
@@ -2861,7 +3020,7 @@ function openCheckout() {
         if (checkoutMessage) {
             showCheckoutMessage(message, false);
         } else {
-            alert(message);
+            void mostrarAviso(message);
         }
         return;
     }
@@ -2872,7 +3031,7 @@ function openCheckout() {
         if (checkoutMessage) {
             showCheckoutMessage(message, false);
         } else {
-            alert(message);
+            void mostrarAviso(message);
         }
         return;
     }
@@ -2889,7 +3048,6 @@ function openCheckout() {
     const cep = checkoutAddressField('customerCep')?.value;
     if (String(cep || '').replace(/\D/g, '').length === 8) {
         void refreshAddressFromCep(cep);
-        void refreshDeliveryQuote(cep, checkoutForm);
     }
     checkoutPanel.classList.add('is-open');
     if (backdrop) {
@@ -3417,10 +3575,7 @@ itemsElement.addEventListener('click', (event) => {
     updateCart(true);
 });
 
-document.querySelector('.checkout-button').addEventListener('click', () => {
-    openCheckout();
-});
-document.querySelector('.cart-continue')?.addEventListener('click', closeCart);
+// O avanço do carrinho é ligado acima, após a validação de frete.
 
 if (orderQueryForm) {
     orderQueryForm.addEventListener('submit', async (event) => {
@@ -3711,11 +3866,9 @@ if (checkoutForm) {
             handleCheckoutCepChange(cepField.value);
             syncDeliveryCepFields(cepField.value);
             saveCheckoutAddress();
-            void refreshDeliveryQuote(cepField.value, checkoutForm);
             void refreshAddressFromCep(cepField.value);
         });
         cepField.addEventListener('blur', () => {
-            void refreshDeliveryQuote(cepField.value, checkoutForm);
             void refreshAddressFromCep(cepField.value);
         });
     }
@@ -3734,8 +3887,17 @@ if (cartDeliveryCep) {
         void refreshAddressFromCep(cartDeliveryCep.value);
     });
 }
-document.querySelector('.cart-quote-button')?.addEventListener('click', () => {
+
+cartCheckoutButton?.addEventListener('click', () => {
+    if (cartCheckoutButton.disabled || cartCheckoutButton.getAttribute('aria-disabled') === 'true') return;
+    openCheckout();
+});
+cartQuoteButton?.addEventListener('click', () => {
     void refreshDeliveryQuote(cartDeliveryCep?.value, panel, true);
+});
+cartAddMoreButton?.addEventListener('click', () => {
+    closeCart();
+    document.querySelector('#cardapio')?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
 });
 
 document.querySelector('.admin-order-details-close')?.addEventListener('click', () => {
@@ -3958,6 +4120,12 @@ function salesIso(date) {
 
 function salesDayLabel(value) {
     return salesDate(value)?.toLocaleDateString('pt-BR') || value;
+}
+
+function salesDateTimeLabel(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function salesToday() {
@@ -4209,11 +4377,32 @@ function applySalesPreset(preset) {
     fetchSalesReport();
 }
 
+async function exportSalesXlsx() {
+    if (!salesState.start || !salesState.end) return;
+    const considerar = [...salesElements.considerar].find((input) => input.checked)?.value || 'todos';
+    const url = `/api/admin/relatorios/vendas/xlsx?inicio=${salesIso(salesState.start)}&fim=${salesIso(salesState.end)}&considerar=${encodeURIComponent(considerar)}`;
+    try {
+        const response = await fetch(url, { credentials: 'same-origin' });
+        if (!response.ok) throw Object.assign(new Error('Falha ao exportar Excel'), { status: response.status });
+        const blob = await response.blob();
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `relatorio-vendas_${salesIso(salesState.start)}_a_${salesIso(salesState.end)}.xlsx`;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    } catch (error) {
+        setSalesMessage(error?.status === 401 || error?.status === 403 ? 'Sua sessão expirou. Entre novamente.' : 'Não foi possível exportar o relatório Excel.', 'error');
+    }
+}
+
 function exportSalesCsv(tableName) {
     if (!salesState.data) return;
     const data = salesState.data;
     const tables = {
-        dia: { name: 'vendas-por-dia', headers: ['Data', 'Pedidos', 'Faturamento (R$)'], rows: data.porDia.map((row) => [salesDayLabel(row.data), row.pedidos, Number(row.faturamento).toFixed(2).replace('.', ',')]) },
+        dia: { name: 'vendas-por-dia', headers: ['Data', 'Pedidos', 'Faturamento (R$)'], rows: data.porDia.map((row) => [salesDateTimeLabel(`${row.data}T00:00:00`), row.pedidos, Number(row.faturamento).toFixed(2).replace('.', ',')]) },
         categoria: { name: 'vendas-por-categoria', headers: ['Categoria', 'Quantidade', 'Faturamento (R$)', '% do total'], rows: data.porCategoria.map((row) => [row.categoria, row.quantidade, Number(row.faturamento).toFixed(2).replace('.', ','), `${Number(row.percentual).toFixed(2).replace('.', ',')}%`]) },
         produtos: { name: 'mais-vendidos', headers: ['Produto', 'Categoria', 'Quantidade', 'Faturamento (R$)'], rows: data.maisVendidos.map((row) => [row.produto, row.categoria, row.quantidade, Number(row.faturamento).toFixed(2).replace('.', ',')]) },
         horario: { name: 'horario-de-pico', headers: ['Hora', 'Pedidos', 'Faturamento (R$)'], rows: data.porHorario.map((row) => [`${String(row.hora).padStart(2, '0')}:00 – ${String(row.hora).padStart(2, '0')}:59`, row.pedidos, Number(row.faturamento).toFixed(2).replace('.', ',')]) },
@@ -4278,6 +4467,7 @@ salesElements.days?.addEventListener('click', (event) => {
     selectSalesCalendarDate(button);
 });
 document.querySelectorAll('.sales-export-btn').forEach((button) => button.addEventListener('click', () => exportSalesCsv(button.dataset.table)));
+document.querySelectorAll('.sales-export-xlsx-btn').forEach((button) => button.addEventListener('click', () => void exportSalesXlsx()));
 document.querySelectorAll('.admin-nav a, .admin-back-link').forEach((link) => {
     link.addEventListener('click', () => {
         updateAdminActiveNav(link.getAttribute('href'));

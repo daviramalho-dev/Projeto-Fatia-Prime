@@ -1,6 +1,17 @@
 package com.example.Fatia.Prime;
 
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -8,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.*;
@@ -220,6 +233,109 @@ public class AdminRelatorioVendasController {
         );
 
         return new RelatorioVendasResponse(resumo, porDia, porCategoria, maisVendidos, porHorario);
+    }
+
+    @GetMapping("/xlsx")
+    @Transactional(readOnly = true)
+    public ResponseEntity<byte[]> exportarXlsx(
+        @RequestParam(required = false) String inicio,
+        @RequestParam(required = false) String fim,
+        @RequestParam(required = false, defaultValue = "todos") String considerar
+    ) {
+        RelatorioVendasResponse relatorio = relatorio(inicio, fim, considerar);
+        try (Workbook workbook = criarWorkbook(relatorio); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            workbook.write(output);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            headers.setContentDisposition(ContentDisposition.attachment().filename("relatorio-vendas.xlsx").build());
+            return ResponseEntity.ok().headers(headers).body(output.toByteArray());
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Não foi possível gerar o relatório Excel", e);
+        }
+    }
+
+    private Workbook criarWorkbook(RelatorioVendasResponse relatorio) {
+        Workbook workbook = new XSSFWorkbook();
+        CellStyle headerStyle = workbook.createCellStyle();
+        Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerStyle.setFont(headerFont);
+
+        CellStyle dateStyle = workbook.createCellStyle();
+        dateStyle.setDataFormat(workbook.getCreationHelper().createDataFormat().getFormat("dd/MM/yyyy HH:mm"));
+        CellStyle currencyStyle = workbook.createCellStyle();
+        currencyStyle.setDataFormat(workbook.getCreationHelper().createDataFormat().getFormat("[$R$-pt-BR] #,##0.00"));
+        CellStyle percentageStyle = workbook.createCellStyle();
+        percentageStyle.setDataFormat(workbook.getCreationHelper().createDataFormat().getFormat("0.00%"));
+
+        Sheet porDia = workbook.createSheet("Vendas por dia");
+        preencherCabecalho(porDia, headerStyle, "Data", "Pedidos", "Faturamento (R$)");
+        int linha = 1;
+        for (RelatorioVendasResponse.VendaPorDia item : relatorio.porDia()) {
+            Row row = porDia.createRow(linha++);
+            Cell data = row.createCell(0);
+            data.setCellValue(LocalDate.parse(item.data()).atStartOfDay());
+            data.setCellStyle(dateStyle);
+            row.createCell(1).setCellValue(item.pedidos());
+            criarValor(row.createCell(2), item.faturamento(), currencyStyle);
+        }
+        ajustarLarguras(porDia, 20, 14, 22);
+
+        Sheet porCategoria = workbook.createSheet("Vendas por categoria");
+        preencherCabecalho(porCategoria, headerStyle, "Categoria", "Quantidade", "Faturamento (R$)", "% do total");
+        linha = 1;
+        for (RelatorioVendasResponse.VendaPorCategoria item : relatorio.porCategoria()) {
+            Row row = porCategoria.createRow(linha++);
+            row.createCell(0).setCellValue(item.categoria());
+            row.createCell(1).setCellValue(item.quantidade());
+            criarValor(row.createCell(2), item.faturamento(), currencyStyle);
+            Cell percentual = row.createCell(3);
+            percentual.setCellValue(item.percentual().doubleValue() / 100.0);
+            percentual.setCellStyle(percentageStyle);
+        }
+        ajustarLarguras(porCategoria, 26, 14, 22, 14);
+
+        Sheet maisVendidos = workbook.createSheet("Mais vendidos");
+        preencherCabecalho(maisVendidos, headerStyle, "Produto", "Categoria", "Quantidade", "Faturamento (R$)");
+        linha = 1;
+        for (RelatorioVendasResponse.MaisVendido item : relatorio.maisVendidos()) {
+            Row row = maisVendidos.createRow(linha++);
+            row.createCell(0).setCellValue(item.produto());
+            row.createCell(1).setCellValue(item.categoria());
+            row.createCell(2).setCellValue(item.quantidade());
+            criarValor(row.createCell(3), item.faturamento(), currencyStyle);
+        }
+        ajustarLarguras(maisVendidos, 30, 24, 14, 22);
+
+        Sheet porHorario = workbook.createSheet("Horário de pico");
+        preencherCabecalho(porHorario, headerStyle, "Hora", "Pedidos", "Faturamento (R$)");
+        linha = 1;
+        for (RelatorioVendasResponse.VendaPorHorario item : relatorio.porHorario()) {
+            Row row = porHorario.createRow(linha++);
+            row.createCell(0).setCellValue(String.format(Locale.ROOT, "%02d:00 – %02d:59", item.hora(), item.hora()));
+            row.createCell(1).setCellValue(item.pedidos());
+            criarValor(row.createCell(2), item.faturamento(), currencyStyle);
+        }
+        ajustarLarguras(porHorario, 24, 14, 22);
+        return workbook;
+    }
+
+    private void preencherCabecalho(Sheet sheet, CellStyle style, String... nomes) {
+        Row row = sheet.createRow(0);
+        for (int i = 0; i < nomes.length; i++) {
+            Cell cell = row.createCell(i);
+            cell.setCellValue(nomes[i]);
+            cell.setCellStyle(style);
+        }
+    }
+
+    private void criarValor(Cell cell, BigDecimal valor, CellStyle style) {
+        cell.setCellValue(valor.doubleValue());
+        cell.setCellStyle(style);
+    }
+
+    private void ajustarLarguras(Sheet sheet, int... larguras) {
+        for (int i = 0; i < larguras.length; i++) sheet.setColumnWidth(i, larguras[i] * 256);
     }
 
     private LocalDateTime dataEmBrasilia(LocalDateTime dataCriacao) {

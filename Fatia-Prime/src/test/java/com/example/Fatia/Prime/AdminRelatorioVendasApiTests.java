@@ -8,9 +8,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,6 +87,29 @@ class AdminRelatorioVendasApiTests {
         pedidoCancelado.setValorTotal(new BigDecimal("80.00"));
         org.springframework.test.util.ReflectionTestUtils.setField(pedidoCancelado, "dataCriacao", LocalDateTime.of(2026, 10, 1, 15, 0, 0));
         pedidoRepository.saveAndFlush(pedidoCancelado);
+    }
+
+    @Test
+    void exportaXlsxComDataEValorNumericos() throws Exception {
+        var response = mockMvc.perform(get("/api/admin/relatorios/vendas/xlsx")
+                .param("inicio", "2026-10-01")
+                .param("fim", "2026-10-01")
+                .session(adminSession()))
+            .andExpect(status().isOk())
+            .andExpect(content().contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+            .andReturn();
+
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(response.getResponse().getContentAsByteArray()))) {
+            Sheet sheet = workbook.getSheet("Vendas por dia");
+            Cell data = sheet.getRow(1).getCell(0);
+            Cell valor = sheet.getRow(1).getCell(2);
+            assertThat(data.getCellType()).isEqualTo(CellType.NUMERIC);
+            assertThat(data.getCellStyle().getDataFormatString()).contains("dd/MM/yyyy HH:mm");
+            assertThat(valor.getCellType()).isEqualTo(CellType.NUMERIC);
+            assertThat(valor.getNumericCellValue()).isEqualTo(50.0);
+            assertThat(valor.getCellStyle().getDataFormatString()).contains("R$");
+            assertThat(workbook.getSheet("Vendas por categoria").getRow(1).getCell(0).getStringCellValue()).isEqualTo("Clássicas");
+        }
     }
 
     @Test

@@ -460,20 +460,20 @@
 
                 <div class="sales-tables-stack">
                     <section class="admin-catalog-panel sales-table-panel" aria-labelledby="sales-title-dia">
-                        <div class="admin-catalog-panel-heading"><div><h3 id="sales-title-dia">Vendas por dia</h3></div><div class="admin-catalog-panel-heading-actions"><button class="btn-secondary sales-export-btn" type="button" data-table="dia">Exportar CSV</button></div></div>
+                        <div class="admin-catalog-panel-heading"><div><h3 id="sales-title-dia">Vendas por dia</h3></div><div class="admin-catalog-panel-heading-actions"><button class="btn-primary sales-export-xlsx-btn" type="button">Exportar Excel (.xlsx)</button><button class="btn-secondary sales-export-btn" type="button" data-table="dia">Exportar CSV</button></div></div>
                         <div class="sales-table-container"><table class="sales-table" id="sales-table-dia"><thead><tr><th>Data</th><th class="num">Pedidos</th><th class="num">Faturamento</th></tr></thead><tbody></tbody></table></div>
                     </section>
                     <section class="admin-catalog-panel sales-table-panel" aria-labelledby="sales-title-categoria">
-                        <div class="admin-catalog-panel-heading"><div><h3 id="sales-title-categoria">Vendas por categoria</h3></div><div class="admin-catalog-panel-heading-actions"><button class="btn-secondary sales-export-btn" type="button" data-table="categoria">Exportar CSV</button></div></div>
+                        <div class="admin-catalog-panel-heading"><div><h3 id="sales-title-categoria">Vendas por categoria</h3></div><div class="admin-catalog-panel-heading-actions"><button class="btn-primary sales-export-xlsx-btn" type="button">Exportar Excel (.xlsx)</button><button class="btn-secondary sales-export-btn" type="button" data-table="categoria">Exportar CSV</button></div></div>
                         <div class="sales-table-container"><table class="sales-table" id="sales-table-categoria"><thead><tr><th>Categoria</th><th class="num">Quantidade</th><th class="num">Faturamento</th><th class="num">% do total</th></tr></thead><tbody></tbody></table></div>
                         <p class="sales-table-note">Personalização e entrega já estão somadas dentro do valor dos pedidos.</p>
                     </section>
                     <section class="admin-catalog-panel sales-table-panel" aria-labelledby="sales-title-produtos">
-                        <div class="admin-catalog-panel-heading"><div><h3 id="sales-title-produtos">Mais vendidos</h3></div><div class="admin-catalog-panel-heading-actions"><button class="btn-secondary sales-export-btn" type="button" data-table="produtos">Exportar CSV</button></div></div>
+                        <div class="admin-catalog-panel-heading"><div><h3 id="sales-title-produtos">Mais vendidos</h3></div><div class="admin-catalog-panel-heading-actions"><button class="btn-primary sales-export-xlsx-btn" type="button">Exportar Excel (.xlsx)</button><button class="btn-secondary sales-export-btn" type="button" data-table="produtos">Exportar CSV</button></div></div>
                         <div class="sales-table-container"><table class="sales-table" id="sales-table-produtos"><thead><tr><th>Produto</th><th>Categoria</th><th class="num">Quantidade</th><th class="num">Faturamento</th></tr></thead><tbody></tbody></table></div>
                     </section>
                     <section class="admin-catalog-panel sales-table-panel" aria-labelledby="sales-title-horario">
-                        <div class="admin-catalog-panel-heading"><div><h3 id="sales-title-horario">Horário de pico</h3></div><div class="admin-catalog-panel-heading-actions"><button class="btn-secondary sales-export-btn" type="button" data-table="horario">Exportar CSV</button></div></div>
+                        <div class="admin-catalog-panel-heading"><div><h3 id="sales-title-horario">Horário de pico</h3></div><div class="admin-catalog-panel-heading-actions"><button class="btn-primary sales-export-xlsx-btn" type="button">Exportar Excel (.xlsx)</button><button class="btn-secondary sales-export-btn" type="button" data-table="horario">Exportar CSV</button></div></div>
                         <div class="sales-table-container"><table class="sales-table" id="sales-table-horario"><thead><tr><th>Hora</th><th class="num">Pedidos</th><th class="num">Faturamento</th></tr></thead><tbody></tbody></table></div>
                     </section>
                 </div>
@@ -692,7 +692,7 @@
                 <div class="order-query-details">
                     <div class="order-query-meta">
                         <strong>Código</strong>
-                        <span class="order-query-code-value">Pedido FP-000000-ABC123</span>
+                        <div class="order-code-copy-row"><span class="order-query-code-value">Pedido FP-000000-ABC123</span><button class="btn-secondary order-code-copy" type="button" data-copy-code="" aria-live="polite">⌘ <span>Copiar</span></button></div>
                     </div>
                 </div>
 
@@ -807,19 +807,19 @@
     <aside class="cart-panel" aria-label="Seu pedido" aria-hidden="true">
         <div class="cart-header"><h2>SEU CARRINHO</h2><button class="cart-close" type="button" aria-label="Fechar carrinho">×</button></div>
         <div class="cart-items"><p class="cart-empty">Seu carrinho está vazio.</p></div>
+        <button class="cart-add-more" type="button">+ Adicionar mais itens</button>
         <div class="cart-footer">
+            <label class="cart-cep-field" for="cart-delivery-cep">CEP para calcular a entrega
+                <span class="cart-cep-control"><input id="cart-delivery-cep" class="cart-delivery-cep" type="text" autocomplete="postal-code" inputmode="numeric" maxlength="9" placeholder="00000-000"><button class="btn-secondary cart-quote-button" type="button">CALCULAR FRETE</button></span>
+            </label>
+            <p class="delivery-quote-message cart-delivery-quote-message" aria-live="polite"></p>
             <div class="delivery-breakdown cart-delivery-breakdown">
                 <div><span>Subtotal</span><strong class="cart-subtotal">R$ 0,00</strong></div>
                 <div><span>Entrega</span><strong class="cart-freight">Informe o CEP para calcular</strong></div>
             </div>
-            <div class="cart-total"><span>Total</span><strong>R$ 0,00</strong></div>
-            <label class="cart-cep-field">CEP para calcular a entrega<input class="cart-delivery-cep" type="text" autocomplete="postal-code" inputmode="numeric" maxlength="9" placeholder="00000-000"></label>
-            <button class="btn-secondary cart-quote-button" type="button">CALCULAR FRETE</button>
-            <p class="delivery-quote-message cart-delivery-quote-message" aria-live="polite"></p>
-            <label>Seu nome<input id="customer-name" type="text" autocomplete="name" placeholder="Digite seu nome"></label>
-            <label>Observações<textarea id="order-notes" rows="3" placeholder="Ex.: tirar a cebola, trocar ingrediente..."></textarea></label>
-            <button class="btn-secondary cart-continue" type="button">CONTINUAR COMPRANDO</button>
-            <button class="btn-primary checkout-button" type="button">CONTINUAR PARA ENTREGA</button>
+            <div class="cart-total"><span>Total com entrega</span><strong>Informe o CEP</strong></div>
+            <p class="cart-checkout-help" id="cart-checkout-help">Informe e calcule o frete para continuar.</p>
+            <button class="btn-primary checkout-button" type="button" aria-disabled="true" aria-describedby="cart-checkout-help" disabled>CONTINUAR PARA ENTREGA</button>
         </div>
     </aside>
 
@@ -908,7 +908,7 @@
 
         <div class="confirmation-content">
             <h2>Pedido realizado com sucesso!</h2>
-            <p class="confirmation-code">Pedido FP-000000-ABC123</p>
+            <div class="order-code-copy-row"><p class="confirmation-code">Pedido FP-000000-ABC123</p><button class="btn-secondary order-code-copy" type="button" data-copy-code="" aria-live="polite">⌘ <span>Copiar</span></button></div>
             <p class="confirmation-help">Seu pedido já foi registrado. Guarde este código para acompanhá-lo depois. Envie a mensagem pelo WhatsApp para avisar a pizzaria.</p>
             <p class="confirmation-status status-received">Pedido recebido</p>
 
@@ -935,6 +935,16 @@
         </div>
     </aside>
 
+    <div class="site-modal" hidden role="alertdialog" aria-modal="true" aria-labelledby="site-modal-title" aria-describedby="site-modal-message">
+        <div class="site-modal-card" role="document">
+            <h2 id="site-modal-title"></h2>
+            <p id="site-modal-message"></p>
+            <div class="site-modal-actions">
+                <button class="btn-secondary site-modal-cancel" type="button">Cancelar</button>
+                <button class="btn-primary site-modal-confirm" type="button">Confirmar</button>
+            </div>
+        </div>
+    </div>
     <div class="cart-backdrop" aria-hidden="true"></div>
 
 
