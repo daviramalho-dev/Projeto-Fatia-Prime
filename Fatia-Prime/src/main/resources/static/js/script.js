@@ -1,4 +1,4 @@
-const ASSET_VERSION = '2026-11-02-animacoes-scroll'; // alterar a versão a cada deploy que muda estes arquivos
+const ASSET_VERSION = '2026-11-02-animacoes-scroll-polimento-2c'; // alterar a versão a cada deploy que muda estes arquivos
 const STARTUP_WAKE_TEST_CONFIG = window.__FATIA_STARTUP_WAKE_CONFIG__ || {};
 const STARTUP_WAKE_TIMEOUT_MS = Number(STARTUP_WAKE_TEST_CONFIG.timeoutMs) || 8000;
 const STARTUP_WAKE_NOTICE_DELAY_MS = Number(STARTUP_WAKE_TEST_CONFIG.noticeDelayMs) || 3000;
@@ -171,7 +171,18 @@ function schedulePublicWhatsappScrollState() {
     publicWhatsappScrollFrame = window.requestAnimationFrame(syncPublicWhatsappScrollState);
 }
 
-window.addEventListener('scroll', schedulePublicWhatsappScrollState, { passive: true });
+function syncPublicHeaderScrollState() {
+    const hero = document.querySelector('.hero');
+    const passedHero = hero ? hero.getBoundingClientRect().bottom <= 82 : window.scrollY > 24;
+    publicHeader?.classList.toggle('is-scrolled', passedHero);
+}
+
+window.addEventListener('scroll', () => {
+    schedulePublicWhatsappScrollState();
+    syncPublicHeaderScrollState();
+}, { passive: true });
+
+syncPublicHeaderScrollState();
 window.addEventListener('resize', schedulePublicWhatsappScrollState, { passive: true });
 publicWhatsapp?.addEventListener('focusin', resetPublicWhatsappScrollState);
 const catalogFeedback = document.querySelector('.catalog-feedback');
@@ -811,7 +822,9 @@ function showAddedFeedback(button, addedItem = null) {
     const productName = getCartFeedbackName(cartItem, button.dataset.product || 'Item');
     const quantity = cartItem?.quantity || 1;
     const itemTotal = cartItem ? money.format(cartItem.price * cartItem.quantity) : money.format(0);
-    button.textContent = 'ADICIONADO ✓';
+    button.textContent = 'ADICIONADO';
+    button.classList.remove('is-added');
+    void button.offsetWidth;
     button.classList.add('is-added');
     if (catalogFeedback) {
         catalogFeedback.textContent = `${productName} adicionado · ${quantity} ${quantity === 1 ? 'unidade' : 'unidades'} · ${itemTotal}`;
@@ -1256,6 +1269,33 @@ function scheduleCatalogImagePreload(images) {
     }
 }
 
+function markImageLoaded(image) {
+    if (!(image instanceof HTMLImageElement)) return;
+    if (image.complete && image.naturalWidth > 0) {
+        image.classList.add('is-loaded');
+    }
+}
+
+function bindImageState(image, onError) {
+    if (!(image instanceof HTMLImageElement)) return;
+    image.addEventListener('load', () => image.classList.add('is-loaded'), { once: true });
+    image.addEventListener('error', () => onError(image));
+    markImageLoaded(image);
+    if (image.complete && image.naturalWidth === 0) onError(image);
+}
+
+function bindFeaturedImageStates(root) {
+    root.querySelectorAll('.pizza-image img').forEach((image) => {
+        bindImageState(image, (failedImage) => {
+            const fallback = document.createElement('span');
+            fallback.className = 'pizza-image-placeholder';
+            fallback.setAttribute('aria-hidden', 'true');
+            fallback.textContent = failedImage.alt || 'Imagem indisponível';
+            failedImage.replaceWith(fallback);
+        });
+    });
+}
+
 function renderPublicCatalog() {
     const pizzaGrid = document.querySelector('.pizza-grid');
     const menuList = document.querySelector('.menu-list');
@@ -1289,6 +1329,7 @@ function renderPublicCatalog() {
     }
     if (pizzaGrid) {
         pizzaGrid.innerHTML = featuredProducts.map(renderFeaturedProductCard).join('');
+        bindFeaturedImageStates(pizzaGrid);
     }
     if (menuList) {
         menuList.innerHTML = menuGroups.length ? menuGroups.map((group) => `
@@ -1323,23 +1364,21 @@ function renderPublicCatalog() {
                 ? 'Nenhum produto encontrado para os filtros selecionados.'
                 : catalogFeedback?.textContent || 'Nenhum produto disponível no cardápio no momento.'}</p>`;
         menuList.querySelectorAll('img[data-menu-product-image]').forEach((image) => {
-            image.addEventListener('load', () => image.classList.add('is-loaded'), { once: true });
-            if (image.complete && image.naturalWidth > 0) image.classList.add('is-loaded');
-            image.addEventListener('error', () => {
-                const originalSrc = image.dataset.originalSrc;
-                if (originalSrc && image.dataset.originalTried !== 'true') {
-                    image.dataset.originalTried = 'true';
-                    image.src = originalSrc;
+            bindImageState(image, (failedImage) => {
+                const originalSrc = failedImage.dataset.originalSrc;
+                if (originalSrc && failedImage.dataset.originalTried !== 'true') {
+                    failedImage.dataset.originalTried = 'true';
+                    failedImage.src = originalSrc;
                     return;
                 }
-                console.error('Falha ao carregar imagem do cardápio.', { product: image.alt, src: image.src });
+                console.error('Falha ao carregar imagem do cardápio.', { product: failedImage.alt, src: failedImage.src });
                 const fallback = document.createElement('span');
                 fallback.className = 'menu-item-image menu-item-fallback';
                 fallback.setAttribute('aria-hidden', 'true');
-                const productType = image.closest('.menu-item')?.dataset.productType || 'SALGADA';
+                const productType = failedImage.closest('.menu-item')?.dataset.productType || 'SALGADA';
                 fallback.innerHTML = renderCategoryFallbackIcon({ type: productType });
-                image.replaceWith(fallback);
-            }, { once: true });
+                failedImage.replaceWith(fallback);
+            });
         });
         scheduleCatalogImagePreload(catalogImageSources.slice(CATALOG_EAGER_IMAGE_COUNT));
     }

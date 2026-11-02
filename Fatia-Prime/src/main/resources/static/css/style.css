@@ -327,6 +327,7 @@ button:disabled {
     background: var(--color-bg-darker);
 
     border-bottom: 1px solid var(--color-bg-lighter);
+    transition: background-color .25s ease, box-shadow .25s ease;
 
     position: fixed;
     top: 0;
@@ -392,6 +393,11 @@ button:disabled {
 
 .header nav a:focus-visible {
     color: var(--color-primary);
+}
+
+.public-header.is-scrolled {
+    background: color-mix(in srgb, var(--color-bg-darker) 94%, transparent);
+    box-shadow: var(--shadow-md);
 }
 
 .admin-header {
@@ -923,6 +929,18 @@ button:disabled {
         box-shadow: var(--shadow-md);
         transform: translateY(-2px);
     }
+
+    .pizza-card:hover .pizza-image img {
+        transform: scale(1.04);
+    }
+}
+
+.pizza-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform-origin: center;
+    transition: transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 
@@ -934,12 +952,6 @@ button:disabled {
     width: 100%;
     height: clamp(190px, 21vw, 270px);
     background: var(--color-surface-subtle);
-}
-
-.pizza-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
 }
 
 /* BADGE */
@@ -1024,6 +1036,26 @@ button:disabled {
     border-color: var(--color-success);
     background: var(--color-success-soft);
     color: var(--color-success);
+    animation: add-feedback-pop 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes add-feedback-pop {
+    0% { transform: scale(.96); }
+    65% { transform: scale(1.04); }
+    100% { transform: scale(1); }
+}
+
+.btn-card.is-added::after,
+.btn-menu-add.is-added::after {
+    display: inline-block;
+    margin-left: .35em;
+    content: "✓";
+    animation: add-feedback-check 180ms ease-out both;
+}
+
+@keyframes add-feedback-check {
+    from { opacity: 0; transform: translateY(2px) scale(.7); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* CENTER BUTTON */
@@ -1330,17 +1362,20 @@ button:disabled {
     border: 1px solid var(--color-border);
 }
 
-.menu-item-image[data-menu-product-image] {
+.js .menu-item-image[data-menu-product-image],
+.js .pizza-card .pizza-image img {
     opacity: 0;
-    transition: opacity .18s ease;
+    transition: opacity .18s ease, transform 350ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.menu-item-image[data-menu-product-image].is-loaded {
+.menu-item-image[data-menu-product-image].is-loaded,
+.pizza-card .pizza-image img.is-loaded {
     opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .menu-item-image[data-menu-product-image] {
+    .js .menu-item-image[data-menu-product-image],
+    .js .pizza-card .pizza-image img {
         transition: none;
     }
 }
@@ -4864,6 +4899,17 @@ h4,
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .btn-card.is-added,
+    .btn-menu-add.is-added,
+    .btn-card.is-added::after,
+    .btn-menu-add.is-added::after,
+    .menu-item-image[data-menu-product-image],
+    .pizza-card .pizza-image img {
+        animation: none;
+        opacity: 1;
+        transition: none;
+    }
+
     html {
         scroll-behavior: auto;
     }
