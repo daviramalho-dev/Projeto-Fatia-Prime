@@ -1,7 +1,9 @@
 package com.example.Fatia.Prime;
 
 import java.util.List;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,10 +20,12 @@ public class ProdutoController {
 
     @GetMapping
     @Transactional(readOnly = true)
-    public List<ProdutoResponse> listar() {
-        return repository.findByAtivoTrueOrderByNomeAsc().stream()
+    public ResponseEntity<List<ProdutoResponse>> listar() {
+        List<ProdutoResponse> produtos = repository.findByAtivoTrueOrderByNomeAsc().stream()
             .map(ProdutoResponse::de)
             .toList();
+        // Lista publica: o navegador sempre revalida (ETag do catalogoEtagFilter em WebConfig -> 304).
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache()).body(produtos);
     }
 
     @GetMapping("/{id}")

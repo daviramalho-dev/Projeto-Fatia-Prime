@@ -1,7 +1,9 @@
 package com.example.Fatia.Prime;
 
 import java.util.List;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -16,10 +18,12 @@ public class CategoriaController {
     }
 
     @GetMapping
-    public List<CategoriaResponse> listar() {
-        return repository.findAll().stream()
+    public ResponseEntity<List<CategoriaResponse>> listar() {
+        List<CategoriaResponse> categorias = repository.findAll().stream()
             .map(CategoriaResponse::de)
             .toList();
+        // Lista publica: o navegador sempre revalida (ETag do catalogoEtagFilter em WebConfig -> 304).
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache()).body(categorias);
     }
 
     @GetMapping("/{id}")
