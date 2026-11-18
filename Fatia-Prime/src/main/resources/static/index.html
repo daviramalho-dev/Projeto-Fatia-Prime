@@ -30,10 +30,22 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="css/style.css?v=2026-11-02-animacoes-scroll-polimento-2c"> <!-- alterar a versão a cada deploy que muda estes arquivos -->
+    <link rel="stylesheet" href="css/style.css?v=2026-11-02-animacoes-scroll-polimento-2d"> <!-- alterar a versão a cada deploy que muda estes arquivos -->
 </head>
 
 <body>
+    <svg class="visually-hidden" width="0" height="0" aria-hidden="true" focusable="false">
+        <defs>
+            <g id="icon-theme-sun">
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+            </g>
+            <g id="icon-theme-moon">
+                <path d="M20.4 15.2A8.5 8.5 0 0 1 8.8 3.6 8.5 8.5 0 1 0 20.4 15.2Z"></path>
+            </g>
+        </defs>
+    </svg>
+
 
     <!-- HEADER -->
     <header class="header public-header">
@@ -51,13 +63,8 @@
 
         <div class="public-header-actions">
             <button class="theme-toggle" type="button" data-theme-toggle aria-label="Ativar modo claro" aria-pressed="false" title="Ativar modo claro">
-                <svg class="theme-toggle-icon theme-toggle-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <circle cx="12" cy="12" r="4"></circle>
-                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
-                </svg>
-                <svg class="theme-toggle-icon theme-toggle-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="M20.4 15.2A8.5 8.5 0 0 1 8.8 3.6 8.5 8.5 0 1 0 20.4 15.2Z"></path>
-                </svg>
+                <svg class="theme-toggle-icon theme-toggle-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-theme-sun"></use></svg>
+                <svg class="theme-toggle-icon theme-toggle-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-theme-moon"></use></svg>
                 <span class="theme-toggle-label visually-hidden">Ativar modo claro</span>
             </button>
             <button class="btn-pedido" type="button" data-open-cart>
@@ -80,13 +87,8 @@
         </nav>
         <div class="admin-header-actions">
             <button class="theme-toggle" type="button" data-theme-toggle aria-label="Ativar modo claro" aria-pressed="false" title="Ativar modo claro">
-                <svg class="theme-toggle-icon theme-toggle-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <circle cx="12" cy="12" r="4"></circle>
-                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
-                </svg>
-                <svg class="theme-toggle-icon theme-toggle-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                    <path d="M20.4 15.2A8.5 8.5 0 0 1 8.8 3.6 8.5 8.5 0 1 0 20.4 15.2Z"></path>
-                </svg>
+                <svg class="theme-toggle-icon theme-toggle-icon-sun" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-theme-sun"></use></svg>
+                <svg class="theme-toggle-icon theme-toggle-icon-moon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-theme-moon"></use></svg>
                 <span class="theme-toggle-label visually-hidden">Ativar modo claro</span>
             </button>
             <button class="admin-logout" type="button" aria-label="Sair do painel">SAIR</button>
@@ -97,7 +99,7 @@
     <!-- HERO -->
     <main>
 
-        <section class="hero section-reveal" id="inicio">
+        <section class="hero" id="inicio">
 
             <div class="hero-overlay"></div>
 
@@ -634,82 +636,82 @@
             </div>
         </section>
 
+
+        <section class="order-tracking" id="consultar-pedido">
+            <div class="section-title">
+                <h2>CONSULTAR PEDIDO</h2>
+                <p>Informe o código do pedido e o telefone cadastrado para consultar o status em tempo real.</p>
+                <p class="order-query-help">Você encontra o código na tela de confirmação e na mensagem do pedido enviada pelo WhatsApp. Digite-o aqui para acompanhar o status a qualquer momento.</p>
+            </div>
+
+            <div class="order-query-panel">
+                <form id="order-query-form" novalidate>
+                    <div class="order-query-grid">
+                        <label>
+                            Código de acompanhamento
+                            <input id="order-query-code" type="text" placeholder="FP-3A9F2C41B7D0" autocomplete="off" required>
+                        </label>
+                        <label>
+                            Telefone
+                            <input id="order-query-phone" type="tel" data-phone-mask inputmode="numeric" maxlength="15" placeholder="(61) 98765-4321" autocomplete="tel" required>
+                        </label>
+                    </div>
+
+                    <div class="order-query-actions">
+                        <button class="btn-primary" type="submit">CONSULTAR PEDIDO</button>
+                        <a class="btn-secondary order-query-back" href="#cardapio">VOLTAR AO CARDÁPIO</a>
+                    </div>
+                </form>
+
+                <div class="order-query-message" aria-live="polite"></div>
+
+                <div class="order-query-result" hidden>
+                    <div class="order-query-header">
+                        <span class="order-query-status status-received">Pedido recebido</span>
+                    </div>
+
+                    <div class="order-progress" aria-label="Progresso do pedido">
+                        <div class="order-progress-step" data-order-step="Pedido recebido">
+                            <span class="order-progress-marker">1</span>
+                            <strong>Recebido</strong>
+                        </div>
+                        <div class="order-progress-line" aria-hidden="true"></div>
+                        <div class="order-progress-step" data-order-step="Pedido em andamento">
+                            <span class="order-progress-marker">2</span>
+                            <strong>Em andamento</strong>
+                        </div>
+                        <div class="order-progress-line" aria-hidden="true"></div>
+                        <div class="order-progress-step" data-order-step="Pedido concluído">
+                            <span class="order-progress-marker">3</span>
+                            <strong>Concluído</strong>
+                        </div>
+                    </div>
+
+                    <p class="order-query-status-message" aria-live="polite"></p>
+
+                    <div class="order-query-details">
+                        <div class="order-query-meta">
+                            <strong>Código</strong>
+                            <div class="order-code-copy-row"><span class="order-query-code-value">Pedido FP-000000-ABC123</span><button class="btn-secondary order-code-copy" type="button" data-copy-code="" aria-live="polite"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg> <span>Copiar</span></button></div>
+                        </div>
+                    </div>
+
+                    <div class="order-query-summary">
+                        <h3>Resumo do pedido</h3>
+                        <ul class="order-query-items"></ul>
+                        <div class="delivery-breakdown order-query-delivery-breakdown">
+                            <div><span>Subtotal</span><strong class="order-query-subtotal">R$ 0,00</strong></div>
+                            <div><span>Entrega</span><strong class="order-query-freight">R$ 0,00</strong></div>
+                        </div>
+                        <div class="order-query-total"><span>Total</span><strong>R$ 0,00</strong></div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
 
     <!-- FOOTER -->
-    <section class="order-tracking" id="consultar-pedido">
-        <div class="section-title">
-            <h2>CONSULTAR PEDIDO</h2>
-            <p>Informe o código do pedido e o telefone cadastrado para consultar o status em tempo real.</p>
-            <p class="order-query-help">Você encontra o código na tela de confirmação e na mensagem do pedido enviada pelo WhatsApp. Digite-o aqui para acompanhar o status a qualquer momento.</p>
-        </div>
-
-        <div class="order-query-panel">
-            <form id="order-query-form" novalidate>
-                <div class="order-query-grid">
-                    <label>
-                        Código de acompanhamento
-                        <input id="order-query-code" type="text" placeholder="FP-3A9F2C41B7D0" autocomplete="off" required>
-                    </label>
-                    <label>
-                        Telefone
-                        <input id="order-query-phone" type="tel" data-phone-mask inputmode="numeric" maxlength="15" placeholder="(61) 98765-4321" autocomplete="tel" required>
-                    </label>
-                </div>
-
-                <div class="order-query-actions">
-                    <button class="btn-primary" type="submit">CONSULTAR PEDIDO</button>
-                    <a class="btn-secondary order-query-back" href="#cardapio">VOLTAR AO CARDÁPIO</a>
-                </div>
-            </form>
-
-            <div class="order-query-message" aria-live="polite"></div>
-
-            <div class="order-query-result" hidden>
-                <div class="order-query-header">
-                    <span class="order-query-status status-received">Pedido recebido</span>
-                </div>
-
-                <div class="order-progress" aria-label="Progresso do pedido">
-                    <div class="order-progress-step" data-order-step="Pedido recebido">
-                        <span class="order-progress-marker">1</span>
-                        <strong>Recebido</strong>
-                    </div>
-                    <div class="order-progress-line" aria-hidden="true"></div>
-                    <div class="order-progress-step" data-order-step="Pedido em andamento">
-                        <span class="order-progress-marker">2</span>
-                        <strong>Em andamento</strong>
-                    </div>
-                    <div class="order-progress-line" aria-hidden="true"></div>
-                    <div class="order-progress-step" data-order-step="Pedido concluído">
-                        <span class="order-progress-marker">3</span>
-                        <strong>Concluído</strong>
-                    </div>
-                </div>
-
-                <p class="order-query-status-message" aria-live="polite"></p>
-
-                <div class="order-query-details">
-                    <div class="order-query-meta">
-                        <strong>Código</strong>
-                        <div class="order-code-copy-row"><span class="order-query-code-value">Pedido FP-000000-ABC123</span><button class="btn-secondary order-code-copy" type="button" data-copy-code="" aria-live="polite">⌘ <span>Copiar</span></button></div>
-                    </div>
-                </div>
-
-                <div class="order-query-summary">
-                    <h3>Resumo do pedido</h3>
-                    <ul class="order-query-items"></ul>
-                    <div class="delivery-breakdown order-query-delivery-breakdown">
-                        <div><span>Subtotal</span><strong class="order-query-subtotal">R$ 0,00</strong></div>
-                        <div><span>Entrega</span><strong class="order-query-freight">R$ 0,00</strong></div>
-                    </div>
-                    <div class="order-query-total"><span>Total</span><strong>R$ 0,00</strong></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <footer>
 
         <div class="footer-logo">
@@ -805,7 +807,7 @@
         </div>
     </dialog>
 
-    <aside class="cart-panel" aria-label="Seu pedido" aria-hidden="true">
+    <aside class="cart-panel" aria-label="Seu pedido" aria-hidden="true" inert tabindex="-1">
         <div class="cart-header"><h2>SEU CARRINHO</h2><button class="cart-close" type="button" aria-label="Fechar carrinho">×</button></div>
         <div class="cart-items"><p class="cart-empty">Seu carrinho está vazio.</p></div>
         <button class="cart-add-more" type="button">+ Adicionar mais itens</button>
@@ -824,7 +826,7 @@
         </div>
     </aside>
 
-    <aside class="checkout-panel" aria-label="Checkout do pedido" aria-hidden="true">
+    <aside class="checkout-panel" aria-label="Checkout do pedido" aria-hidden="true" inert tabindex="-1">
         <div class="checkout-header">
             <h2>ENTREGA E PAGAMENTO</h2>
             <button class="checkout-close" type="button" aria-label="Fechar checkout">×</button>
@@ -901,7 +903,7 @@
         </form>
     </aside>
 
-    <aside class="confirmation-panel" aria-label="Confirmação do pedido" aria-hidden="true">
+    <aside class="confirmation-panel" aria-label="Confirmação do pedido" aria-hidden="true" inert tabindex="-1">
         <div class="confirmation-header">
             <span class="confirmation-badge">PEDIDO CONFIRMADO</span>
             <button class="confirmation-close" type="button" aria-label="Fechar confirmação">×</button>
@@ -909,7 +911,7 @@
 
         <div class="confirmation-content">
             <h2>Pedido realizado com sucesso!</h2>
-            <div class="order-code-copy-row"><p class="confirmation-code">Pedido FP-000000-ABC123</p><button class="btn-secondary order-code-copy" type="button" data-copy-code="" aria-live="polite">⌘ <span>Copiar</span></button></div>
+            <div class="order-code-copy-row"><p class="confirmation-code">Pedido FP-000000-ABC123</p><button class="btn-secondary order-code-copy" type="button" data-copy-code="" aria-live="polite"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg> <span>Copiar</span></button></div>
             <p class="confirmation-help">Seu pedido já foi registrado. Guarde este código para acompanhá-lo depois. Envie a mensagem pelo WhatsApp para avisar a pizzaria.</p>
             <p class="confirmation-status status-received">Pedido recebido</p>
 
@@ -949,7 +951,7 @@
     <div class="cart-backdrop" aria-hidden="true"></div>
 
 
-    <script src="js/script.js?v=2026-11-02-animacoes-scroll-polimento-2b"></script> <!-- alterar a versão a cada deploy que muda estes arquivos -->
+    <script src="js/script.js?v=2026-11-02-animacoes-scroll-polimento-2d"></script> <!-- alterar a versão a cada deploy que muda estes arquivos -->
 
 </body>
 </html>

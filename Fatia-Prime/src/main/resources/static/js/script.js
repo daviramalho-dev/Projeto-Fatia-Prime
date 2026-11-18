@@ -1,4 +1,4 @@
-const ASSET_VERSION = '2026-11-02-animacoes-scroll-polimento-2c'; // alterar a versão a cada deploy que muda estes arquivos
+const ASSET_VERSION = '2026-11-02-animacoes-scroll-polimento-2d'; // alterar a versão a cada deploy que muda estes arquivos
 const STARTUP_WAKE_TEST_CONFIG = window.__FATIA_STARTUP_WAKE_CONFIG__ || {};
 const STARTUP_WAKE_TIMEOUT_MS = Number(STARTUP_WAKE_TEST_CONFIG.timeoutMs) || 8000;
 const STARTUP_WAKE_NOTICE_DELAY_MS = Number(STARTUP_WAKE_TEST_CONFIG.noticeDelayMs) || 3000;
@@ -280,12 +280,13 @@ function mostrarAviso(mensagem, titulo = 'Atenção') {
 }
 
 function trapSiteModalFocus(event) {
+    if (!siteModal || siteModal.hidden) return;
     if (event.key === 'Escape') {
         event.preventDefault();
         closeSiteModal(false);
         return;
     }
-    if (event.key !== 'Tab' || siteModal?.hidden) return;
+    if (event.key !== 'Tab') return;
     const focusable = [...siteModal.querySelectorAll('button:not([hidden]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')];
     if (!focusable.length) return;
     const first = focusable[0];
@@ -915,9 +916,25 @@ async function fetchApiJson(url, options = {}) {
     }
 }
 
+function renderCatalogSkeleton() {
+    const menuList = document.querySelector('.menu-list');
+    const pizzaGrid = document.querySelector('.pizza-grid');
+    if (pizzaGrid) {
+        pizzaGrid.innerHTML = '<div class="skeleton-card" aria-hidden="true"><span class="skeleton-block skeleton-media"></span><span class="skeleton-block skeleton-line"></span><span class="skeleton-block skeleton-line is-short"></span></div>'.repeat(3);
+    }
+    if (menuList) {
+        menuList.innerHTML = '<div class="skeleton-row" aria-hidden="true"><span class="skeleton-block skeleton-thumb"></span><span class="skeleton-lines"><span class="skeleton-block skeleton-line"></span><span class="skeleton-block skeleton-line is-short"></span></span></div>'.repeat(6);
+    }
+}
+
 function setCatalogWaitingMessage(message, showRetry = false) {
     const menuList = document.querySelector('.menu-list');
-    if (menuList) menuList.innerHTML = `<p class="catalog-empty" role="status">${escapeHtml(message)}</p>`;
+    if (menuList && showRetry) {
+        menuList.innerHTML = `<p class="catalog-empty" role="status">${escapeHtml(message)}</p>`;
+        const slowGrid = document.querySelector('.pizza-grid');
+        slowGrid?.replaceChildren();
+        if (slowGrid?.closest('.destaques')) slowGrid.closest('.destaques').hidden = true;
+    }
     if (!catalogFeedback) return;
     catalogFeedback.replaceChildren(document.createTextNode(message));
     if (showRetry) {
@@ -1023,10 +1040,9 @@ async function loadPublicCatalog() {
     const featuredSection = pizzaGrid?.closest('.destaques');
     if (menuList) {
         menuList.setAttribute('aria-busy', 'true');
-        menuList.innerHTML = '<p class="catalog-empty">Carregando cardápio...</p>';
     }
-    if (pizzaGrid) pizzaGrid.replaceChildren();
-    if (featuredSection) featuredSection.hidden = true;
+    renderCatalogSkeleton();
+    if (featuredSection) featuredSection.hidden = false;
     if (catalogResults) catalogResults.textContent = 'Carregando cardápio...';
     if (catalogFeedback) {
         catalogFeedback.textContent = '';
@@ -1070,6 +1086,8 @@ async function loadPublicCatalog() {
         publicCatalogLoadFailed = true;
         publicProducts = [];
         publicCategories = [];
+        pizzaGrid?.replaceChildren();
+        if (featuredSection) featuredSection.hidden = true;
         renderCategoryFilters([], 'public');
         showCatalogMessage('Não foi possível carregar o cardápio. Tente novamente.');
         renderPublicCatalog();
@@ -1237,7 +1255,7 @@ function showCatalogMessage(message) {
         catalogFeedback.replaceChildren(document.createTextNode(message), document.createTextNode(' '));
         catalogRetryButton.type = 'button';
         catalogRetryButton.className = 'catalog-retry-button';
-        catalogRetryButton.textContent = 'Tentar novamente';
+        catalogRetryButton.textContent = 'Tentar de novo';
         catalogFeedback.append(catalogRetryButton);
         catalogFeedback.hidden = false;
     }
@@ -1545,16 +1563,74 @@ function resetCatalogFilters() {
     renderCategoryFilters(publicCategories, 'public');
     renderPublicCatalog();
 }
+const panelFocusOrigins = new Map();
+
+function activatePanel(element) {
+    if (!element) return;
+    if (element.inert) panelFocusOrigins.set(element, document.activeElement === document.body ? null : document.activeElement);
+    element.inert = false;
+    element.focus({ preventScroll: true });
+    if (pizzaCustomizer?.open) {
+        // O customizer (modal) ainda está fechando e bloqueia o foco; tenta de novo depois dele.
+        window.setTimeout(() => {
+            if (element.classList.contains('is-open') && !element.contains(document.activeElement)) {
+                element.focus({ preventScroll: true });
+            }
+        }, 250);
+    }
+}
+
+function deactivatePanel(element, restoreFocus = true) {
+    if (!element || element.inert) return;
+    const hadFocus = element.contains(document.activeElement);
+    element.inert = true;
+    const origin = panelFocusOrigins.get(element);
+    panelFocusOrigins.delete(element);
+    if (!restoreFocus || !hadFocus) return;
+    const target = origin?.isConnected && !origin.closest('[inert]') && origin.getClientRects().length ? origin : document.querySelector('[data-open-cart]');
+    target?.focus({ preventScroll: true });
+}
+
+function getTopOpenPanel() {
+    return [confirmationPanel, checkoutPanel, panel].find((element) => element?.classList.contains('is-open')) || null;
+}
+
+function trapPanelFocus(event) {
+    if (event.key !== 'Tab' || (siteModal && !siteModal.hidden)) return;
+    const openPanel = getTopOpenPanel();
+    if (!openPanel) return;
+    const focusable = [...openPanel.querySelectorAll('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+        .filter((element) => !element.disabled && !element.hidden && element.getClientRects().length);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (!openPanel.contains(document.activeElement)) {
+        event.preventDefault();
+        first.focus();
+    } else if (event.shiftKey && (document.activeElement === first || document.activeElement === openPanel)) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
+document.addEventListener('keydown', trapPanelFocus);
+
 function openCart() {
     if (!panel || !backdrop) return;
     panel.classList.add('is-open');
     backdrop.classList.add('is-open');
     panel.setAttribute('aria-hidden', 'false');
+    activatePanel(panel);
 }
 
 function closeActiveOverlayOnEscape(event) {
-    if (event.key !== 'Escape') return;
-    if (checkoutPanel?.classList.contains('is-open')) {
+    if (event.key !== 'Escape' || (siteModal && !siteModal.hidden) || pizzaCustomizer?.open) return;
+    if (confirmationPanel?.classList.contains('is-open')) {
+        closeConfirmation();
+    } else if (checkoutPanel?.classList.contains('is-open')) {
         closeCheckout();
     } else if (panel?.classList.contains('is-open')) {
         closeCart();
@@ -1568,12 +1644,17 @@ function closeCart() {
     panel.classList.remove('is-open');
     backdrop.classList.remove('is-open');
     panel.setAttribute('aria-hidden', 'true');
+    deactivatePanel(panel);
 }
 
 function closeCheckout() {
     if (!checkoutPanel) return;
     checkoutPanel.classList.remove('is-open');
     checkoutPanel.setAttribute('aria-hidden', 'true');
+    deactivatePanel(checkoutPanel);
+    if (backdrop && !panel?.classList.contains('is-open') && !confirmationPanel?.classList.contains('is-open')) {
+        backdrop.classList.remove('is-open');
+    }
     if (checkoutMessage) {
         checkoutMessage.textContent = '';
         checkoutMessage.classList.remove('success');
@@ -1588,6 +1669,7 @@ function closeConfirmation() {
     if (backdrop) {
         backdrop.classList.remove('is-open');
     }
+    deactivatePanel(confirmationPanel);
 }
 
 function saveRecentOrder(orderData) {
@@ -2541,7 +2623,9 @@ function openConfirmation(orderData) {
     if (checkoutPanel) {
         checkoutPanel.classList.remove('is-open');
         checkoutPanel.setAttribute('aria-hidden', 'true');
+        deactivatePanel(checkoutPanel, false);
     }
+    activatePanel(confirmationPanel);
 }
 
 function openOrderTracking(orderData) {
@@ -3186,7 +3270,11 @@ function clearCheckoutValidation() {
     if (!checkoutForm) return;
 
     checkoutForm.querySelectorAll('.is-invalid').forEach((field) => field.classList.remove('is-invalid'));
-    checkoutForm.querySelectorAll('[aria-invalid="true"]').forEach((field) => field.setAttribute('aria-invalid', 'false'));
+    checkoutForm.querySelectorAll('[aria-invalid="true"]').forEach((field) => {
+        field.setAttribute('aria-invalid', 'false');
+        field.removeAttribute('aria-describedby');
+    });
+    checkoutForm.querySelectorAll('.field-error').forEach((error) => error.remove());
 }
 
 function markFieldInvalid(fieldName, message) {
@@ -3197,7 +3285,16 @@ function markFieldInvalid(fieldName, message) {
 
     field.classList.add('is-invalid');
     field.setAttribute('aria-invalid', 'true');
-    showCheckoutMessage(message, false);
+    const errorId = `checkout-error-${fieldName}`;
+    document.getElementById(errorId)?.remove();
+    const error = document.createElement('small');
+    error.className = 'field-error';
+    error.id = errorId;
+    error.setAttribute('role', 'alert');
+    error.textContent = message;
+    (field.closest('label') || field.parentElement).appendChild(error);
+    field.setAttribute('aria-describedby', errorId);
+    if (checkoutMessage) checkoutMessage.textContent = '';
     field.focus();
 }
 
@@ -3244,7 +3341,9 @@ function openCheckout() {
     if (panel) {
         panel.classList.remove('is-open');
         panel.setAttribute('aria-hidden', 'true');
+        deactivatePanel(panel, false);
     }
+    activatePanel(checkoutPanel);
 }
 
 function updateCart(shouldPulse = false) {
@@ -3656,6 +3755,7 @@ function markRevealTargets(root = document) {
     targetGroups.forEach(([selector, className]) => {
         [...root.querySelectorAll(selector)].forEach((element) => {
             if (element.closest('.admin-header, .admin-access, .admin-orders, .admin-catalog, .admin-sales')) return;
+            if (element.closest('.hero')) return;
             element.classList.add(className);
         });
     });
@@ -3689,7 +3789,7 @@ function initializePublicReveals(showDynamicCatalog = false) {
                     entryObserver.unobserve(entry.target);
                     revealObservers.delete(entryObserver);
                 });
-            }, { rootMargin: '0px 0px -10% 0px', threshold: 0.12 });
+            }, { rootMargin: '0px 0px -10% 0px', threshold: 0 });
             observer.observe(target);
             revealObservers.add(observer);
         }
@@ -4166,6 +4266,14 @@ document.querySelector('.admin-order-details-close')?.addEventListener('click', 
 });
 
 if (checkoutForm) {
+    checkoutForm.addEventListener('input', (event) => {
+        const field = event.target;
+        if (!field.classList?.contains('is-invalid')) return;
+        field.classList.remove('is-invalid');
+        field.setAttribute('aria-invalid', 'false');
+        field.removeAttribute('aria-describedby');
+        document.getElementById(`checkout-error-${field.name}`)?.remove();
+    });
     checkoutForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         clearCheckoutValidation();
@@ -4741,7 +4849,7 @@ window.addEventListener('hashchange', () => {
 });
 
 renderAdminProducts();
-applyCategoryFilter('all');
+if (!publicCatalogLoadInProgress) applyCategoryFilter('all');
 updateCart();
 setInterfaceMode('public');
 if (window.location.hash === '#acesso-admin') openAdminLogin();
