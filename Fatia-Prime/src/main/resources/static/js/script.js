@@ -1,4 +1,4 @@
-const ASSET_VERSION = '2026-11-02-animacoes-scroll-polimento-2d'; // alterar a versão a cada deploy que muda estes arquivos
+const ASSET_VERSION = '2026-11-18-catalogo-swr'; // alterar a versão a cada deploy que muda estes arquivos
 const STARTUP_WAKE_TEST_CONFIG = window.__FATIA_STARTUP_WAKE_CONFIG__ || {};
 const STARTUP_WAKE_TIMEOUT_MS = Number(STARTUP_WAKE_TEST_CONFIG.timeoutMs) || 8000;
 const STARTUP_WAKE_NOTICE_DELAY_MS = Number(STARTUP_WAKE_TEST_CONFIG.noticeDelayMs) || 3000;
@@ -13,6 +13,9 @@ const ORDER_STORAGE_KEY = 'fatia-prime-last-order';
 const ORDER_HISTORY_STORAGE_KEY = 'fatia-prime-orders';
 const PRODUCT_STORAGE_KEY = 'fatia-prime-products';
 const CHECKOUT_ADDRESS_STORAGE_KEY = 'fatia-prime-checkout-address';
+const CATALOG_STORAGE_PREFIX = 'fatia-prime-catalog:';
+const CATALOG_STORAGE_KEY = `${CATALOG_STORAGE_PREFIX}${ASSET_VERSION}`;
+const CATALOG_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const ORDER_STATUSES = ['Pedido recebido', 'Pedido em andamento', 'Pedido concluído'];
 const PRODUCT_CATEGORIES = ['classicas', 'carnes', 'frango', 'queijos'];
 const PUBLIC_CATEGORY_ORDER = ['classicas', 'carnes', 'frango', 'queijos', 'doces', 'bebidas'];
@@ -324,6 +327,7 @@ let startupWakeRetryTimer = null;
 let startupWakeStartedAt = 0;
 let startupWakeRetryDelay = STARTUP_WAKE_RETRY_INITIAL_MS;
 let startupWakeRetryButtonVisible = false;
+let catalogRevalidatingInBackground = false;
 let adminRefreshTimer = null;
 let adminRefreshInProgress = false;
 let adminOrdersLoading = false;
@@ -957,7 +961,7 @@ function stopStartupWakeFeedback() {
 }
 
 function updateStartupWakeFeedback() {
-    if (!publicCatalogLoadInProgress || !catalogFeedback) return;
+    if (!publicCatalogLoadInProgress || !catalogFeedback || catalogRevalidatingInBackground) return;
     const elapsed = Date.now() - startupWakeStartedAt;
     if (elapsed >= STARTUP_WAKE_RETRY_LIMIT_MS) {
         startupWakeRetryButtonVisible = true;
@@ -976,6 +980,8 @@ function updateStartupWakeFeedback() {
 function beginStartupWakeFeedback() {
     if (startupWakeStartedAt || !catalogFeedback) return;
     startupWakeStartedAt = Date.now();
+    // Com o cardápio em cache na tela, as novas tentativas seguem sem a tela de espera.
+    if (catalogRevalidatingInBackground) return;
     window.clearTimeout(catalogLoadMessageTimer);
     catalogLoadMessageTimer = window.setTimeout(() => {
         if (publicCatalogLoadInProgress) updateStartupWakeFeedback();
@@ -1031,6 +1037,50 @@ async function fetchStartupWakeJson(url, options = {}) {
     }
 }
 
+function readCatalogSnapshot() {
+    try {
+        const raw = window.localStorage.getItem(CATALOG_STORAGE_KEY);
+        if (!raw) return null;
+        const snapshot = JSON.parse(raw);
+        const age = Date.now() - Number(snapshot?.savedAt);
+        if (!Number.isFinite(age) || age < 0 || age > CATALOG_CACHE_MAX_AGE_MS
+            || !Array.isArray(snapshot.produtos) || !Array.isArray(snapshot.categorias)) return null;
+        return snapshot;
+    } catch (error) {
+        return null;
+    }
+}
+
+function saveCatalogSnapshot(produtos, categorias, manifesto) {
+    try {
+        const storage = window.localStorage;
+        for (let index = storage.length - 1; index >= 0; index -= 1) {
+            const key = storage.key(index);
+            if (key?.startsWith(CATALOG_STORAGE_PREFIX) && key !== CATALOG_STORAGE_KEY) storage.removeItem(key);
+        }
+        storage.setItem(CATALOG_STORAGE_KEY, JSON.stringify({ savedAt: Date.now(), produtos, categorias, manifesto }));
+    } catch (error) {
+        console.warn('Não foi possível salvar o cardápio no localStorage.', error);
+    }
+}
+
+function applyCatalogData(products, categories) {
+    if (!Array.isArray(products) || !Array.isArray(categories)) throw new Error('Resposta inválida do catálogo.');
+    publicCategories = categories
+        .filter((category) => category && category.id != null && category.nome)
+        .map((category) => ({ id: category.id, name: String(category.nome).trim() }))
+        .sort((first, second) => getPublicCategoryOrder(first) - getPublicCategoryOrder(second));
+    publicProducts = products.map((product) => normalizeApiProduct(product, publicCategories)).filter(Boolean);
+    renderCategoryFilters(publicCategories, 'public');
+    stopStartupWakeFeedback();
+    if (catalogFeedback) {
+        catalogFeedback.textContent = '';
+        catalogFeedback.hidden = true;
+    }
+    renderPublicCatalog();
+    if (window.cart?.length) updateCart();
+}
+
 async function loadPublicCatalog() {
     if (publicCatalogLoadInProgress) return;
     publicCatalogLoadInProgress = true;
@@ -1038,18 +1088,33 @@ async function loadPublicCatalog() {
     const menuList = document.querySelector('.menu-list');
     const pizzaGrid = document.querySelector('.pizza-grid');
     const featuredSection = pizzaGrid?.closest('.destaques');
-    if (menuList) {
-        menuList.setAttribute('aria-busy', 'true');
+    // Stale-while-revalidate: só na abertura (nada na tela ainda) o cardápio salvo é exibido na hora.
+    const snapshot = publicProducts.length ? null : readCatalogSnapshot();
+    let renderedFromCache = false;
+    if (snapshot) {
+        try {
+            applyImageManifestSafely(snapshot.manifesto);
+            applyCatalogData(snapshot.produtos, snapshot.categorias);
+            renderedFromCache = publicProducts.length > 0;
+        } catch (error) {
+            console.warn('Cardápio salvo inválido. Carregando da API.', error);
+        }
     }
-    renderCatalogSkeleton();
-    if (featuredSection) featuredSection.hidden = false;
-    if (catalogResults) catalogResults.textContent = 'Carregando cardápio...';
-    if (catalogFeedback) {
-        catalogFeedback.textContent = '';
-        catalogFeedback.hidden = true;
-    }
+    catalogRevalidatingInBackground = renderedFromCache;
     stopStartupWakeFeedback();
     startupWakeRetryButtonVisible = false;
+    if (!renderedFromCache) {
+        if (menuList) {
+            menuList.setAttribute('aria-busy', 'true');
+        }
+        renderCatalogSkeleton();
+        if (featuredSection) featuredSection.hidden = false;
+        if (catalogResults) catalogResults.textContent = 'Carregando cardápio...';
+        if (catalogFeedback) {
+            catalogFeedback.textContent = '';
+            catalogFeedback.hidden = true;
+        }
+    }
     beginStartupWakeFeedback();
     const loadAttempt = async () => {
         try {
@@ -1066,22 +1131,21 @@ async function loadPublicCatalog() {
         }
     };
     try {
-        const [products, categories] = await loadAttempt();
+        const [products, categories, fetchedManifest] = await loadAttempt();
         if (!Array.isArray(products) || !Array.isArray(categories)) throw new Error('Resposta inválida do catálogo.');
-        publicCategories = categories
-            .filter((category) => category && category.id != null && category.nome)
-            .map((category) => ({ id: category.id, name: String(category.nome).trim() }))
-            .sort((first, second) => getPublicCategoryOrder(first) - getPublicCategoryOrder(second));
-        publicProducts = products.map((product) => normalizeApiProduct(product, publicCategories)).filter(Boolean);
-        renderCategoryFilters(publicCategories, 'public');
-        stopStartupWakeFeedback();
-        if (catalogFeedback) {
-            catalogFeedback.textContent = '';
-            catalogFeedback.hidden = true;
-        }
-        renderPublicCatalog();
-        if (window.cart?.length) updateCart();
+        const manifest = fetchedManifest || snapshot?.manifesto || null;
+        const unchanged = renderedFromCache
+            && JSON.stringify([products, categories, manifest])
+                === JSON.stringify([snapshot.produtos, snapshot.categorias, snapshot.manifesto]);
+        applyImageManifestSafely(manifest);
+        if (!unchanged) applyCatalogData(products, categories);
+        saveCatalogSnapshot(products, categories, manifest);
     } catch (error) {
+        if (renderedFromCache) {
+            // Mantém o cardápio salvo; preço final é revalidado no checkout e recalculado no servidor.
+            console.warn('Não foi possível atualizar o cardápio. Exibindo a versão salva.', error);
+            return;
+        }
         if (isRetryableWakeError(error)) return;
         publicCatalogLoadFailed = true;
         publicProducts = [];
@@ -1095,6 +1159,7 @@ async function loadPublicCatalog() {
         window.clearTimeout(catalogLoadMessageTimer);
         catalogLoadMessageTimer = null;
         if (!startupWakeRetryButtonVisible) stopStartupWakeFeedback();
+        catalogRevalidatingInBackground = false;
         publicCatalogLoadInProgress = false;
         if (menuList) menuList.setAttribute('aria-busy', 'false');
     }
@@ -1110,40 +1175,55 @@ function getCatalogThumbnailSource(product) {
     return product.image ? image : getDerivedImagePath(image, 'thumbs') || image;
 }
 
+function applyImageManifestSafely(manifest) {
+    try {
+        applyImageManifest(manifest);
+    } catch (error) {
+        catalogProductImages = new Map();
+        halfPizzaImages = new Map();
+    }
+}
+
 async function loadProductImageAssociations({ startup = false } = {}) {
     try {
         const fetchManifest = startup ? fetchStartupWakeJson : fetchApiJson;
         const manifest = await fetchManifest(`/assets/image-associations.json?v=${ASSET_VERSION}`);
-        const cardapio = manifest?.cardapio;
-        const meia = manifest?.meia;
-        if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)
-            || !cardapio || typeof cardapio !== 'object' || Array.isArray(cardapio)
-            || !meia || typeof meia !== 'object' || Array.isArray(meia)) {
-            throw new Error('Manifesto de imagens do catálogo inválido.');
-        }
-        const cardapioEntries = Object.entries(cardapio);
-        const meiaEntries = Object.entries(meia);
-        const validAssociations = (entries, pattern) => entries.every(([, filename]) => pattern.test(filename))
-            && new Set(entries.map(([name]) => normalizeCatalogSearch(name))).size === entries.length
-            && new Set(entries.map(([, filename]) => filename)).size === entries.length;
-        if (!validAssociations(cardapioEntries, /^cardapio\/[a-z0-9-]+-cardapio\.(?:png|jpe?g|webp)$/i)
-            || !validAssociations(meiaEntries, /^meia\/[a-z0-9-]+-meia\.png$/i)) {
-            throw new Error('Manifesto de imagens contém associações inválidas.');
-        }
-        catalogProductImages = new Map(cardapioEntries.map(([name, filename]) => [
-            normalizeCatalogSearch(name),
-            `assets/${filename}`,
-        ]));
-        halfPizzaImages = new Map(meiaEntries.map(([name, filename]) => [
-            normalizeCatalogSearch(name),
-            `assets/${filename}`,
-        ]));
+        applyImageManifest(manifest);
+        return manifest;
     } catch (error) {
         catalogProductImages = new Map();
         halfPizzaImages = new Map();
         if (startup && isRetryableWakeError(error)) throw error;
         console.error('Não foi possível carregar as associações de imagens do catálogo.', error);
+        return null;
     }
+}
+
+function applyImageManifest(manifest) {
+    const cardapio = manifest?.cardapio;
+    const meia = manifest?.meia;
+    if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)
+        || !cardapio || typeof cardapio !== 'object' || Array.isArray(cardapio)
+        || !meia || typeof meia !== 'object' || Array.isArray(meia)) {
+        throw new Error('Manifesto de imagens do catálogo inválido.');
+    }
+    const cardapioEntries = Object.entries(cardapio);
+    const meiaEntries = Object.entries(meia);
+    const validAssociations = (entries, pattern) => entries.every(([, filename]) => pattern.test(filename))
+        && new Set(entries.map(([name]) => normalizeCatalogSearch(name))).size === entries.length
+        && new Set(entries.map(([, filename]) => filename)).size === entries.length;
+    if (!validAssociations(cardapioEntries, /^cardapio\/[a-z0-9-]+-cardapio\.(?:png|jpe?g|webp)$/i)
+        || !validAssociations(meiaEntries, /^meia\/[a-z0-9-]+-meia\.png$/i)) {
+        throw new Error('Manifesto de imagens contém associações inválidas.');
+    }
+    catalogProductImages = new Map(cardapioEntries.map(([name, filename]) => [
+        normalizeCatalogSearch(name),
+        `assets/${filename}`,
+    ]));
+    halfPizzaImages = new Map(meiaEntries.map(([name, filename]) => [
+        normalizeCatalogSearch(name),
+        `assets/${filename}`,
+    ]));
 }
 
 function getNormalizedProductImageName(productName) {
@@ -3259,6 +3339,70 @@ function cartTotal() {
     return window.cart.reduce((total, item) => total + Number(item.price) * Number(item.quantity), 0);
 }
 
+// Recalcula o carrinho com os preços atuais da API (mesma regra do servidor) e remove itens indisponíveis.
+async function repriceCart() {
+    if (!Array.isArray(window.cart) || !window.cart.length) return { updated: 0, removed: 0 };
+    const products = await fetchApiJson('/api/produtos');
+    if (!Array.isArray(products)) throw new Error('Resposta inválida do catálogo.');
+    const productsById = new Map(products
+        .map((product) => normalizeApiProduct(product, publicCategories))
+        .filter((product) => product?.active)
+        .map((product) => [product.id, product]));
+    const pizzaTypes = [...new Set(window.cart
+        .filter((item) => item.itemType === 'PIZZA')
+        .map((item) => productsById.get(Number(item.firstFlavor?.id))?.type)
+        .filter((type) => type && type !== 'BEBIDA'))];
+    const optionsByType = new Map(await Promise.all(pizzaTypes.map(async (type) => {
+        const options = await fetchApiJson(`/api/opcoes-pizza?tipoProduto=${encodeURIComponent(type)}`);
+        if (!Array.isArray(options)) throw new Error('Não foi possível carregar as opções da pizza.');
+        return [type, new Map(options.map((option) => [Number(option.id), option]))];
+    })));
+    const toCents = (value) => Math.round(Number(value) * 100);
+    let updated = 0;
+    const available = window.cart.filter((item) => {
+        const first = productsById.get(Number(item.firstFlavor?.id));
+        if (!first || (item.itemType === 'BEBIDA') !== (first.type === 'BEBIDA')) return false;
+        let cents = toCents(first.price);
+        if (item.itemType === 'PIZZA') {
+            if (item.pizzaType === 'MEIO_A_MEIO') {
+                const second = productsById.get(Number(item.secondFlavor?.id));
+                if (!second || second.type !== first.type) return false;
+                cents = Math.max(cents, toCents(second.price));
+            }
+            const options = optionsByType.get(first.type) || new Map();
+            const priceOption = (selected, tipo) => {
+                const option = options.get(Number(selected.id));
+                if (!option || option.tipo !== tipo || !Number.isFinite(Number(option.precoAdicional))) return false;
+                selected.price = Number(option.precoAdicional);
+                cents += toCents(option.precoAdicional);
+                return true;
+            };
+            if (item.border && !priceOption(item.border, 'BORDA')) return false;
+            if (!item.addons.every((addon) => priceOption(addon, 'ADICIONAL'))) return false;
+            if (!item.sauces.every((sauce) => priceOption(sauce, 'MOLHO'))) return false;
+        }
+        if (cents !== toCents(item.price)) {
+            item.price = cents / 100;
+            updated += 1;
+        }
+        return true;
+    });
+    const removed = window.cart.length - available.length;
+    if (updated || removed) {
+        window.cart = available;
+        updateCart();
+    }
+    return { updated, removed };
+}
+
+function describeCartRepricing({ updated, removed }, onSubmit = false) {
+    return [
+        updated && 'Os preços de alguns itens foram atualizados.',
+        removed && 'Itens que não estão mais disponíveis foram removidos do carrinho.',
+        window.cart.length && (onSubmit ? 'Confira o total e envie novamente.' : 'Confira o total.'),
+    ].filter(Boolean).join(' ');
+}
+
 function showCheckoutMessage(message, isSuccess = false) {
     if (!checkoutMessage) return;
     checkoutMessage.textContent = message;
@@ -3323,6 +3467,11 @@ function openCheckout() {
     if (!checkoutPanel) return;
 
     renderCheckoutSummary();
+    repriceCart()
+        .then((result) => {
+            if (result.updated || result.removed) showCheckoutMessage(describeCartRepricing(result), false);
+        })
+        .catch((error) => console.warn('Não foi possível revalidar os preços do carrinho.', error));
     const cartCustomerName = document.querySelector('#customer-name')?.value.trim();
     const cartOrderNotes = document.querySelector('#order-notes')?.value.trim();
     const checkoutName = checkoutForm?.elements.namedItem('customerName');
@@ -4343,6 +4492,19 @@ if (checkoutForm) {
             whatsappWindow?.close();
             const quoteMessage = checkoutForm.querySelector('.delivery-quote-message')?.textContent;
             showCheckoutMessage(quoteMessage || 'Informe um CEP atendido para calcular a entrega.', false);
+            return;
+        }
+
+        let repricing = null;
+        try {
+            repricing = await repriceCart();
+        } catch (error) {
+            // Sem a revalidação o fluxo segue; o servidor recalcula preços e total.
+            console.warn('Não foi possível revalidar os preços do carrinho.', error);
+        }
+        if (repricing?.updated || repricing?.removed) {
+            whatsappWindow?.close();
+            showCheckoutMessage(describeCartRepricing(repricing, true), false);
             return;
         }
 
