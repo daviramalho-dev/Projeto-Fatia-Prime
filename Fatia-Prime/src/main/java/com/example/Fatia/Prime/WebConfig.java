@@ -15,5 +15,12 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/assets/**")
             .addResourceLocations("classpath:/static/assets/")
             .setCacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic());
+        // CSS e JS sao versionados por ?v=... no index.html; trocar a versao invalida o cache.
+        registry.addResourceHandler("/css/**")
+            .addResourceLocations("classpath:/static/css/")
+            .setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic());
+        registry.addResourceHandler("/js/**")
+            .addResourceLocations("classpath:/static/js/")
+            .setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic());
     }
 }
