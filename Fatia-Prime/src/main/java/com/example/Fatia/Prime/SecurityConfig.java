@@ -101,7 +101,7 @@ public class SecurityConfig {
     private AuthenticationFailureHandler authenticationFailureHandler() {
         return (request, response, exception) -> {
             response.setStatus(HttpStatus.UNAUTHORIZED.value());
-            response.setContentType("application/json");
+            response.setContentType("application/json;charset=UTF-8");
             response.getWriter().write("{\"message\":\"E-mail ou senha inválidos.\"}");
         };
     }
