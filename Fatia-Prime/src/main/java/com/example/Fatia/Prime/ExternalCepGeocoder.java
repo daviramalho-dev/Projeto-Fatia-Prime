@@ -12,11 +12,16 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 import tools.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -25,7 +30,9 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 @Component
 public class ExternalCepGeocoder implements CepGeocoder {
 
+    private static final Logger log = LoggerFactory.getLogger(ExternalCepGeocoder.class);
     private static final long NOMINATIM_MIN_INTERVAL_NANOS = 1_000_000_000L;
+    private static final long RETENTATIVA_ESPERA_MILLIS = 300;
     private static final String BRASILIA_OPEN_CEP_LATITUDE = "-15.77972";
     private static final String BRASILIA_OPEN_CEP_LONGITUDE = "-47.92972";
 
@@ -71,6 +78,10 @@ public class ExternalCepGeocoder implements CepGeocoder {
         Coordenadas brasilApi = buscarBrasilApi(cep);
         if (brasilApi != null) return List.of(brasilApi);
 
+        // Provedor por CEP que não depende do Nominatim, que recusa IPs de nuvem como o do Render.
+        Coordenadas awesomeApi = buscarAwesomeApi(cep);
+        if (awesomeApi != null) return List.of(awesomeApi);
+
         Endereco endereco;
         try {
             endereco = buscarEndereco(cep);
@@ -84,10 +95,7 @@ public class ExternalCepGeocoder implements CepGeocoder {
 
     private Coordenadas buscarBrasilApi(String cep) {
         try {
-            JsonNode resposta = restClient.get()
-                .uri(properties.getBrasilApiUrl() + "/" + cep)
-                .retrieve()
-                .body(JsonNode.class);
+            JsonNode resposta = buscarJson("BrasilAPI", URI.create(properties.getBrasilApiUrl() + "/" + cep), false);
             if (resposta == null
                 || !"correios".equalsIgnoreCase(texto(resposta, "service"))
                 || !cep.equals(normalizarCep(texto(resposta, "cep")))
@@ -99,24 +107,38 @@ public class ExternalCepGeocoder implements CepGeocoder {
             JsonNode coordenadas = resposta.path("location").path("coordinates");
             double longitude = coordenada(coordenadas.path("longitude"));
             double latitude = coordenada(coordenadas.path("latitude"));
-            if (!coordenadasValidas(latitude, longitude)
-                || latitude < -34 || latitude > 6 || longitude < -74 || longitude > -34
-                || coordenadaGenericaBrasilia(latitude, longitude)) {
-                return null;
-            }
+            if (!coordenadaUtilNoBrasil(latitude, longitude)) return null;
             return new Coordenadas(latitude, longitude, "BrasilAPI/Correios", false);
         } catch (RestClientException exception) {
             return null;
         }
     }
 
+    private Coordenadas buscarAwesomeApi(String cep) {
+        String url = properties.getAwesomeApiUrl();
+        if (url == null || url.isBlank()) return null;
+        try {
+            JsonNode resposta = buscarJson("AwesomeAPI", URI.create(url + "/" + cep), false);
+            if (resposta == null || !cep.equals(normalizarCep(texto(resposta, "cep")))) return null;
+            double latitude = coordenada(resposta.path("lat"));
+            double longitude = coordenada(resposta.path("lng"));
+            if (!coordenadaUtilNoBrasil(latitude, longitude)) return null;
+            return new Coordenadas(latitude, longitude, "AwesomeAPI", false);
+        } catch (RestClientException exception) {
+            return null;
+        }
+    }
+
+    private boolean coordenadaUtilNoBrasil(double latitude, double longitude) {
+        return coordenadasValidas(latitude, longitude)
+            && latitude >= -34 && latitude <= 6 && longitude >= -74 && longitude <= -34
+            && !coordenadaGenericaBrasilia(latitude, longitude);
+    }
+
     private Endereco consultarViaCep(String cep) {
         JsonNode resposta;
         try {
-            resposta = restClient.get()
-                .uri(properties.getViaCepUrl() + "/" + cep + "/json/")
-                .retrieve()
-                .body(JsonNode.class);
+            resposta = buscarJson("ViaCEP", URI.create(properties.getViaCepUrl() + "/" + cep + "/json/"), false);
         } catch (RestClientException exception) {
             throw new GeocodificacaoIndisponivelException(exception);
         }
@@ -173,7 +195,7 @@ public class ExternalCepGeocoder implements CepGeocoder {
         }
         if (!coordenadas.isEmpty()) return List.copyOf(coordenadas.values());
         if (falhaProvedor != null) throw falhaProvedor;
-        throw new GeocodificacaoIndisponivelException();
+        throw new CepSemLocalizacaoException();
     }
 
     private List<Coordenadas> buscarNoNominatim(Consulta consulta, Endereco endereco) {
@@ -187,17 +209,9 @@ public class ExternalCepGeocoder implements CepGeocoder {
             .toUriString();
 
         try {
-            respeitarLimiteNominatim();
-            JsonNode respostas = restClient.get()
-                .uri(URI.create(url))
-                .header("User-Agent", properties.getNominatimUserAgent())
-                .retrieve()
-                .body(JsonNode.class);
+            JsonNode respostas = buscarJson("Nominatim", URI.create(url), true);
             return extrairResultados(respostas, endereco, consulta.nivel());
         } catch (RestClientException exception) {
-            throw new GeocodificacaoIndisponivelException(exception);
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
             throw new GeocodificacaoIndisponivelException(exception);
         }
     }
@@ -213,12 +227,7 @@ public class ExternalCepGeocoder implements CepGeocoder {
             .encode()
             .toUriString();
         try {
-            respeitarLimiteNominatim();
-            JsonNode respostas = restClient.get()
-                .uri(URI.create(url))
-                .header("User-Agent", properties.getNominatimUserAgent())
-                .retrieve()
-                .body(JsonNode.class);
+            JsonNode respostas = buscarJson("Nominatim", URI.create(url), true);
             if (respostas == null || !respostas.isArray()) return List.of();
 
             List<Coordenadas> coordenadas = new ArrayList<>();
@@ -234,6 +243,47 @@ public class ExternalCepGeocoder implements CepGeocoder {
             return List.copyOf(coordenadas);
         } catch (RestClientException exception) {
             throw new GeocodificacaoIndisponivelException(exception);
+        }
+    }
+
+    /**
+     * GET com User-Agent identificado e uma única retentativa curta para falha transitória
+     * (timeout, conexão, 5xx). Respostas 4xx (CEP inexistente, bloqueio, 429) não são repetidas.
+     */
+    private JsonNode buscarJson(String provedor, URI uri, boolean limitarTaxaNominatim) {
+        for (int tentativa = 1; ; tentativa++) {
+            try {
+                if (limitarTaxaNominatim) respeitarLimiteNominatim();
+                return restClient.get()
+                    .uri(uri)
+                    .header("User-Agent", properties.getNominatimUserAgent())
+                    .retrieve()
+                    .body(JsonNode.class);
+            } catch (ResourceAccessException | HttpServerErrorException exception) {
+                log.warn("Geocodificação: {} falhou na tentativa {} ({}).", provedor, tentativa, descrever(exception));
+                if (tentativa >= 2) throw exception;
+                pausar(RETENTATIVA_ESPERA_MILLIS);
+            } catch (RestClientException exception) {
+                log.warn("Geocodificação: {} recusou a consulta ({}).", provedor, descrever(exception));
+                throw exception;
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new GeocodificacaoIndisponivelException(exception);
+            }
+        }
+    }
+
+    private String descrever(RestClientException exception) {
+        if (exception instanceof RestClientResponseException resposta) {
+            return "HTTP " + resposta.getStatusCode().value();
+        }
+        Throwable causa = exception.getCause() == null ? exception : exception.getCause();
+        return causa.getClass().getSimpleName();
+    }
+
+    private void pausar(long millis) {
+        try {
+            Thread.sleep(millis);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new GeocodificacaoIndisponivelException(exception);

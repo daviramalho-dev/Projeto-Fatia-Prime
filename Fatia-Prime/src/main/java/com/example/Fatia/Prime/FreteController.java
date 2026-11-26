@@ -57,6 +57,8 @@ public class FreteController {
             opcoes = geocoder.geocodificarOpcoes(cepNormalizado);
         } catch (CepGeocoder.CepNaoEncontradoException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage());
+        } catch (CepGeocoder.CepSemLocalizacaoException exception) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, exception.getMessage());
         } catch (CepGeocoder.GeocodificacaoIndisponivelException exception) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
         }
