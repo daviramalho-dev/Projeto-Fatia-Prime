@@ -30,6 +30,12 @@ public interface CepGeocoder {
         }
     }
 
+    class CepSemLocalizacaoException extends RuntimeException {
+        public CepSemLocalizacaoException() {
+            super("Não conseguimos localizar esse CEP para calcular a entrega. Confira o número informado.");
+        }
+    }
+
     class GeocodificacaoIndisponivelException extends RuntimeException {
         public GeocodificacaoIndisponivelException() {
             super("Não foi possível calcular a entrega no momento. Tente novamente.");

@@ -17,6 +17,7 @@ public class FreteProperties {
     private List<Faixa> faixas = new ArrayList<>();
     private String brasilApiUrl = "https://brasilapi.com.br/api/cep/v2";
     private String viaCepUrl = "https://viacep.com.br/ws";
+    private String awesomeApiUrl = "https://cep.awesomeapi.com.br/json";
     private String nominatimUrl = "https://nominatim.openstreetmap.org/search";
     private String nominatimUserAgent = "FatiaPrime/1.0 (+https://github.com/daviramalho-dev/Projeto-Fatia-Prime)";
     private Duration connectTimeout = Duration.ofSeconds(2);
@@ -68,6 +69,14 @@ public class FreteProperties {
 
     public void setViaCepUrl(String viaCepUrl) {
         this.viaCepUrl = viaCepUrl;
+    }
+
+    public String getAwesomeApiUrl() {
+        return awesomeApiUrl;
+    }
+
+    public void setAwesomeApiUrl(String awesomeApiUrl) {
+        this.awesomeApiUrl = awesomeApiUrl;
     }
 
     public String getNominatimUrl() {
